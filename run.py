@@ -1,10 +1,31 @@
 import asyncio
+import os
 import threading
+
 import uvicorn
+from fastapi import FastAPI
 
 from main import main as run_bot
 from workers.auto_loop import run_forever
-from api.webhook import app
+
+# Mini API pour que Render Free accepte le service
+api = FastAPI()
+
+
+@api.get("/")
+def root():
+    return {"status": "alive", "mode": "paper", "service": "trading-ai"}
+
+
+@api.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+def start_api():
+    # Render fournit le port via la variable PORT
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(api, host="0.0.0.0", port=port, log_level="info")
 
 
 def start_auto_loop():
@@ -13,18 +34,15 @@ def start_auto_loop():
     loop.run_until_complete(run_forever())
 
 
-def start_api():
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-
-
 if __name__ == "__main__":
-    threading.Thread(target=start_auto_loop, daemon=True).start()
-    print("✅ Worker 24/7 lancé")
-
+    # 1) Serveur web (obligatoire pour Render Free)
     threading.Thread(target=start_api, daemon=True).start()
-    print("✅ API webhook sur http://127.0.0.1:8000")
-    print("   Health : http://127.0.0.1:8000/health")
-    print("   TV POST: /webhook/tradingview")
+    print("✅ Web server lancé (Render Free)")
 
-    print("✅ Bot Telegram...")
+    # 2) Boucle trading
+    threading.Thread(target=start_auto_loop, daemon=True).start()
+    print("✅ Auto-loop lancée")
+
+    # 3) Bot Telegram
+    print("✅ Bot Telegram en polling...")
     run_bot()
