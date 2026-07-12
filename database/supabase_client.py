@@ -1,0 +1,40 @@
+from supabase import create_client, Client
+from config import SUPABASE_URL, SUPABASE_KEY
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def insert_insight(insight: Dict[str, Any]) -> Dict:
+    insight.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+    res = supabase.table("insights").insert(insight).execute()
+    return res.data[0] if res.data else {}
+
+def get_recent_insights(asset: Optional[str] = None, limit: int = 30) -> List[Dict]:
+    q = supabase.table("insights").select("*").order("created_at", desc=True).limit(limit)
+    if asset:
+        q = q.eq("asset", asset)
+    return q.execute().data or []
+
+def create_pending_signal(user_id: str, signal: Dict) -> str:
+    res = supabase.table("pending_signals").insert({
+        "user_id": user_id,
+        "signal": signal,
+        "status": "pending"
+    }).execute()
+    if not res.data or not isinstance(res.data, list) or not res.data[0]:
+        raise RuntimeError("Failed to create pending signal: Supabase returned no data")
+    return str(res.data[0].get("id"))
+
+def update_signal_status(signal_id: str, status: str, execution_result: Optional[Dict] = None):
+    payload = {
+        "status": status,
+        "validated_at": datetime.now(timezone.utc).isoformat()
+    }
+    if execution_result:
+        payload["execution_result"] = execution_result
+    supabase.table("pending_signals").update(payload).eq("id", signal_id).execute()
+
+def get_user_session(user_id: str) -> Optional[Dict]:
+    res = supabase.table("user_sessions").select("*").eq("user_id", user_id).maybe_single().execute()
+    return res.data
