@@ -1,31 +1,14 @@
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
-import yfinance as yf
 
 from database.supabase_client import get_recent_insights
 from config import MIN_CONFIDENCE
+from utils.market_data import get_closes
 
 
 class EmotionlessDecisionEngine:
-    """Version cloud sans pandas — logique pure, zéro émotion."""
-
     def __init__(self, min_conf: float = MIN_CONFIDENCE):
         self.min_conf = min_conf
-
-    def _fetch_closes(self, asset: str, period: str = "60d", interval: str = "1h"):
-        try:
-            df = yf.download(asset, period=period, interval=interval, progress=False, auto_adjust=True)
-            if df is None or len(df) < 30:
-                return []
-            # yfinance peut renvoyer MultiIndex selon version
-            if hasattr(df.columns, "levels"):
-                closes = df["Close"].iloc[:, 0].tolist() if df["Close"].ndim > 1 else df["Close"].tolist()
-            else:
-                closes = df["Close"].tolist() if "Close" in df.columns else df["close"].tolist()
-            return [float(x) for x in closes if x is not None]
-        except Exception as e:
-            print(f"yfinance error {asset}: {e}")
-            return []
 
     def _rsi(self, closes, period=14):
         if len(closes) <= period:
@@ -52,7 +35,7 @@ class EmotionlessDecisionEngine:
         return out
 
     def analyze(self, asset: str) -> Optional[Dict[str, Any]]:
-        closes = self._fetch_closes(asset)
+        closes = get_closes(asset)
         if len(closes) < 30:
             return None
 
@@ -61,11 +44,8 @@ class EmotionlessDecisionEngine:
         ema50 = self._ema(closes, 50)[-1]
         entry = closes[-1]
 
-        # ATR approx
-        atr = 0.0
-        for i in range(1, min(15, len(closes))):
-            atr += abs(closes[-i] - closes[-i - 1])
-        atr = atr / 14 if len(closes) > 14 else entry * 0.015
+        diffs = [abs(closes[i] - closes[i - 1]) for i in range(1, len(closes))]
+        atr = sum(diffs[-14:]) / 14 if len(diffs) >= 14 else entry * 0.015
         if atr <= 0:
             atr = entry * 0.015
 
@@ -90,7 +70,7 @@ class EmotionlessDecisionEngine:
         geo_score, geo_sum = self._score_geo(insights)
         sent_score, sent_sum = self._score_sentiment(insights)
 
-        final_prob = 0.50 * max(0, min(1, (ta_score + 0.5))) + 0.25 * geo_score + 0.25 * sent_score
+        final_prob = 0.50 * max(0, min(1, ta_score + 0.5)) + 0.25 * geo_score + 0.25 * sent_score
 
         direction = None
         if final_prob >= 0.58:
@@ -119,10 +99,7 @@ class EmotionlessDecisionEngine:
             "ta_summary": " | ".join(reasons) + f" | RSI={rsi:.1f}",
             "geo_summary": geo_sum,
             "sentiment_summary": sent_sum,
-            "reasoning": (
-                f"Score purement probabiliste TA/Geo/Sentiment. "
-                f"Aucune émotion. Seuil {self.min_conf}."
-            ),
+            "reasoning": f"Probabiliste TA/Geo/Sentiment. Zéro émotion. Seuil {self.min_conf}.",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

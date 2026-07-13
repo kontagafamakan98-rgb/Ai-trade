@@ -1,22 +1,11 @@
 from datetime import datetime, timezone
-import yfinance as yf
 from database.supabase_client import supabase
+from utils.market_data import get_last_price
 
-def _get_current_price(asset: str) -> float | None:
-    try:
-        t = yf.Ticker(asset)
-        hist = t.history(period="1d", interval="5m")
-        if hist is None or hist.empty:
-            hist = t.history(period="5d")
-        if hist is None or hist.empty:
-            return None
-        return float(hist["Close"].iloc[-1])
-    except Exception:
-        return None
 
 async def check_open_signals_performance():
     print(f"[{datetime.now(timezone.utc).isoformat()}] 🎯 Vérification des positions ouvertes (TP / SL)...")
-    
+
     try:
         res = supabase.table("pending_signals").select("*").eq("status", "executed").execute()
         open_signals = res.data or []
@@ -38,7 +27,7 @@ async def check_open_signals_performance():
         if not asset or tp <= 0 or sl <= 0:
             continue
 
-        current_price = _get_current_price(asset)
+        current_price = get_last_price(asset)
         if current_price is None:
             continue
 
@@ -55,7 +44,10 @@ async def check_open_signals_performance():
                 outcome = "lost"
 
         if outcome:
-            print(f"   🏆 Signal {sig_id} ({asset} {direction}) -> RÉSULTAT : {outcome.upper()} (Prix : {current_price:.4f})")
+            print(
+                f"   🏆 Signal {sig_id} ({asset} {direction}) -> "
+                f"RÉSULTAT : {outcome.upper()} (Prix : {current_price:.4f})"
+            )
             try:
                 exec_res = item.get("execution_result") or {}
                 if isinstance(exec_res, dict):
