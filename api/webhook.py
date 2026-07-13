@@ -48,10 +48,10 @@ def health():
 
 @app.get("/")
 def root():
-    return {"status": "alive", "webhook": "/webhook/tradingview"}
+    return {"status": "alive", "webhook": "/webhook/tradingview (monté depuis run.py)"}
 
 
-@app.post("/webhook/tradingview")
+@app.post("/tradingview")
 async def tradingview_webhook(
     alert: TVAlert,
     x_webhook_secret: Optional[str] = Header(None),
