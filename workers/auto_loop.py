@@ -10,9 +10,12 @@ from workers.signal_guard import recently_sent
 from workers.performance_tracker import check_open_signals_performance
 from utils.market_data import get_last_price
 
+# Réduite pour tests cloud (tu pourras réélargir après)
 WATCHLIST = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META",
-    "BTC-USD", "ETH-USD",
+    "AAPL",
+    "MSFT",
+    "BTC-USD",
+    "ETH-USD",
 ]
 
 REFRESH_EVERY = 15 * 60
@@ -42,23 +45,26 @@ async def analyze_watchlist_and_notify():
     users = await get_active_users()
     if not users:
         print("   → aucun utilisateur actif")
-        return
+        # on analyse quand même les prix pour le debug
+    else:
+        print(f"   → users actifs: {len(users)}")
 
     for asset in WATCHLIST:
         try:
             price = get_last_price(asset)
             price_txt = f"{price:.4f}" if price is not None else "N/A"
+            print(f"   → {asset}: prix={price_txt} (fetch done)")
 
             signal = engine.analyze(asset)
 
             if not signal:
                 print(f"   → {asset}: prix={price_txt} | pas de signal (neutre)")
-                time.sleep(1.0)
+                time.sleep(1.2)
                 continue
 
             if recently_sent(asset, signal["direction"]):
                 print(f"   → {asset}: signal {signal['direction']} déjà envoyé récemment (skip)")
-                time.sleep(1.0)
+                time.sleep(1.2)
                 continue
 
             print(
@@ -66,18 +72,18 @@ async def analyze_watchlist_and_notify():
                 f"SIGNAL {signal['direction']} conf={signal['confidence']}"
             )
 
-            for u in users:
+            for u in users or []:
                 if recently_sent(asset, signal["direction"], u["id"]):
                     continue
                 signal_id = create_pending_signal(u["id"], signal)
                 await send_signal_to_user(u["telegram_chat_id"], signal, signal_id)
                 print(f"      notifié user {u['id']}")
 
-            time.sleep(1.0)
+            time.sleep(1.2)
 
         except Exception as e:
             print(f"   ❌ {asset}: {e}")
-            time.sleep(1.0)
+            time.sleep(1.2)
 
 
 async def run_forever():

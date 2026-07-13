@@ -1,37 +1,45 @@
-import time
 import csv
 import io
-from typing import Optional, List
+import time
+from typing import Optional, List, Dict, Any
 
 import httpx
-import yfinance as yf
 
+# Désactive le bruit yfinance si importé ailleurs
 try:
     import logging
     logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 except Exception:
     pass
 
-
-def _sleep_brief():
-    time.sleep(0.8)
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json,text/plain,*/*",
+}
 
 
 def get_last_price(asset: str) -> Optional[float]:
     asset = asset.upper().strip()
 
-    p = _price_yfinance(asset)
+    # 1) Yahoo Chart API (souvent mieux que yfinance sur le cloud)
+    p = _yahoo_last_price(asset)
     if p is not None:
         return p
 
-    if asset.endswith("-USD") or asset in ("BTCUSD", "ETHUSD"):
-        p = _price_coingecko(asset)
-        if p is not None:
-            return p
+    # 2) Crypto
+    if _is_crypto(asset):
         p = _price_binance(asset)
         if p is not None:
             return p
+        p = _price_coingecko(asset)
+        if p is not None:
+            return p
 
+    # 3) Stooq (stocks US)
     p = _price_stooq(asset)
     if p is not None:
         return p
@@ -42,11 +50,11 @@ def get_last_price(asset: str) -> Optional[float]:
 def get_closes(asset: str, limit: int = 80) -> List[float]:
     asset = asset.upper().strip()
 
-    closes = _closes_yfinance(asset)
+    closes = _yahoo_closes(asset, limit=max(limit, 60))
     if len(closes) >= 30:
         return closes[-limit:]
 
-    if asset.endswith("-USD") or asset in ("BTCUSD", "ETHUSD"):
+    if _is_crypto(asset):
         closes = _closes_binance(asset, limit=limit)
         if len(closes) >= 30:
             return closes
@@ -58,64 +66,82 @@ def get_closes(asset: str, limit: int = 80) -> List[float]:
     return []
 
 
-def _price_yfinance(asset: str) -> Optional[float]:
-    try:
-        _sleep_brief()
-        t = yf.Ticker(asset)
-        try:
-            fi = t.fast_info
-            for key in ("last_price", "lastPrice", "regular_market_price"):
-                if hasattr(fi, key) and getattr(fi, key):
-                    return float(getattr(fi, key))
-                if isinstance(fi, dict) and fi.get(key):
-                    return float(fi[key])
-        except Exception:
-            pass
+def _is_crypto(asset: str) -> bool:
+    a = asset.upper()
+    return (
+        a.endswith("-USD")
+        or a.endswith("USDT")
+        or a in ("BTCUSD", "ETHUSD", "BTC", "ETH")
+    )
 
-        hist = t.history(period="5d", interval="1d", auto_adjust=True)
-        if hist is not None and not hist.empty:
-            col = "Close" if "Close" in hist.columns else "close"
-            return float(hist[col].iloc[-1])
-    except Exception as e:
-        print(f"   yfinance price fail {asset}: {type(e).__name__}")
+
+def _yahoo_symbol(asset: str) -> str:
+    # Yahoo aime BTC-USD, AAPL, etc.
+    return asset.upper().strip()
+
+
+def _yahoo_chart(asset: str, interval: str = "1d", range_: str = "6mo") -> Optional[Dict[str, Any]]:
+    sym = _yahoo_symbol(asset)
+    urls = [
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={range_}",
+        f"https://query2.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={range_}",
+    ]
+    for url in urls:
+        try:
+            with httpx.Client(timeout=20, follow_redirects=True, headers=HEADERS) as client:
+                r = client.get(url)
+                if r.status_code != 200:
+                    continue
+                data = r.json()
+                result = (data.get("chart") or {}).get("result") or []
+                if result:
+                    return result[0]
+        except Exception as e:
+            print(f"   yahoo chart fail {asset}: {type(e).__name__}")
     return None
 
 
-def _closes_yfinance(asset: str) -> List[float]:
+def _yahoo_last_price(asset: str) -> Optional[float]:
     try:
-        _sleep_brief()
-        df = yf.download(
-            asset,
-            period="60d",
-            interval="1h",
-            progress=False,
-            auto_adjust=True,
-            threads=False,
-        )
-        if df is None or len(df) < 10:
-            df = yf.download(
-                asset,
-                period="6mo",
-                interval="1d",
-                progress=False,
-                auto_adjust=True,
-                threads=False,
-            )
-        if df is None or len(df) < 10:
-            return []
+        time.sleep(0.4)
+        result = _yahoo_chart(asset, interval="1d", range_="5d")
+        if not result:
+            return None
 
-        if "Close" in df.columns:
-            s = df["Close"]
-        elif "close" in df.columns:
-            s = df["close"]
-        else:
-            return []
+        meta = result.get("meta") or {}
+        for key in ("regularMarketPrice", "previousClose", "chartPreviousClose"):
+            if meta.get(key) is not None:
+                return float(meta[key])
 
-        if hasattr(s, "ndim") and s.ndim > 1:
-            s = s.iloc[:, 0]
-        return [float(x) for x in s.dropna().tolist()]
+        quote = (result.get("indicators") or {}).get("quote") or []
+        if quote:
+            closes = quote[0].get("close") or []
+            closes = [c for c in closes if c is not None]
+            if closes:
+                return float(closes[-1])
     except Exception as e:
-        print(f"   yfinance closes fail {asset}: {type(e).__name__}")
+        print(f"   yahoo price fail {asset}: {type(e).__name__}")
+    return None
+
+
+def _yahoo_closes(asset: str, limit: int = 80) -> List[float]:
+    try:
+        time.sleep(0.4)
+        # d'abord 1h sur 60j, sinon 1d sur 6mo
+        result = _yahoo_chart(asset, interval="1h", range_="60d")
+        if not result:
+            result = _yahoo_chart(asset, interval="1d", range_="6mo")
+        if not result:
+            return []
+
+        quote = (result.get("indicators") or {}).get("quote") or []
+        if not quote:
+            return []
+        closes = quote[0].get("close") or []
+        out = [float(c) for c in closes if c is not None]
+        return out[-limit:]
+    except Exception as e:
+        print(f"   yahoo closes fail {asset}: {type(e).__name__}")
         return []
 
 
@@ -129,10 +155,17 @@ def _stooq_symbol(asset: str) -> str:
 def _price_stooq(asset: str) -> Optional[float]:
     try:
         sym = _stooq_symbol(asset)
-        url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
-        with httpx.Client(timeout=15, follow_redirects=True) as client:
-            r = client.get(url, headers={"User-Agent": "Mozilla/5.0"})
-            r.raise_for_status()
+        # endpoint CSV simple
+        url = f"https://stooq.pl/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+        with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
+            r = client.get(url)
+            if r.status_code != 200:
+                # fallback domaine .com
+                url2 = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+                r = client.get(url2)
+            if r.status_code != 200:
+                print(f"   stooq price fail {asset}: HTTP {r.status_code}")
+                return None
             text = r.text.strip()
             if not text or "N/D" in text:
                 return None
@@ -151,11 +184,17 @@ def _price_stooq(asset: str) -> Optional[float]:
 def _closes_stooq(asset: str) -> List[float]:
     try:
         sym = _stooq_symbol(asset)
-        url = f"https://stooq.com/q/d/l/?s={sym}&i=d"
-        with httpx.Client(timeout=20, follow_redirects=True) as client:
-            r = client.get(url, headers={"User-Agent": "Mozilla/5.0"})
-            r.raise_for_status()
-            text = r.text.strip()
+        urls = [
+            f"https://stooq.pl/q/d/l/?s={sym}&i=d",
+            f"https://stooq.com/q/d/l/?s={sym}&i=d",
+        ]
+        with httpx.Client(timeout=20, follow_redirects=True, headers=HEADERS) as client:
+            text = ""
+            for url in urls:
+                r = client.get(url)
+                if r.status_code == 200:
+                    text = r.text.strip()
+                    break
             if not text or text.lower().startswith("<!"):
                 return []
             reader = csv.DictReader(io.StringIO(text))
@@ -174,7 +213,7 @@ def _closes_stooq(asset: str) -> List[float]:
 
 
 def _coingecko_id(asset: str) -> Optional[str]:
-    a = asset.upper().replace("-USD", "").replace("USD", "")
+    a = asset.upper().replace("-USD", "").replace("USD", "").replace("USDT", "")
     mapping = {
         "BTC": "bitcoin",
         "ETH": "ethereum",
@@ -193,7 +232,7 @@ def _price_coingecko(asset: str) -> Optional[float]:
         if not cid:
             return None
         url = "https://api.coingecko.com/api/v3/simple/price"
-        with httpx.Client(timeout=15) as client:
+        with httpx.Client(timeout=15, headers=HEADERS) as client:
             r = client.get(url, params={"ids": cid, "vs_currencies": "usd"})
             r.raise_for_status()
             data = r.json()
@@ -204,11 +243,12 @@ def _price_coingecko(asset: str) -> Optional[float]:
 
 
 def _binance_symbol(asset: str) -> Optional[str]:
-    a = asset.upper().replace("-USD", "USDT").replace("USD", "USDT")
+    a = asset.upper().replace("-USD", "USDT")
+    a = a.replace("USD", "USDT") if not a.endswith("USDT") else a
+    if a in ("BTC", "ETH"):
+        a = a + "USDT"
     if a.endswith("USDT"):
         return a
-    if a in ("BTC", "ETH"):
-        return a + "USDT"
     return None
 
 
@@ -218,7 +258,7 @@ def _price_binance(asset: str) -> Optional[float]:
         if not sym:
             return None
         url = "https://api.binance.com/api/v3/ticker/price"
-        with httpx.Client(timeout=15) as client:
+        with httpx.Client(timeout=15, headers=HEADERS) as client:
             r = client.get(url, params={"symbol": sym})
             r.raise_for_status()
             return float(r.json()["price"])
@@ -233,7 +273,7 @@ def _closes_binance(asset: str, limit: int = 80) -> List[float]:
         if not sym:
             return []
         url = "https://api.binance.com/api/v3/klines"
-        with httpx.Client(timeout=20) as client:
+        with httpx.Client(timeout=20, headers=HEADERS) as client:
             r = client.get(url, params={"symbol": sym, "interval": "1h", "limit": limit})
             r.raise_for_status()
             data = r.json()
