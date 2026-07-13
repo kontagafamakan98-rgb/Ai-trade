@@ -1,3 +1,5 @@
+import asyncio
+import asyncio
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -276,24 +278,28 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     if not TELEGRAM_BOT_TOKEN:
-        print("❌ TELEGRAM_BOT_TOKEN manquant dans .env")
+        print("❌ TELEGRAM_BOT_TOKEN manquant")
         return
 
+    # Fix event loop Render / uvloop
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("analyze", analyze))
     app.add_handler(CommandHandler("refresh_data", refresh_data))
     app.add_handler(CommandHandler("status", status))
-    app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(CommandHandler("risk", set_risk))
-    app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("watchlist", watchlist_cmd))
-    app.add_handler(CommandHandler("signals", signals_cmd))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CallbackQueryHandler(button_handler))
 
     print("✅ Bot + Moteur IA prêts")
     print("🚀 Polling... (Ctrl+C pour arrêter)")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):

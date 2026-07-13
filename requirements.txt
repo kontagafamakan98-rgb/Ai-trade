@@ -1,11 +1,13 @@
 fastapi==0.115.0
-uvicorn[standard]==0.30.6
+uvicorn==0.30.6
 supabase==2.7.4
 python-telegram-bot==21.5
 python-dotenv==1.0.1
 cryptography==43.0.1
 pydantic==2.9.1
 httpx==0.27.2
+numpy==1.26.4
+pandas==2.2.2
 yfinance==0.2.40
 feedparser==6.0.11
 alpaca-py==0.33.1

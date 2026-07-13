@@ -8,24 +8,23 @@ from fastapi import FastAPI
 from main import main as run_bot
 from workers.auto_loop import run_forever
 
-# Mini API pour que Render Free accepte le service
 api = FastAPI()
 
 
-@api.get("/")
+@api.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"status": "alive", "mode": "paper", "service": "trading-ai"}
 
 
-@api.get("/health")
+@api.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
 
 
 def start_api():
-    # Render fournit le port via la variable PORT
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run(api, host="0.0.0.0", port=port, log_level="info")
+    port = int(os.getenv("PORT", "10000"))
+    # loop="asyncio" évite uvloop
+    uvicorn.run(api, host="0.0.0.0", port=port, log_level="info", loop="asyncio")
 
 
 def start_auto_loop():
@@ -35,14 +34,17 @@ def start_auto_loop():
 
 
 if __name__ == "__main__":
-    # 1) Serveur web (obligatoire pour Render Free)
+    # Event loop sur le MainThread (fix Telegram / uvloop)
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     threading.Thread(target=start_api, daemon=True).start()
     print("✅ Web server lancé (Render Free)")
 
-    # 2) Boucle trading
     threading.Thread(target=start_auto_loop, daemon=True).start()
     print("✅ Auto-loop lancée")
 
-    # 3) Bot Telegram
     print("✅ Bot Telegram en polling...")
     run_bot()
