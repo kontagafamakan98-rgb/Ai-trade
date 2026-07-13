@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from config import (
     ALPACA_API_KEY,
     ALPACA_SECRET_KEY,
@@ -7,6 +7,7 @@ from config import (
     DEFAULT_RISK_PCT,
     DEFAULT_PAPER_EQUITY,
 )
+from database.supabase_client import supabase
 
 try:
     from alpaca.trading.client import TradingClient
@@ -17,34 +18,83 @@ except Exception:
     ALPACA_OK = False
 
 
+def get_user_risk_pct(user_id: str) -> float:
+    """Lit le risque personnalisé depuis user_sessions, sinon défaut config."""
+    try:
+        res = (
+            supabase.table("user_sessions")
+            .select("risk_params")
+            .eq("user_id", str(user_id))
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            params = res.data[0].get("risk_params") or {}
+            if isinstance(params, dict) and params.get("max_risk_pct") is not None:
+                val = float(params["max_risk_pct"])
+                if 0.1 <= val <= 10:
+                    return val
+    except Exception as e:
+        print(f"get_user_risk_pct error: {e}")
+    return float(DEFAULT_RISK_PCT)
+
+
+def get_user_equity(user_id: str) -> float:
+    """Equity paper par user si stockée, sinon défaut."""
+    try:
+        res = (
+            supabase.table("user_sessions")
+            .select("risk_params")
+            .eq("user_id", str(user_id))
+            .limit(1)
+            .execute()
+        )
+        if res.data:
+            params = res.data[0].get("risk_params") or {}
+            if isinstance(params, dict) and params.get("equity") is not None:
+                eq = float(params["equity"])
+                if eq > 0:
+                    return eq
+    except Exception as e:
+        print(f"get_user_equity error: {e}")
+    return float(DEFAULT_PAPER_EQUITY)
+
+
 def _normalize_symbol(asset: str) -> str:
-    a = asset.upper().strip()
+    a = (asset or "").upper().strip()
     if a.endswith("-USD"):
         return a.replace("-USD", "USD")
+    if a.endswith("=X"):
+        return a
     return a
 
 
-def compute_qty(signal: dict, equity: float = None, risk_pct: float = None) -> float:
-    equity = equity if equity is not None else DEFAULT_PAPER_EQUITY
-    risk_pct = risk_pct if risk_pct is not None else DEFAULT_RISK_PCT
-
+def compute_qty(signal: dict, equity: float, risk_pct: float) -> float:
+    """
+    qty ≈ (equity * risk_pct%) / |entry - stop_loss|
+    """
     entry = float(signal.get("entry") or 0)
     sl = float(signal.get("stop_loss") or 0)
+
     if entry <= 0:
         return 1.0
 
     risk_amount = equity * (risk_pct / 100.0)
     stop_distance = abs(entry - sl) if sl else entry * 0.01
     if stop_distance <= 0:
-        return 1.0
+        stop_distance = entry * 0.01
 
     qty = risk_amount / stop_distance
     qty = max(0.001, min(qty, 1000))
 
     asset = str(signal.get("asset", ""))
-    if asset.endswith("-USD") or "BTC" in asset or "ETH" in asset:
-        return round(qty, 4)
-    return float(max(1, int(qty)))
+    # actions ≈ qty entière ; crypto ≈ décimal
+    if not asset.endswith("-USD") and "BTC" not in asset and "ETH" not in asset:
+        qty = max(1, int(qty))
+    else:
+        qty = round(qty, 4)
+
+    return qty
 
 
 def get_alpaca_client():
@@ -59,13 +109,14 @@ def get_alpaca_client():
 async def execute_validated_order(
     user_id: str,
     signal: Dict[str, Any],
-    qty: float = None,
+    qty: Optional[float] = None,
 ) -> Dict[str, Any]:
     if not PAPER_TRADING:
         return {"error": "Live trading désactivé. PAPER only."}
 
-    equity = float(signal.get("user_equity") or DEFAULT_PAPER_EQUITY)
-    risk_pct = float(signal.get("user_risk_pct") or DEFAULT_RISK_PCT)
+    risk_pct = get_user_risk_pct(user_id)
+    equity = get_user_equity(user_id)
+
     if qty is None:
         qty = compute_qty(signal, equity=equity, risk_pct=risk_pct)
 
@@ -80,16 +131,18 @@ async def execute_validated_order(
         "stop_loss": signal.get("stop_loss"),
         "take_profit": signal.get("take_profit"),
         "method": "simulated",
+        "user_id": str(user_id),
     }
 
     if not ALPACA_OK or not ALPACA_API_KEY or not ALPACA_SECRET_KEY:
-        payload["note"] = "Clés Alpaca absentes → simulation pure"
+        payload["note"] = "Clés Alpaca absentes → simulation pure (risk user appliqué)"
         return payload
 
     try:
         client = get_alpaca_client()
-        symbol = _normalize_symbol(str(signal.get("asset", "")))
+        symbol = _normalize_symbol(signal.get("asset", ""))
         side = OrderSide.BUY if signal.get("direction") == "BUY" else OrderSide.SELL
+
         order = client.submit_order(
             MarketOrderRequest(
                 symbol=symbol,
@@ -107,6 +160,7 @@ async def execute_validated_order(
             "risk_pct": risk_pct,
             "equity": equity,
             "method": "alpaca_paper",
+            "user_id": str(user_id),
         }
     except Exception as e:
         payload["status"] = "error"
