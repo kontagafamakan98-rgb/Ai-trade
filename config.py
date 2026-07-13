@@ -14,3 +14,4 @@ ALPACA_BASE_URL = os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "change-me-super-secret")
 DEFAULT_RISK_PCT = float(os.getenv("DEFAULT_RISK_PCT", "1.0"))  # 1% du capital paper
 DEFAULT_PAPER_EQUITY = float(os.getenv("DEFAULT_PAPER_EQUITY", "100000"))  # capital simulé
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
