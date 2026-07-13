@@ -1,47 +1,77 @@
-import pandas as pd
-import yfinance as yf
 from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+import yfinance as yf
+
 from database.supabase_client import get_recent_insights
 from config import MIN_CONFIDENCE
-from datetime import datetime, timezone
+
 
 class EmotionlessDecisionEngine:
-    """100% logique + probabilités. Zéro émotion."""
+    """Version cloud sans pandas — logique pure, zéro émotion."""
 
     def __init__(self, min_conf: float = MIN_CONFIDENCE):
         self.min_conf = min_conf
 
-    def _fetch_price_df(self, asset: str, period="60d", interval="1h") -> pd.DataFrame:
+    def _fetch_closes(self, asset: str, period: str = "60d", interval: str = "1h"):
         try:
             df = yf.download(asset, period=period, interval=interval, progress=False, auto_adjust=True)
-            if df.empty:
-                return pd.DataFrame()
-            df.columns = [c.lower() if isinstance(c, str) else c[0].lower() for c in df.columns]
-            return df
+            if df is None or len(df) < 30:
+                return []
+            # yfinance peut renvoyer MultiIndex selon version
+            if hasattr(df.columns, "levels"):
+                closes = df["Close"].iloc[:, 0].tolist() if df["Close"].ndim > 1 else df["Close"].tolist()
+            else:
+                closes = df["Close"].tolist() if "Close" in df.columns else df["close"].tolist()
+            return [float(x) for x in closes if x is not None]
         except Exception as e:
             print(f"yfinance error {asset}: {e}")
-            return pd.DataFrame()
+            return []
+
+    def _rsi(self, closes, period=14):
+        if len(closes) <= period:
+            return 50.0
+        gains, losses = [], []
+        for i in range(1, len(closes)):
+            d = closes[i] - closes[i - 1]
+            gains.append(max(d, 0.0))
+            losses.append(max(-d, 0.0))
+        avg_gain = sum(gains[-period:]) / period
+        avg_loss = sum(losses[-period:]) / period
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return 100.0 - (100.0 / (1.0 + rs))
+
+    def _ema(self, values, span):
+        if not values:
+            return []
+        k = 2 / (span + 1)
+        out = [values[0]]
+        for v in values[1:]:
+            out.append(v * k + out[-1] * (1 - k))
+        return out
 
     def analyze(self, asset: str) -> Optional[Dict[str, Any]]:
-        df = self._fetch_price_df(asset)
-        if len(df) < 30:
+        closes = self._fetch_closes(asset)
+        if len(closes) < 30:
             return None
 
-        # Indicateurs techniques purs
-        df["ema20"] = df["close"].ewm(span=20).mean()
-        df["ema50"] = df["close"].ewm(span=50).mean()
-        delta = df["close"].diff()
-        gain = delta.clip(lower=0).rolling(14).mean()
-        loss = -delta.clip(upper=0).rolling(14).mean()
-        rs = gain / loss
-        df["rsi"] = 100 - (100 / (1 + rs))
-        df["atr"] = (df["high"] - df["low"]).rolling(14).mean()
+        rsi = self._rsi(closes)
+        ema20 = self._ema(closes, 20)[-1]
+        ema50 = self._ema(closes, 50)[-1]
+        entry = closes[-1]
 
-        last = df.iloc[-1]
+        # ATR approx
+        atr = 0.0
+        for i in range(1, min(15, len(closes))):
+            atr += abs(closes[-i] - closes[-i - 1])
+        atr = atr / 14 if len(closes) > 14 else entry * 0.015
+        if atr <= 0:
+            atr = entry * 0.015
+
         ta_score = 0.0
         reasons = []
 
-        rsi = float(last["rsi"]) if pd.notna(last["rsi"]) else 50
         if rsi < 32:
             ta_score += 0.30
             reasons.append(f"RSI oversold ({rsi:.1f})")
@@ -49,19 +79,17 @@ class EmotionlessDecisionEngine:
             ta_score -= 0.25
             reasons.append(f"RSI overbought ({rsi:.1f})")
 
-        if last["ema20"] > last["ema50"]:
+        if ema20 > ema50:
             ta_score += 0.25
             reasons.append("EMA20 > EMA50 (bullish)")
         else:
             ta_score -= 0.15
             reasons.append("EMA20 < EMA50 (bearish)")
 
-        # Insights collectifs
         insights = get_recent_insights(limit=20)
         geo_score, geo_sum = self._score_geo(insights)
         sent_score, sent_sum = self._score_sentiment(insights)
 
-        # Pondération fixe (jamais émotionnelle)
         final_prob = 0.50 * max(0, min(1, (ta_score + 0.5))) + 0.25 * geo_score + 0.25 * sent_score
 
         direction = None
@@ -73,8 +101,6 @@ class EmotionlessDecisionEngine:
         if direction is None or abs(final_prob - 0.5) < (1 - self.min_conf):
             return None
 
-        atr = float(last["atr"]) if pd.notna(last["atr"]) else float(last["close"]) * 0.015
-        entry = float(last["close"])
         if direction == "BUY":
             sl = round(entry - 1.5 * atr, 5)
             tp = round(entry + 3.0 * atr, 5)
@@ -94,10 +120,10 @@ class EmotionlessDecisionEngine:
             "geo_summary": geo_sum,
             "sentiment_summary": sent_sum,
             "reasoning": (
-                f"Score purement probabiliste : TA 50% + Geo 25% + Sentiment 25%. "
-                f"Aucune émotion. RR ~1:2 basé ATR. Seuil {self.min_conf}."
+                f"Score purement probabiliste TA/Geo/Sentiment. "
+                f"Aucune émotion. Seuil {self.min_conf}."
             ),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     def _score_geo(self, insights):
