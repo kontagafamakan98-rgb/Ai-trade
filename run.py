@@ -7,23 +7,26 @@ from fastapi import FastAPI
 
 from main import main as run_bot
 from workers.auto_loop import run_forever
+from api.webhook import app as webhook_app
 
 api = FastAPI()
 
+# Monte le webhook sous /webhook
+api.mount("/webhook", webhook_app)
 
-@api.api_route("/", methods=["GET", "HEAD"])
+
+@api.get("/")
 def root():
     return {"status": "alive", "mode": "paper", "service": "trading-ai"}
 
 
-@api.api_route("/health", methods=["GET", "HEAD"])
+@api.get("/health")
 def health():
     return {"status": "ok"}
 
 
 def start_api():
     port = int(os.getenv("PORT", "10000"))
-    # loop="asyncio" évite uvloop
     uvicorn.run(api, host="0.0.0.0", port=port, log_level="info", loop="asyncio")
 
 
@@ -34,7 +37,6 @@ def start_auto_loop():
 
 
 if __name__ == "__main__":
-    # Event loop sur le MainThread (fix Telegram / uvloop)
     try:
         asyncio.get_event_loop()
     except RuntimeError:
