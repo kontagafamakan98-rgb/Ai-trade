@@ -20,6 +20,7 @@ from database.supabase_client import (
 from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order
+from utils.market_data import get_last_price
 from config import TELEGRAM_BOT_TOKEN
 
 engine = EmotionlessDecisionEngine()
@@ -86,24 +87,32 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Erreur analyse : {e}")
         return
 
-    # Si aucun signal fort → DEMO pour afficher les boutons
+    # DEMO avec VRAI prix si pas de signal fort
     if not signal:
-        print(">>> Pas de signal fort → DEMO (boutons forcés)")
+        print(">>> Pas de signal fort → DEMO avec prix live")
+        price = get_last_price(asset) or 0.0
+        if price and price > 0:
+            sl = round(price * 0.99, 5)
+            tp = round(price * 1.02, 5)
+        else:
+            sl = 0
+            tp = 0
         signal = {
             "asset": asset,
             "direction": "BUY",
-            "entry": 0,
-            "stop_loss": 0,
-            "take_profit": 0,
+            "entry": price,
+            "stop_loss": sl,
+            "take_profit": tp,
             "confidence": 0.50,
-            "ta_summary": "Aucun signal fort (mode DEMO pour tester les boutons)",
+            "ta_summary": "DEMO — aucun signal fort (workflow paper)",
             "geo_summary": "N/A",
             "sentiment_summary": "N/A",
             "reasoning": (
                 "Signal de démonstration uniquement. "
-                "L'IA n'a pas trouvé d'opportunité assez forte. "
-                "Boutons affichés pour valider le workflow paper."
+                "Boutons pour tester risk + validation. "
+                "Pas un trade réel du moteur."
             ),
+            "is_demo": True,
         }
 
     user_id = str(update.effective_user.id)
@@ -164,7 +173,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         record = row.data[0]
         signal = record.get("signal") or {}
         user_id = record.get("user_id")
-        print(f"👉 Signal chargé : {signal.get('asset')} {signal.get('direction')}")
 
         if action == "approve":
             try:
@@ -185,19 +193,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Résultat : {result}"
             )
             await query.edit_message_text(msg)
-
         else:
             try:
                 update_signal_status(signal_id, "rejected")
             except Exception as e:
                 print(f"❌ Erreur reject : {e}")
-
             await query.edit_message_text(
                 f"❌ REJETÉ\n\nActif : {signal.get('asset')} — aucune action."
             )
 
     except Exception as e:
-        print(f"❌ ERREUR GLOBALE button_handler : {e}")
+        print(f"❌ ERREUR button_handler : {e}")
         try:
             await query.edit_message_text(f"⚠️ Erreur : {str(e)[:300]}")
         except Exception:
@@ -216,8 +222,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📊 Status système\n"
             f"• Insights collectifs : {insights.count}\n"
             f"• Signaux en base : {signals.count}\n"
-            f"• Mode : PAPER TRADING\n"
-            f"• Moteur : EmotionlessDecisionEngine"
+            f"• Mode : PAPER TRADING"
         )
     except Exception as e:
         await update.message.reply_text(f"Erreur status : {e}")
@@ -225,28 +230,22 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def set_risk(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text(
-            "Usage : /risk 1.5  (pour risquer 1.5% du capital par trade)"
-        )
+        await update.message.reply_text("Usage : /risk 1.5")
         return
     try:
         new_risk = float(context.args[0].replace(",", "."))
         if new_risk <= 0 or new_risk > 10:
-            await update.message.reply_text("❌ Le risque doit être entre 0.1% et 10%.")
+            await update.message.reply_text("❌ Risque entre 0.1% et 10%.")
             return
-
         user_id = str(update.effective_user.id)
         supabase.table("user_sessions").upsert({
             "user_id": user_id,
             "risk_params": {"max_risk_pct": new_risk},
             "updated_at": "now()"
         }).execute()
-
-        await update.message.reply_text(
-            f"✅ Risque par trade fixé à : {new_risk}% du capital."
-        )
+        await update.message.reply_text(f"✅ Risque par trade fixé à : {new_risk}%")
     except ValueError:
-        await update.message.reply_text("❌ Nombre invalide. Exemple : /risk 1.0")
+        await update.message.reply_text("❌ Nombre invalide. Ex: /risk 1.0")
     except Exception as e:
         await update.message.reply_text(f"❌ Erreur BDD : {e}")
 
@@ -256,30 +255,26 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         won = supabase.table("pending_signals").select("id", count="exact").eq("status", "won").execute()
         lost = supabase.table("pending_signals").select("id", count="exact").eq("status", "lost").execute()
         open_pos = supabase.table("pending_signals").select("id", count="exact").eq("status", "executed").execute()
-
         won_count = won.count or 0
         lost_count = lost.count or 0
-        total_closed = won_count + lost_count
-        win_rate = (won_count / total_closed * 100) if total_closed > 0 else 0.0
-
+        total = won_count + lost_count
+        wr = (won_count / total * 100) if total else 0.0
         await update.message.reply_text(
-            f"📊 Performance Collective de l'IA\n\n"
-            f"• Trades gagnants (TP touché) : {won_count}\n"
-            f"• Trades perdants (SL touché) : {lost_count}\n"
-            f"• Trades en cours : {open_pos.count or 0}\n\n"
-            f"🏆 Win Rate Global : {win_rate:.1f}%\n"
-            f"(Mis à jour automatiquement par le Tracker TP/SL)"
+            f"📊 Performance Collective\n"
+            f"• Gagnés : {won_count}\n"
+            f"• Perdus : {lost_count}\n"
+            f"• En cours : {open_pos.count or 0}\n"
+            f"🏆 Win Rate : {wr:.1f}%"
         )
     except Exception as e:
-        await update.message.reply_text(f"❌ Erreur lecture des stats : {e}")
+        await update.message.reply_text(f"❌ Erreur stats : {e}")
 
 
 def main():
     if not TELEGRAM_BOT_TOKEN:
-        print("❌ TELEGRAM_BOT_TOKEN manquant dans .env / Render")
+        print("❌ TELEGRAM_BOT_TOKEN manquant")
         return
 
-    # Fix event loop Render
     try:
         asyncio.get_event_loop()
     except RuntimeError:
@@ -296,9 +291,7 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
 
     print("✅ Bot + Moteur IA prêts")
-    print("🚀 Polling... (Ctrl+C pour arrêter)")
-
-    # drop_pending_updates aide au redémarrage propre
+    print("🚀 Polling...")
     app.run_polling(
         drop_pending_updates=True,
         allowed_updates=["message", "callback_query"],
