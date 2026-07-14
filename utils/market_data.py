@@ -53,15 +53,16 @@ def get_last_price(asset: str) -> Optional[float]:
     return None
 
 
-def get_closes(asset: str, limit: int = 80) -> List[float]:
+def get_closes(asset: str, limit: int = 80, interval: str = "1d") -> List[float]:
     asset = asset.upper().strip()
 
-    if not _is_crypto(asset) and FINNHUB_API_KEY:
+    if interval == "1d" and not _is_crypto(asset) and FINNHUB_API_KEY:
         closes = _closes_finnhub(asset, limit=max(limit, 60))
         if len(closes) >= 30:
             return closes[-limit:]
 
-    closes = _yahoo_closes(asset, limit=max(limit, 60))
+    yahoo_range = "60d" if interval != "1d" else "6mo"
+    closes = _yahoo_closes(asset, limit=max(limit, 60), interval=interval, range_=yahoo_range)
     if len(closes) >= 30:
         return closes[-limit:]
 
@@ -209,10 +210,10 @@ def _yahoo_last_price(asset: str) -> Optional[float]:
     return None
 
 
-def _yahoo_closes(asset: str, limit: int = 80) -> List[float]:
+def _yahoo_closes(asset: str, limit: int = 80, interval: str = "1d", range_: str = "6mo") -> List[float]:
     try:
         time.sleep(0.3)
-        result = _yahoo_chart(asset, interval="1d", range_="6mo")
+        result = _yahoo_chart(asset, interval=interval, range_=range_)
         if not result:
             return []
         quote = (result.get("indicators") or {}).get("quote") or []

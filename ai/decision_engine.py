@@ -35,7 +35,9 @@ class EmotionlessDecisionEngine:
         return out
 
     def analyze(self, asset: str) -> Optional[Dict[str, Any]]:
-        closes = get_closes(asset)
+        # Bougies horaires (au lieu de journalières) : un croisement RSI/EMA
+        # peut désormais se former plusieurs fois par jour au lieu d'une seule.
+        closes = get_closes(asset, interval="1h")
         if len(closes) < 30:
             return None
 
