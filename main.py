@@ -100,8 +100,14 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tp = 0
         try:
             insights = get_recent_insights(limit=20)
-            _, geo_txt = engine._score_geo(insights)
-            _, sent_txt = engine._score_sentiment(insights)
+            llm_result = engine._news_cache.get(asset, insights)
+            if llm_result:
+                geo_txt = f"Analyse IA : {llm_result['reasoning']}"
+                sent_txt = f"Biais IA : {llm_result['bias']} (score {llm_result['score']:.2f})"
+            else:
+                _, geo_txt = engine._score_geo(insights)
+                _, sent_txt = engine._score_sentiment(insights)
+                geo_txt += " [fallback: clé LLM absente ou erreur]"
         except Exception:
             geo_txt, sent_txt = "Indisponible", "Indisponible"
 

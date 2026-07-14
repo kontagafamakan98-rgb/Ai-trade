@@ -25,11 +25,18 @@ class TVAlert(BaseModel):
 
 def _build_signal(alert: TVAlert) -> Dict[str, Any]:
     direction = "BUY" if alert.action.lower() in ("buy", "long") else "SELL"
+    asset = alert.ticker.upper()
 
     try:
         insights = get_recent_insights(limit=20)
-        _, geo_txt = _engine._score_geo(insights)
-        _, sent_txt = _engine._score_sentiment(insights)
+        llm_result = _engine._news_cache.get(asset, insights)
+        if llm_result:
+            geo_txt = f"Analyse IA : {llm_result['reasoning']}"
+            sent_txt = f"Biais IA : {llm_result['bias']} (score {llm_result['score']:.2f})"
+        else:
+            _, geo_txt = _engine._score_geo(insights)
+            _, sent_txt = _engine._score_sentiment(insights)
+            geo_txt += " [fallback: clé LLM absente ou erreur]"
     except Exception:
         geo_txt, sent_txt = "Indisponible", "Indisponible"
 
