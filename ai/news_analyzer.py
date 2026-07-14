@@ -68,11 +68,7 @@ def _build_prompt(asset: str, insights: List[dict]) -> Optional[str]:
     )
 
 
-def _call_model(model_id: str, prompt: str, reasoning_effort: Optional[str] = None) -> Dict[str, Any]:
-    kwargs = {}
-    if reasoning_effort:
-        kwargs["reasoning_effort"] = reasoning_effort
-
+def _call_model(model_id: str, prompt: str) -> Dict[str, Any]:
     resp = _client.chat.completions.create(
         model=model_id,
         max_tokens=300,
@@ -82,7 +78,6 @@ def _call_model(model_id: str, prompt: str, reasoning_effort: Optional[str] = No
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        **kwargs,
     )
     text = resp.choices[0].message.content.strip()
     text = text.replace("```json", "").replace("```", "").strip()
@@ -109,9 +104,9 @@ def analyze_news_for_asset(asset: str, insights: List[dict]) -> Dict[str, Any]:
         return {}
 
     results = []
-    for model_id, effort in ((PRIMARY_MODEL, "low"), (SECONDARY_MODEL, "none")):
+    for model_id in (PRIMARY_MODEL, SECONDARY_MODEL):
         try:
-            r = _call_model(model_id, prompt, reasoning_effort=effort)
+            r = _call_model(model_id, prompt)
             results.append((model_id, r))
         except Exception as e:
             print(f"   ❌ LLM ({model_id}) error ({asset}): {type(e).__name__}: {e}")
