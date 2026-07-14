@@ -3,12 +3,14 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
 
-from database.supabase_client import supabase, create_pending_signal
+from database.supabase_client import supabase, create_pending_signal, get_recent_insights
 from notifications.notify import send_signal_to_user
 from workers.signal_guard import recently_sent
 from config import WEBHOOK_SECRET
+from ai.decision_engine import EmotionlessDecisionEngine
 
 app = FastAPI(title="Trading AI Webhook")
+_engine = EmotionlessDecisionEngine()
 
 
 class TVAlert(BaseModel):
@@ -23,6 +25,14 @@ class TVAlert(BaseModel):
 
 def _build_signal(alert: TVAlert) -> Dict[str, Any]:
     direction = "BUY" if alert.action.lower() in ("buy", "long") else "SELL"
+
+    try:
+        insights = get_recent_insights(limit=20)
+        _, geo_txt = _engine._score_geo(insights)
+        _, sent_txt = _engine._score_sentiment(insights)
+    except Exception:
+        geo_txt, sent_txt = "Indisponible", "Indisponible"
+
     return {
         "asset": alert.ticker.upper(),
         "direction": direction,
@@ -31,11 +41,12 @@ def _build_signal(alert: TVAlert) -> Dict[str, Any]:
         "take_profit": alert.take_profit,
         "confidence": 0.70,
         "ta_summary": f"Alerte TradingView: {alert.message or alert.action}",
-        "geo_summary": "N/A (webhook)",
-        "sentiment_summary": "N/A (webhook)",
+        "geo_summary": geo_txt,
+        "sentiment_summary": sent_txt,
         "reasoning": (
-            "Signal issu d'une alerte Pine Script TradingView. "
-            "Validation humaine obligatoire avant exécution."
+            "Signal issu d'une alerte Pine Script TradingView (TA calculée côté "
+            "TradingView). Contexte géo/sentiment ajouté par le backend à titre "
+            "informatif. Validation humaine obligatoire avant exécution."
         ),
         "source": "tradingview_webhook",
     }

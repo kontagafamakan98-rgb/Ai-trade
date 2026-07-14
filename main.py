@@ -16,6 +16,7 @@ from database.supabase_client import (
     supabase,
     create_pending_signal,
     update_signal_status,
+    get_recent_insights,
 )
 from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
@@ -97,6 +98,13 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             sl = 0
             tp = 0
+        try:
+            insights = get_recent_insights(limit=20)
+            _, geo_txt = engine._score_geo(insights)
+            _, sent_txt = engine._score_sentiment(insights)
+        except Exception:
+            geo_txt, sent_txt = "Indisponible", "Indisponible"
+
         signal = {
             "asset": asset,
             "direction": "BUY",
@@ -105,11 +113,12 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "take_profit": tp,
             "confidence": 0.50,
             "ta_summary": "DEMO — aucun signal fort (workflow paper)",
-            "geo_summary": "N/A",
-            "sentiment_summary": "N/A",
+            "geo_summary": geo_txt,
+            "sentiment_summary": sent_txt,
             "reasoning": (
-                "Signal de démonstration uniquement. "
-                "Boutons pour tester risk + validation. "
+                "Signal de démonstration uniquement (aucun croisement RSI/EMA "
+                "assez marqué actuellement). Contexte géo/sentiment réel affiché "
+                "à titre informatif. Boutons pour tester le workflow de validation. "
                 "Pas un trade réel du moteur."
             ),
             "is_demo": True,
