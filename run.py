@@ -16,11 +16,13 @@ api.mount("/webhook", webhook_app)
 
 
 @api.get("/")
+@api.head("/")
 def root():
     return {"status": "alive", "mode": "paper", "service": "trading-ai"}
 
 
 @api.get("/health")
+@api.head("/health")
 def health():
     return {"status": "ok"}
 
