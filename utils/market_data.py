@@ -44,10 +44,11 @@ def get_last_price(asset: str) -> Optional[float]:
         if p is not None:
             return p
 
-    # 3) Stooq
-    p = _price_stooq(asset)
-    if p is not None:
-        return p
+    # 3) Stooq (actions uniquement, pas adapté aux cryptos)
+    if not _is_crypto(asset):
+        p = _price_stooq(asset)
+        if p is not None:
+            return p
 
     return None
 
@@ -68,6 +69,10 @@ def get_closes(asset: str, limit: int = 80) -> List[float]:
         closes = _closes_binance(asset, limit=limit)
         if len(closes) >= 30:
             return closes
+        closes = _closes_coingecko(asset, limit=limit)
+        if len(closes) >= 30:
+            return closes
+        return []
 
     closes = _closes_stooq(asset)
     if len(closes) >= 30:
@@ -143,7 +148,23 @@ def _closes_finnhub(asset: str, limit: int = 80) -> List[float]:
         return []
 
 
+def _crypto_base(asset: str) -> Optional[str]:
+    """Extrait le ticker de base (BTC, ETH...) depuis n'importe quel format
+    d'entrée (BTC, BTCUSD, BTC-USD, BTCUSDT, btc...)."""
+    if not _is_crypto(asset):
+        return None
+    a = asset.upper().strip()
+    for suffix in ("-USD", "USDT", "USD"):
+        if a.endswith(suffix):
+            a = a[: -len(suffix)]
+            break
+    return a or None
+
+
 def _yahoo_symbol(asset: str) -> str:
+    base = _crypto_base(asset)
+    if base:
+        return f"{base}-USD"
     return asset.upper().strip()
 
 
@@ -270,7 +291,9 @@ def _closes_stooq(asset: str) -> List[float]:
 
 
 def _coingecko_id(asset: str) -> Optional[str]:
-    a = asset.upper().replace("-USD", "").replace("USD", "").replace("USDT", "")
+    a = _crypto_base(asset)
+    if not a:
+        return None
     mapping = {
         "BTC": "bitcoin",
         "ETH": "ethereum",
@@ -299,13 +322,30 @@ def _price_coingecko(asset: str) -> Optional[float]:
         return None
 
 
+def _closes_coingecko(asset: str, limit: int = 80) -> List[float]:
+    """Historique quotidien via CoinGecko (fallback quand Yahoo ET Binance échouent,
+    ex: Binance géobloqué depuis certains hébergeurs cloud)."""
+    try:
+        cid = _coingecko_id(asset)
+        if not cid:
+            return []
+        days = min(90, max(limit, 30))
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+        with httpx.Client(timeout=20, headers=HEADERS) as client:
+            r = client.get(url, params={"vs_currency": "usd", "days": days, "interval": "daily"})
+            r.raise_for_status()
+            data = r.json()
+            prices = data.get("prices") or []
+            closes = [float(p[1]) for p in prices if p and p[1] is not None]
+            return closes[-limit:]
+    except Exception as e:
+        print(f"   coingecko closes fail {asset}: {type(e).__name__}")
+        return []
+
+
 def _binance_symbol(asset: str) -> Optional[str]:
-    a = asset.upper().replace("-USD", "USDT")
-    if not a.endswith("USDT"):
-        a = a.replace("USD", "USDT")
-    if a in ("BTC", "ETH"):
-        a = a + "USDT"
-    return a if a.endswith("USDT") else None
+    base = _crypto_base(asset)
+    return f"{base}USDT" if base else None
 
 
 def _price_binance(asset: str) -> Optional[float]:
