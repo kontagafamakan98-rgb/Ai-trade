@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from database.supabase_client import get_recent_insights
 from config import MIN_CONFIDENCE
 from utils.market_data import get_closes
+from ai.news_analyzer import NewsAnalysisCache
 
 
 class EmotionlessDecisionEngine:
     def __init__(self, min_conf: float = MIN_CONFIDENCE):
         self.min_conf = min_conf
+        self._news_cache = NewsAnalysisCache(ttl_seconds=600)
 
     def _rsi(self, closes, period=14):
         if len(closes) <= period:
@@ -69,10 +71,19 @@ class EmotionlessDecisionEngine:
             reasons.append("EMA20 < EMA50 (bearish)")
 
         insights = get_recent_insights(limit=20)
-        geo_score, geo_sum = self._score_geo(insights)
-        sent_score, sent_sum = self._score_sentiment(insights)
+        llm_result = self._news_cache.get(asset, insights)
 
-        final_prob = 0.50 * max(0, min(1, ta_score + 0.5)) + 0.25 * geo_score + 0.25 * sent_score
+        if llm_result:
+            news_score = llm_result["score"]
+            geo_sum = f"Analyse IA : {llm_result['reasoning']}"
+            sent_sum = f"Biais IA : {llm_result['bias']} (score {llm_result['score']:.2f})"
+        else:
+            geo_score, geo_sum = self._score_geo(insights)
+            sent_score, sent_sum = self._score_sentiment(insights)
+            news_score = (geo_score + sent_score) / 2
+            geo_sum += " [fallback: clé LLM absente ou erreur]"
+
+        final_prob = 0.50 * max(0, min(1, ta_score + 0.5)) + 0.50 * news_score
 
         direction = None
         if final_prob >= 0.58:

@@ -20,3 +20,4 @@ DEFAULT_RISK_PCT = float(os.getenv("DEFAULT_RISK_PCT", "1.0"))
 DEFAULT_PAPER_EQUITY = float(os.getenv("DEFAULT_PAPER_EQUITY", "100000"))
 
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
