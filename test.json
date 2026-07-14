@@ -1,9 +1,9 @@
 {
   "secret": "client1998",
-  "ticker": "AAPL",
+  "ticker": "MSFT",
   "action": "buy",
-  "price": 150.5,
-  "stop_loss": 148,
-  "take_profit": 155,
-  "message": "Test manuel"
+  "price":  420.0,
+  "stop_loss": 415.0,
+  "take_profit": 430.0,
+  "message": "Test manuel 2"
 }

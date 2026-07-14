@@ -78,7 +78,7 @@ class EmotionlessDecisionEngine:
         elif final_prob <= 0.42:
             direction = "SELL"
 
-        if direction is None or abs(final_prob - 0.5) < (1 - self.min_conf):
+        if direction is None or abs(final_prob - 0.5) < (self.min_conf - 0.5):
             return None
 
         if direction == "BUY":
