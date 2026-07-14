@@ -12,10 +12,20 @@ from utils.market_data import get_last_price
 
 # Réduite pour tests cloud (tu pourras réélargir après)
 WATCHLIST = [
+    # Actions US (mega-caps, forte liquidité)
     "AAPL",
     "MSFT",
+    "GOOGL",
+    "AMZN",
+    "NVDA",
+    "TSLA",
+    # Crypto (supportées par Binance + CoinGecko en fallback)
     "BTC-USD",
     "ETH-USD",
+    "SOL-USD",
+    "BNB-USD",
+    "XRP-USD",
+    "DOGE-USD",
 ]
 
 REFRESH_EVERY = 15 * 60
