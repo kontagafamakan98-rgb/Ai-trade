@@ -1,0 +1,49 @@
+//@version=5
+// ============================================================
+// EMA20/EMA50 Cross Alert -> Webhook Trading AI
+// Cohérent avec ai/decision_engine.py (EmotionlessDecisionEngine)
+// Envoie un JSON au format attendu par api/webhook.py (TVAlert)
+// ============================================================
+indicator("Trading AI - EMA Cross Alert", overlay = true)
+
+// --- Paramètres ---
+emaFastLen = input.int(20, "EMA rapide")
+emaSlowLen = input.int(50, "EMA lente")
+atrLen     = input.int(14, "Période ATR")
+slAtrMult  = input.float(1.5, "Multiplicateur ATR pour Stop Loss")
+tpAtrMult  = input.float(3.0, "Multiplicateur ATR pour Take Profit")
+
+// ⚠️ Ne mets PAS ton vrai secret ici si ce script est partagé publiquement.
+// Remplace webhookSecret directement dans le champ "Message" de l'alerte
+// TradingView (voir instructions), ou garde ce script privé.
+webhookSecret = input.string("REMPLACE_PAR_TON_WEBHOOK_SECRET", "Webhook secret")
+
+// --- Calculs ---
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+atrVal  = ta.atr(atrLen)
+
+plot(emaFast, color = color.blue, title = "EMA rapide")
+plot(emaSlow, color = color.orange, title = "EMA lente")
+
+longCondition  = ta.crossover(emaFast, emaSlow)
+shortCondition = ta.crossunder(emaFast, emaSlow)
+
+longSL = close - slAtrMult * atrVal
+longTP = close + tpAtrMult * atrVal
+shortSL = close + slAtrMult * atrVal
+shortTP = close - tpAtrMult * atrVal
+
+plotshape(longCondition, style = shape.triangleup, location = location.belowbar, color = color.green, size = size.small, title = "Buy signal")
+plotshape(shortCondition, style = shape.triangledown, location = location.abovebar, color = color.red, size = size.small, title = "Sell signal")
+
+// --- Message JSON envoyé au backend (format TVAlert de api/webhook.py) ---
+longMsg  = '{"secret":"' + webhookSecret + '","ticker":"{{ticker}}","action":"buy","price":{{close}},"stop_loss":' + str.tostring(longSL) + ',"take_profit":' + str.tostring(longTP) + ',"message":"EMA20 crossover EMA50 (bullish)"}'
+
+shortMsg = '{"secret":"' + webhookSecret + '","ticker":"{{ticker}}","action":"sell","price":{{close}},"stop_loss":' + str.tostring(shortSL) + ',"take_profit":' + str.tostring(shortTP) + ',"message":"EMA20 crossunder EMA50 (bearish)"}'
+
+if longCondition
+    alert(longMsg, alert.freq_once_per_bar_close)
+
+if shortCondition
+    alert(shortMsg, alert.freq_once_per_bar_close)

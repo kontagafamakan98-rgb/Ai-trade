@@ -96,11 +96,13 @@ def compute_qty(signal: dict, equity: float, risk_pct: float) -> float:
 
 
 def get_alpaca_client():
+    # paper=True suffit : le SDK alpaca-py construit lui-même la bonne URL
+    # (https://paper-api.alpaca.markets/v2). Passer url_override en plus
+    # casse le routing interne (404 Not Found sur toutes les routes).
     return TradingClient(
         api_key=ALPACA_API_KEY,
         secret_key=ALPACA_SECRET_KEY,
         paper=True,
-        url_override=ALPACA_BASE_URL if ALPACA_BASE_URL else None,
     )
 
 
