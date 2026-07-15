@@ -49,6 +49,13 @@ async def refresh_collective_data():
     except Exception as e:
         print(f"   ❌ refresh error: {e}")
 
+    try:
+        from database.supabase_client import get_recent_insights
+        insights = get_recent_insights(limit=20)
+        engine._news_cache.warm_batch(WATCHLIST, insights)
+    except Exception as e:
+        print(f"   ❌ LLM warm_batch error: {e}")
+
 
 async def analyze_watchlist_and_notify():
     print(f"[{datetime.now(timezone.utc).isoformat()}] 🧠 Analyse watchlist ({len(WATCHLIST)} actifs)...")
