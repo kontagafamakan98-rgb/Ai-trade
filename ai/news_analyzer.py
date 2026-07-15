@@ -128,7 +128,10 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
     with httpx.Client(timeout=30) as http_client:
         resp = http_client.post(
             GEMINI_URL,
-            params={"key": GEMINI_API_KEY},
+            headers={
+                "Content-Type": "application/json",
+                "X-goog-api-key": GEMINI_API_KEY,
+            },
             json=body,
         )
         resp.raise_for_status()
