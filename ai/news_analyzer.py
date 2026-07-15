@@ -41,6 +41,23 @@ SECONDARY_MODEL = "qwen/qwen3.6-27b"
 GEMINI_MODEL = "gemini-3-flash-preview"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
+# --- Coupe-circuit --------------------------------------------------------
+# Dès qu'un fournisseur échoue une fois (quota, panne...), on arrête de le
+# solliciter pendant COOLDOWN_SECONDS au lieu de le marteler pour chacun des
+# actifs de la watchlist (ce qui épuiserait aussi son quota en quelques
+# secondes). Passé le cooldown, on retente automatiquement.
+COOLDOWN_SECONDS = 600  # 10 min
+_cooldown_until = {"groq": 0.0, "gemini": 0.0}
+
+
+def _available(provider: str) -> bool:
+    return time.time() >= _cooldown_until.get(provider, 0.0)
+
+
+def _mark_failed(provider: str) -> None:
+    _cooldown_until[provider] = time.time() + COOLDOWN_SECONDS
+    print(f"   ⏸️ {provider} mis en pause {COOLDOWN_SECONDS // 60} min (échec détecté)")
+
 SYSTEM_PROMPT = (
     "Tu es un analyste financier neutre et rigoureux, sans biais optimiste ni "
     "pessimiste. Tu évalues l'impact probable d'actualités récentes sur un ou "
@@ -121,7 +138,8 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "response_mime_type": "application/json",
-            "maxOutputTokens": max_tokens,
+            "maxOutputTokens": max_tokens * 3,
+            "thinkingConfig": {"thinkingLevel": "minimal"},
         },
     }
     with httpx.Client(timeout=30) as http_client:
@@ -136,7 +154,12 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
         resp.raise_for_status()
         data = resp.json()
 
-    text = data["candidates"][0]["content"]["parts"][0]["text"]
+    candidates = data.get("candidates") or []
+    if not candidates or "content" not in candidates[0] or "parts" not in candidates[0]["content"]:
+        finish_reason = (candidates[0].get("finishReason") if candidates else None) or "UNKNOWN"
+        raise RuntimeError(f"Réponse Gemini vide ou incomplète (finishReason={finish_reason})")
+
+    text = candidates[0]["content"]["parts"][0]["text"]
     text = text.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(text)
 
@@ -170,21 +193,23 @@ def analyze_news_batch(assets: List[str], insights: List[dict]) -> Dict[str, Dic
     max_tokens = max(700, 160 * len(assets))
     per_model = []
 
-    if _client:
+    if _client and _available("groq"):
         for model_id in (PRIMARY_MODEL, SECONDARY_MODEL):
             try:
                 data = _groq_call(model_id, prompt, max_tokens)
                 per_model.append({a: _parse_single(data.get(a) or {}) for a in assets})
             except Exception as e:
                 print(f"   ❌ LLM batch ({model_id}) error: {type(e).__name__}: {e}")
+                _mark_failed("groq")
 
-    if not per_model and GEMINI_API_KEY:
+    if not per_model and GEMINI_API_KEY and _available("gemini"):
         print("   ⚠️ Groq indisponible → secours Gemini (batch)")
         try:
             data = _gemini_call(prompt, max_tokens)
             return {a: _parse_single(data.get(a) or {}) for a in assets}
         except Exception as e:
             print(f"   ❌ Gemini batch error: {type(e).__name__}: {e}")
+            _mark_failed("gemini")
 
     if not per_model:
         return {}
@@ -221,21 +246,23 @@ def analyze_news_for_asset(asset: str, insights: List[dict]) -> Dict[str, Any]:
         return {}
 
     results = []
-    if _client:
+    if _client and _available("groq"):
         for model_id in (PRIMARY_MODEL, SECONDARY_MODEL):
             try:
                 data = _groq_call(model_id, prompt, 300)
                 results.append(_parse_single(data))
             except Exception as e:
                 print(f"   ❌ LLM ({model_id}) error ({asset}): {type(e).__name__}: {e}")
+                _mark_failed("groq")
 
-    if not results and GEMINI_API_KEY:
+    if not results and GEMINI_API_KEY and _available("gemini"):
         print(f"   ⚠️ Groq indisponible → secours Gemini ({asset})")
         try:
             data = _gemini_call(prompt, 300)
             return _parse_single(data)
         except Exception as e:
             print(f"   ❌ Gemini error ({asset}): {type(e).__name__}: {e}")
+            _mark_failed("gemini")
 
     if not results:
         return {}
