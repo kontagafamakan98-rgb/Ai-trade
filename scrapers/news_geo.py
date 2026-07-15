@@ -2,6 +2,7 @@ import feedparser
 import httpx
 from datetime import datetime, timezone
 from database.supabase_client import insert_insight
+from config import GROQ_API_KEY
 
 async def fetch_and_push_geopolitical():
     """Pousse des news géopolitiques/financières dans la BDD collective."""
@@ -52,3 +53,51 @@ async def fetch_fear_greed():
     except Exception as e:
         print(f"Fear&Greed error: {e}")
         return None
+
+
+async def fetch_and_push_web_research(watchlist):
+    """
+    Recherche web autonome via groq/compound (agent intégré à Groq, alimenté
+    par Tavily) — même clé API que le reste, pas de nouveau fournisseur.
+
+    Appelée une fois par heure (même rythme que le reste du refresh) pour
+    éviter de reproduire le problème de quota déjà rencontré. Le résultat
+    est poussé comme un insight normal, lu ensuite par l'analyse LLM comme
+    n'importe quelle autre source.
+    """
+    if not GROQ_API_KEY:
+        return 0
+    try:
+        from groq import Groq
+        client = Groq(api_key=GROQ_API_KEY)
+
+        asset_list = ", ".join(watchlist)
+        query = (
+            f"Recherche les actualités financières et géopolitiques les plus "
+            f"importantes des dernières heures pouvant affecter ces actifs : "
+            f"{asset_list}. Résume en 4-5 points factuels courts, avec la date "
+            f"de chaque actualité si disponible. Reste factuel, ne spécule pas."
+        )
+
+        resp = client.chat.completions.create(
+            model="groq/compound",
+            messages=[{"role": "user", "content": query}],
+            compound_custom={"tools": {"enabled_tools": ["web_search"]}},
+        )
+        summary = (resp.choices[0].message.content or "").strip()
+        if not summary:
+            return 0
+
+        insert_insight({
+            "type": "web_research",
+            "asset": "GLOBAL",
+            "title": "Recherche web autonome (IA)",
+            "summary": summary[:1200],
+            "source": "groq/compound (Tavily)",
+            "confidence": 0.6,
+            "data": {"watchlist": watchlist},
+        })
+        return 1
+    except Exception as e:
+        print(f"   ❌ Web research error: {type(e).__name__}: {e}")
+        return 0

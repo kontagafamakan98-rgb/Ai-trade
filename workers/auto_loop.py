@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timezone
 
 from ai.decision_engine import EmotionlessDecisionEngine
-from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
+from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed, fetch_and_push_web_research
 from database.supabase_client import supabase, create_pending_signal
 from notifications.notify import send_signal_to_user
 from workers.signal_guard import recently_sent
@@ -40,7 +40,12 @@ async def get_active_users():
     return [u for u in (res.data or []) if u.get("telegram_chat_id")]
 
 
+_last_web_research = 0.0
+WEB_RESEARCH_EVERY = 3600  # 1h — même logique que le cache LLM, pour ménager le quota
+
+
 async def refresh_collective_data():
+    global _last_web_research
     print(f"[{datetime.now(timezone.utc).isoformat()}] 🔄 Refresh data collective...")
     try:
         geo = await fetch_and_push_geopolitical()
@@ -48,6 +53,15 @@ async def refresh_collective_data():
         print(f"   → geo={geo}, fear_greed={fg}")
     except Exception as e:
         print(f"   ❌ refresh error: {e}")
+
+    now_ts = time.time()
+    if now_ts - _last_web_research >= WEB_RESEARCH_EVERY:
+        try:
+            n = await fetch_and_push_web_research(WATCHLIST)
+            print(f"   → recherche web autonome: {n} insight ajouté")
+            _last_web_research = now_ts
+        except Exception as e:
+            print(f"   ❌ web research error: {e}")
 
     try:
         from database.supabase_client import get_recent_insights
