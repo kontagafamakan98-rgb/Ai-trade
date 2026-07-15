@@ -38,7 +38,7 @@ except Exception:
 
 PRIMARY_MODEL = "openai/gpt-oss-120b"
 SECONDARY_MODEL = "qwen/qwen3.6-27b"
-GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_MODEL = "gemini-3-flash-preview"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 SYSTEM_PROMPT = (
@@ -122,7 +122,6 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
         "generationConfig": {
             "response_mime_type": "application/json",
             "maxOutputTokens": max_tokens,
-            "temperature": 0.2,
         },
     }
     with httpx.Client(timeout=30) as http_client:
