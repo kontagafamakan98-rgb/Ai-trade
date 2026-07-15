@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed, fetch_and_push_web_research
+from scrapers.telegram_channel import fetch_and_push_telegram_channel
 from database.supabase_client import supabase, create_pending_signal
 from notifications.notify import send_signal_to_user
 from workers.signal_guard import recently_sent
@@ -43,9 +44,13 @@ async def get_active_users():
 _last_web_research = 0.0
 WEB_RESEARCH_EVERY = 3600  # 1h — même logique que le cache LLM, pour ménager le quota
 
+_last_telegram_scan = 0.0
+TELEGRAM_SCAN_EVERY = 1800  # 30 min — scraping simple, pas de quota LLM en jeu
+TELEGRAM_CHANNELS = ["thehalalwinningteam"]
+
 
 async def refresh_collective_data():
-    global _last_web_research
+    global _last_web_research, _last_telegram_scan
     print(f"[{datetime.now(timezone.utc).isoformat()}] 🔄 Refresh data collective...")
     try:
         geo = await fetch_and_push_geopolitical()
@@ -55,6 +60,16 @@ async def refresh_collective_data():
         print(f"   ❌ refresh error: {e}")
 
     now_ts = time.time()
+
+    if now_ts - _last_telegram_scan >= TELEGRAM_SCAN_EVERY:
+        for channel in TELEGRAM_CHANNELS:
+            try:
+                n = await fetch_and_push_telegram_channel(channel)
+                print(f"   → canal Telegram @{channel}: {n} messages ajoutés")
+            except Exception as e:
+                print(f"   ❌ Telegram channel error: {e}")
+        _last_telegram_scan = now_ts
+
     if now_ts - _last_web_research >= WEB_RESEARCH_EVERY:
         try:
             n = await fetch_and_push_web_research(WATCHLIST)
