@@ -26,6 +26,8 @@ import json
 import time
 from typing import Dict, Any, List, Optional
 
+import httpx
+
 from config import GROQ_API_KEY, GEMINI_API_KEY
 
 try:
@@ -34,17 +36,10 @@ try:
 except Exception:
     _client = None
 
-try:
-    from google import genai
-    from google.genai import types as genai_types
-    _gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-except Exception:
-    _gemini_client = None
-    genai_types = None
-
 PRIMARY_MODEL = "openai/gpt-oss-120b"
 SECONDARY_MODEL = "qwen/qwen3.6-27b"
 GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 SYSTEM_PROMPT = (
     "Tu es un analyste financier neutre et rigoureux, sans biais optimiste ni "
@@ -118,17 +113,29 @@ def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
 # ---------------------------------------------------------------------------
 
 def _gemini_call(prompt: str, max_tokens: int) -> dict:
-    resp = _gemini_client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            max_output_tokens=max_tokens,
-            temperature=0.2,
-        ),
-    )
-    text = (resp.text or "").strip().replace("```json", "").replace("```", "").strip()
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY absente")
+
+    body = {
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.2,
+        },
+    }
+    with httpx.Client(timeout=30) as http_client:
+        resp = http_client.post(
+            GEMINI_URL,
+            params={"key": GEMINI_API_KEY},
+            json=body,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    text = data["candidates"][0]["content"]["parts"][0]["text"]
+    text = text.strip().replace("```json", "").replace("```", "").strip()
     return json.loads(text)
 
 
@@ -169,7 +176,7 @@ def analyze_news_batch(assets: List[str], insights: List[dict]) -> Dict[str, Dic
             except Exception as e:
                 print(f"   ❌ LLM batch ({model_id}) error: {type(e).__name__}: {e}")
 
-    if not per_model and _gemini_client:
+    if not per_model and GEMINI_API_KEY:
         print("   ⚠️ Groq indisponible → secours Gemini (batch)")
         try:
             data = _gemini_call(prompt, max_tokens)
@@ -220,7 +227,7 @@ def analyze_news_for_asset(asset: str, insights: List[dict]) -> Dict[str, Any]:
             except Exception as e:
                 print(f"   ❌ LLM ({model_id}) error ({asset}): {type(e).__name__}: {e}")
 
-    if not results and _gemini_client:
+    if not results and GEMINI_API_KEY:
         print(f"   ⚠️ Groq indisponible → secours Gemini ({asset})")
         try:
             data = _gemini_call(prompt, 300)
