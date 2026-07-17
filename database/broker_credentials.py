@@ -29,12 +29,12 @@ def get_broker_credentials(user_id: str) -> Optional[Dict[str, Any]]:
         supabase.table(TABLE)
         .select("*")
         .eq("user_id", str(user_id))
-        .maybe_single()
+        .limit(1)
         .execute()
     )
-    if not res.data:
+    if not res or not res.data:
         return None
-    row = res.data
+    row = res.data[0]
     try:
         return {
             "api_key": decrypt(row["api_key_enc"]),
@@ -52,10 +52,10 @@ def has_broker_credentials(user_id: str) -> bool:
         supabase.table(TABLE)
         .select("user_id")
         .eq("user_id", str(user_id))
-        .maybe_single()
+        .limit(1)
         .execute()
     )
-    return bool(res.data)
+    return bool(res and res.data)
 
 
 def delete_broker_credentials(user_id: str) -> None:

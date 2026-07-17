@@ -36,5 +36,7 @@ def update_signal_status(signal_id: str, status: str, execution_result: Optional
     supabase.table("pending_signals").update(payload).eq("id", signal_id).execute()
 
 def get_user_session(user_id: str) -> Optional[Dict]:
-    res = supabase.table("user_sessions").select("*").eq("user_id", user_id).maybe_single().execute()
-    return res.data
+    res = supabase.table("user_sessions").select("*").eq("user_id", user_id).limit(1).execute()
+    if res and res.data:
+        return res.data[0]
+    return None

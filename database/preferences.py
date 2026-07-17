@@ -9,11 +9,11 @@ def get_preferences(user_id: str) -> Dict[str, Any]:
         supabase.table("user_preferences")
         .select("*")
         .eq("user_id", user_id)
-        .maybe_single()
+        .limit(1)
         .execute()
     )
-    if res.data:
-        return res.data
+    if res and res.data:
+        return res.data[0]
 
     payload = {
         "user_id": user_id,
