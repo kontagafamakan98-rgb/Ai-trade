@@ -290,6 +290,43 @@ async def watchlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def test_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    asset = context.args[0].upper() if context.args else "AAPL"
+    direction = context.args[1].upper() if len(context.args) > 1 else "BUY"
+    if direction not in ("BUY", "SELL"):
+        direction = "BUY"
+
+    price = get_last_price(asset)
+    if not price or price <= 0:
+        await update.message.reply_text(f"❌ Impossible de récupérer le prix de {asset} pour le moment.")
+        return
+
+    if direction == "BUY":
+        sl, tp = round(price * 0.99, 5), round(price * 1.02, 5)
+    else:
+        sl, tp = round(price * 1.01, 5), round(price * 0.98, 5)
+
+    signal = {
+        "asset": asset,
+        "direction": direction,
+        "entry": price,
+        "stop_loss": sl,
+        "take_profit": tp,
+        "confidence": 1.0,
+        "ta_summary": "Ordre de TEST manuel (déclenché volontairement, pas un vrai signal du moteur IA)",
+        "geo_summary": "N/A — test manuel",
+        "sentiment_summary": "N/A — test manuel",
+        "reasoning": (
+            "Test manuel explicite via /test_order, pour vérifier ta connexion "
+            "broker personnelle. Prix réel utilisé, mais ce n'est pas une "
+            "recommandation du moteur IA."
+        ),
+    }
+
+    signal_id = create_pending_signal(str(update.effective_user.id), signal)
+    await send_signal_to_user(update.effective_chat.id, signal, signal_id)
+
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         won = supabase.table("pending_signals").select("id", count="exact").eq("status", "won").execute()
@@ -397,6 +434,7 @@ def main():
     app.add_handler(CommandHandler("risk", set_risk))
     app.add_handler(CommandHandler("watchlist", watchlist_cmd))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("test_order", test_order))
     app.add_handler(CommandHandler("connect_broker", connect_broker))
     app.add_handler(CommandHandler("disconnect_broker", disconnect_broker))
     app.add_handler(CommandHandler("broker_status", broker_status))
