@@ -9,6 +9,7 @@ from config import (
 )
 from database.supabase_client import supabase
 from database.preferences import get_preferences
+from database.broker_credentials import get_broker_credentials
 
 try:
     from alpaca.trading.client import TradingClient
@@ -78,7 +79,29 @@ def compute_qty(signal: dict, equity: float, risk_pct: float) -> float:
     return qty
 
 
-def get_alpaca_client():
+def get_alpaca_client(user_id: Optional[str] = None):
+    """
+    Priorité 1 : compte personnel de l'utilisateur (chiffré en base), s'il en
+    a connecté un via /connect_broker.
+    Priorité 2 (repli) : la clé Alpaca partagée du propriétaire du bot
+    (config.py), utile pour tes propres tests, mais PAS pour un vrai
+    déploiement multi-clients.
+
+    Le paramètre `paper` vient TOUJOURS du choix explicite de l'utilisateur
+    (ou True par défaut pour la clé partagée) — jamais deviné.
+    """
+    creds = get_broker_credentials(str(user_id)) if user_id else None
+    if creds:
+        # garde-fou de sécurité : si le kill-switch global PAPER_TRADING
+        # est actif, on refuse d'utiliser un compte marqué "live" même si
+        # l'utilisateur l'a connecté ainsi.
+        paper = creds["paper"] or PAPER_TRADING
+        return TradingClient(
+            api_key=creds["api_key"],
+            secret_key=creds["api_secret"],
+            paper=paper,
+        ), "personal"
+
     # paper=True suffit : le SDK alpaca-py construit lui-même la bonne URL
     # (https://paper-api.alpaca.markets/v2). Passer url_override en plus
     # casse le routing interne (404 Not Found sur toutes les routes).
@@ -86,7 +109,7 @@ def get_alpaca_client():
         api_key=ALPACA_API_KEY,
         secret_key=ALPACA_SECRET_KEY,
         paper=True,
-    )
+    ), "shared"
 
 
 def _is_demo_or_invalid(signal: dict) -> bool:
@@ -135,16 +158,24 @@ async def execute_validated_order(
             "note": "Signal DEMO ou entry invalide → pas d'envoi broker. Risk user quand même appliqué.",
         }
 
-    if not ALPACA_OK or not ALPACA_API_KEY or not ALPACA_SECRET_KEY:
+    has_personal = get_broker_credentials(str(user_id)) is not None
+    if not has_personal and (not ALPACA_OK or not ALPACA_API_KEY or not ALPACA_SECRET_KEY):
         return {
             **base,
             "status": "simulated_paper",
             "method": "simulated",
-            "note": "Clés Alpaca absentes → simulation pure (risk user appliqué)",
+            "note": "Aucun compte connecté (ni personnel, ni clé partagée) → simulation pure (risk user appliqué)",
+        }
+    if not has_personal and not ALPACA_OK:
+        return {
+            **base,
+            "status": "simulated_paper",
+            "method": "simulated",
+            "note": "SDK Alpaca indisponible → simulation pure (risk user appliqué)",
         }
 
     try:
-        client = get_alpaca_client()
+        client, source = get_alpaca_client(str(user_id))
         symbol = _normalize_symbol(signal.get("asset", ""))
         side = OrderSide.BUY if signal.get("direction") == "BUY" else OrderSide.SELL
 
@@ -169,6 +200,7 @@ async def execute_validated_order(
             "side": str(getattr(order, "side", side)),
             "qty": str(getattr(order, "qty", order_qty)),
             "method": "alpaca_paper",
+            "account": source,  # "personal" ou "shared"
         }
     except Exception as e:
         return {

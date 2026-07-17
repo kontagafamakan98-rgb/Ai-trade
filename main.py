@@ -23,6 +23,7 @@ from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order
 from utils.market_data import get_last_price
 from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
+from database.broker_credentials import set_broker_credentials, get_broker_credentials, delete_broker_credentials
 from config import TELEGRAM_BOT_TOKEN
 
 engine = EmotionlessDecisionEngine()
@@ -309,6 +310,74 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erreur stats : {e}")
 
 
+async def connect_broker(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Sécurité : seulement en message privé, jamais dans un groupe (où
+    # d'autres personnes verraient les clés en clair).
+    if update.effective_chat.type != "private":
+        await update.message.reply_text(
+            "⚠️ Pour ta sécurité, cette commande ne fonctionne qu'en message "
+            "privé avec le bot, jamais dans un groupe."
+        )
+        return
+
+    if len(context.args) < 2:
+        await update.message.reply_text(
+            "Usage : /connect_broker TA_CLE_API TON_SECRET [live]\n\n"
+            "⚠️ Envoie ce message uniquement ici en privé. Supprime-le juste "
+            "après l'envoi (appui long sur le message → Supprimer) — je "
+            "n'ai besoin de le voir qu'une fois pour chiffrer tes clés.\n\n"
+            "Par défaut le compte est traité comme PAPER (simulation). "
+            "Ajoute 'live' à la fin uniquement si tu es sûr de vouloir du "
+            "trading réel — et seulement si tu as déjà un compte Alpaca "
+            "live vérifié et financé."
+        )
+        return
+
+    api_key = context.args[0]
+    api_secret = context.args[1]
+    is_live = len(context.args) > 2 and context.args[2].lower() == "live"
+
+    try:
+        user_id = str(update.effective_user.id)
+        set_broker_credentials(user_id, api_key, api_secret, paper=not is_live)
+        mode = "LIVE (argent réel)" if is_live else "PAPER (simulation)"
+        await update.message.reply_text(
+            f"✅ Compte broker connecté et chiffré. Mode : {mode}\n\n"
+            f"🗑️ Supprime maintenant ton message précédent contenant tes clés "
+            f"en clair — je n'en ai plus besoin, elles sont chiffrées en base."
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erreur lors de la connexion : {e}")
+
+
+async def disconnect_broker(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    try:
+        delete_broker_credentials(user_id)
+        await update.message.reply_text("✅ Compte broker déconnecté et supprimé de la base.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erreur : {e}")
+
+
+async def broker_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    creds = get_broker_credentials(user_id)
+    if not creds:
+        await update.message.reply_text(
+            "🔌 Aucun compte broker personnel connecté.\n"
+            "Tes ordres utilisent le compte partagé du bot (tests uniquement).\n\n"
+            "Pour connecter le tien : /connect_broker TA_CLE TON_SECRET"
+        )
+        return
+    mode = "PAPER (simulation)" if creds["paper"] else "⚠️ LIVE (argent réel)"
+    masked = creds["api_key"][:4] + "•" * 8 + creds["api_key"][-4:] if len(creds["api_key"]) > 8 else "••••"
+    await update.message.reply_text(
+        f"🔌 Compte broker connecté : {creds['broker']}\n"
+        f"Mode : {mode}\n"
+        f"Clé : {masked}"
+    )
+
+
 def main():
     if not TELEGRAM_BOT_TOKEN:
         print("❌ TELEGRAM_BOT_TOKEN manquant")
@@ -328,6 +397,9 @@ def main():
     app.add_handler(CommandHandler("risk", set_risk))
     app.add_handler(CommandHandler("watchlist", watchlist_cmd))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("connect_broker", connect_broker))
+    app.add_handler(CommandHandler("disconnect_broker", disconnect_broker))
+    app.add_handler(CommandHandler("broker_status", broker_status))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     print("✅ Bot + Moteur IA prêts")
