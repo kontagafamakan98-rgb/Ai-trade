@@ -10,6 +10,7 @@ from notifications.notify import send_signal_to_user
 from workers.signal_guard import recently_sent
 from workers.performance_tracker import check_open_signals_performance
 from utils.market_data import get_last_price
+from database.preferences import get_all_active_preferences, DEFAULT_WATCHLIST
 
 # Réduite pour tests cloud (tu pourras réélargir après)
 WATCHLIST = [
@@ -61,6 +62,15 @@ async def refresh_collective_data():
 
     now_ts = time.time()
 
+    # Watchlist effective = défaut + toutes les watchlists personnalisées,
+    # pour que le cache LLM et la recherche web couvrent aussi les actifs
+    # ajoutés via /watchlist (sinon ils ne bénéficieraient jamais du cache).
+    prefs_list = get_all_active_preferences()
+    effective_watchlist = set(WATCHLIST)
+    for p in prefs_list:
+        effective_watchlist.update(p.get("watchlist") or [])
+    effective_watchlist = sorted(effective_watchlist) or DEFAULT_WATCHLIST
+
     if now_ts - _last_telegram_scan >= TELEGRAM_SCAN_EVERY:
         for channel in TELEGRAM_CHANNELS:
             try:
@@ -72,7 +82,7 @@ async def refresh_collective_data():
 
     if now_ts - _last_web_research >= WEB_RESEARCH_EVERY:
         try:
-            n = await fetch_and_push_web_research(WATCHLIST)
+            n = await fetch_and_push_web_research(effective_watchlist)
             print(f"   → recherche web autonome: {n} insight ajouté")
             _last_web_research = now_ts
         except Exception as e:
@@ -81,21 +91,25 @@ async def refresh_collective_data():
     try:
         from database.supabase_client import get_recent_insights
         insights = get_recent_insights(limit=20)
-        engine._news_cache.warm_batch(WATCHLIST, insights)
+        engine._news_cache.warm_batch(effective_watchlist, insights)
     except Exception as e:
         print(f"   ❌ LLM warm_batch error: {e}")
 
 
 async def analyze_watchlist_and_notify():
-    print(f"[{datetime.now(timezone.utc).isoformat()}] 🧠 Analyse watchlist ({len(WATCHLIST)} actifs)...")
-    users = await get_active_users()
-    if not users:
-        print("   → aucun utilisateur actif")
-        # on analyse quand même les prix pour le debug
-    else:
-        print(f"   → users actifs: {len(users)}")
+    prefs_list = get_all_active_preferences()
 
-    for asset in WATCHLIST:
+    # Watchlist effective = union de la watchlist par défaut + toutes les
+    # watchlists personnalisées des utilisateurs actifs. On analyse chaque
+    # actif UNE SEULE FOIS (efficace), et on filtre au moment de notifier.
+    effective_watchlist = set(WATCHLIST)
+    for p in prefs_list:
+        effective_watchlist.update(p.get("watchlist") or [])
+    effective_watchlist = sorted(effective_watchlist) or DEFAULT_WATCHLIST
+
+    print(f"[{datetime.now(timezone.utc).isoformat()}] 🧠 Analyse watchlist ({len(effective_watchlist)} actifs, {len(prefs_list)} users actifs)...")
+
+    for asset in effective_watchlist:
         try:
             price = get_last_price(asset)
             price_txt = f"{price:.4f}" if price is not None else "N/A"
@@ -118,12 +132,18 @@ async def analyze_watchlist_and_notify():
                 f"SIGNAL {signal['direction']} conf={signal['confidence']}"
             )
 
-            for u in users or []:
-                if recently_sent(asset, signal["direction"], u["id"]):
+            # Ne notifie que les users qui suivent CET actif et dont le seuil
+            # de confiance personnel est satisfait.
+            for p in prefs_list:
+                if asset not in (p.get("watchlist") or []):
                     continue
-                signal_id = create_pending_signal(u["id"], signal)
-                await send_signal_to_user(u["telegram_chat_id"], signal, signal_id)
-                print(f"      notifié user {u['id']}")
+                if signal["confidence"] < p.get("min_confidence", 0.55):
+                    continue
+                if recently_sent(asset, signal["direction"], p["user_id"]):
+                    continue
+                signal_id = create_pending_signal(p["user_id"], signal)
+                await send_signal_to_user(p["telegram_chat_id"], signal, signal_id)
+                print(f"      notifié user {p['user_id']}")
 
             time.sleep(1.2)
 

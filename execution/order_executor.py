@@ -8,6 +8,7 @@ from config import (
     DEFAULT_PAPER_EQUITY,
 )
 from database.supabase_client import supabase
+from database.preferences import get_preferences
 
 try:
     from alpaca.trading.client import TradingClient
@@ -20,19 +21,10 @@ except Exception:
 
 def get_user_risk_pct(user_id: str) -> float:
     try:
-        res = (
-            supabase.table("user_sessions")
-            .select("risk_params")
-            .eq("user_id", str(user_id))
-            .limit(1)
-            .execute()
-        )
-        if res.data:
-            params = res.data[0].get("risk_params") or {}
-            if isinstance(params, dict) and params.get("max_risk_pct") is not None:
-                val = float(params["max_risk_pct"])
-                if 0.1 <= val <= 10:
-                    return val
+        prefs = get_preferences(str(user_id))
+        val = float(prefs.get("risk_pct") or DEFAULT_RISK_PCT)
+        if 0.1 <= val <= 10:
+            return val
     except Exception as e:
         print(f"get_user_risk_pct error: {e}")
     return float(DEFAULT_RISK_PCT)
@@ -40,19 +32,10 @@ def get_user_risk_pct(user_id: str) -> float:
 
 def get_user_equity(user_id: str) -> float:
     try:
-        res = (
-            supabase.table("user_sessions")
-            .select("risk_params")
-            .eq("user_id", str(user_id))
-            .limit(1)
-            .execute()
-        )
-        if res.data:
-            params = res.data[0].get("risk_params") or {}
-            if isinstance(params, dict) and params.get("equity") is not None:
-                eq = float(params["equity"])
-                if eq > 0:
-                    return eq
+        prefs = get_preferences(str(user_id))
+        eq = float(prefs.get("paper_equity") or DEFAULT_PAPER_EQUITY)
+        if eq > 0:
+            return eq
     except Exception as e:
         print(f"get_user_equity error: {e}")
     return float(DEFAULT_PAPER_EQUITY)

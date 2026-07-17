@@ -22,6 +22,7 @@ from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order
 from utils.market_data import get_last_price
+from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
 from config import TELEGRAM_BOT_TOKEN
 
 engine = EmotionlessDecisionEngine()
@@ -41,6 +42,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "paper_mode": True
         }).execute()
 
+        get_preferences(str(user.id))  # crée la ligne de préférences par défaut si absente
+
         await update.message.reply_text(
             f"✅ Bot Trading IA prêt.\n"
             f"Bienvenue {user.first_name}!\n\n"
@@ -52,7 +55,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"/refresh_data\n"
             f"/status\n"
             f"/stats\n"
-            f"/risk 1.5"
+            f"/risk 1.5\n"
+            f"/watchlist AAPL,MSFT,BTC-USD"
         )
     except Exception as e:
         await update.message.reply_text(f"Erreur DB : {e}")
@@ -249,20 +253,40 @@ async def set_risk(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     try:
         new_risk = float(context.args[0].replace(",", "."))
-        if new_risk <= 0 or new_risk > 10:
-            await update.message.reply_text("❌ Risque entre 0.1% et 10%.")
+        if new_risk <= 0 or new_risk > 5:
+            await update.message.reply_text("❌ Risque entre 0.1% et 5% (plafond paper trading).")
             return
         user_id = str(update.effective_user.id)
-        supabase.table("user_sessions").upsert({
-            "user_id": user_id,
-            "risk_params": {"max_risk_pct": new_risk},
-            "updated_at": "now()"
-        }).execute()
+        set_user_risk(user_id, new_risk)
         await update.message.reply_text(f"✅ Risque par trade fixé à : {new_risk}%")
     except ValueError:
         await update.message.reply_text("❌ Nombre invalide. Ex: /risk 1.0")
     except Exception as e:
         await update.message.reply_text(f"❌ Erreur BDD : {e}")
+
+
+async def watchlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+
+    if not context.args:
+        prefs = get_preferences(user_id)
+        current = prefs.get("watchlist") or []
+        await update.message.reply_text(
+            f"📋 Ta watchlist actuelle :\n{', '.join(current)}\n\n"
+            f"Pour la changer : /watchlist AAPL,MSFT,BTC-USD"
+        )
+        return
+
+    raw = " ".join(context.args)
+    assets = [a.strip() for a in raw.split(",") if a.strip()]
+    if not assets:
+        await update.message.reply_text("❌ Liste invalide. Ex: /watchlist AAPL,MSFT,BTC-USD")
+        return
+
+    prefs = set_user_watchlist(user_id, assets)
+    await update.message.reply_text(
+        f"✅ Watchlist mise à jour :\n{', '.join(prefs.get('watchlist') or [])}"
+    )
 
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -302,6 +326,7 @@ def main():
     app.add_handler(CommandHandler("refresh_data", refresh_data))
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("risk", set_risk))
+    app.add_handler(CommandHandler("watchlist", watchlist_cmd))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CallbackQueryHandler(button_handler))
 
