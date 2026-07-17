@@ -324,7 +324,25 @@ async def test_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     signal_id = create_pending_signal(str(update.effective_user.id), signal)
-    await send_signal_to_user(update.effective_chat.id, signal, signal_id)
+
+    text = (
+        f"🚨 PROPOSITION — TEST MANUEL (VALIDATION HUMAINE OBLIGATOIRE)\n\n"
+        f"Actif : {signal.get('asset')}\n"
+        f"Direction : {signal.get('direction')}\n"
+        f"Confiance : {signal.get('confidence')}\n\n"
+        f"Paramètres :\n"
+        f"• Entry : {signal.get('entry')}\n"
+        f"• Stop Loss : {signal.get('stop_loss')}\n"
+        f"• Take Profit : {signal.get('take_profit')}\n\n"
+        f"Analyse Technique :\n{signal.get('ta_summary')}\n\n"
+        f"Raisonnement :\n{signal.get('reasoning')}\n\n"
+        f"⚠️ Aucune exécution sans ton accord."
+    )
+    keyboard = [[
+        InlineKeyboardButton("✅ APPROUVER (paper)", callback_data=f"approve:{signal_id}"),
+        InlineKeyboardButton("❌ REJETER", callback_data=f"reject:{signal_id}"),
+    ]]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
