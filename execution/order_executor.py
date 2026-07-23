@@ -12,8 +12,8 @@ from database.supabase_client import supabase
 from database.preferences import get_preferences
 from database.broker_credentials import get_broker_credentials
 
-# Import corrigé
-from execution.risk_guard import can_trade as risk_can_trade, _get_or_init_state as risk_get_state
+# Import corrigé avec compatibilité
+from execution.risk_guard import can_trade as risk_can_trade
 
 try:
     from alpaca.trading.client import TradingClient
@@ -47,6 +47,7 @@ def get_user_equity(user_id: str) -> float:
 
 
 def _normalize_symbol(asset: str) -> str:
+    """Normalise le symbole pour Alpaca"""
     a = (asset or "").upper().strip()
     if a.endswith("-USD"):
         base = a.replace("-USD", "")
@@ -79,15 +80,17 @@ def compute_qty(signal: dict, equity: float, risk_pct: float) -> float:
 
 
 def get_alpaca_client(user_id: Optional[str] = None):
+    """Retourne le client Alpaca (personnel ou partagé)"""
     creds = get_broker_credentials(str(user_id)) if user_id else None
     if creds:
-        paper = creds["paper"] or PAPER_TRADING
+        paper = creds.get("paper", True) or PAPER_TRADING
         return TradingClient(
             api_key=creds["api_key"],
             secret_key=creds["api_secret"],
             paper=paper,
         ), "personal"
 
+    # Compte partagé paper
     return TradingClient(
         api_key=ALPACA_API_KEY,
         secret_key=ALPACA_SECRET_KEY,
@@ -95,9 +98,21 @@ def get_alpaca_client(user_id: Optional[str] = None):
     ), "shared"
 
 
-async def execute_validated_order(user_id: str, signal: Dict[str, Any], qty: Optional[float] = None) -> Dict[str, Any]:
+def _is_demo_or_invalid(signal: dict) -> bool:
+    entry = float(signal.get("entry") or 0)
+    reasoning = str(signal.get("reasoning") or "")
+    if entry <= 0 or "DEMO" in reasoning.upper() or "démonstration" in reasoning.lower():
+        return True
+    return False
+
+
+async def execute_validated_order(
+    user_id: str,
+    signal: Dict[str, Any],
+    qty: Optional[float] = None,
+) -> Dict[str, Any]:
     if not PAPER_TRADING:
-        return {"error": "Live trading désactivé."}
+        return {"error": "Live trading désactivé. PAPER only."}
 
     risk_pct = get_user_risk_pct(user_id)
     equity = get_user_equity(user_id)
@@ -105,21 +120,73 @@ async def execute_validated_order(user_id: str, signal: Dict[str, Any], qty: Opt
     if qty is None:
         qty = compute_qty(signal, equity=equity, risk_pct=risk_pct)
 
+    base = {
+        "asset": signal.get("asset"),
+        "direction": signal.get("direction"),
+        "qty": qty,
+        "risk_pct": risk_pct,
+        "equity": equity,
+        "entry": signal.get("entry"),
+        "stop_loss": signal.get("stop_loss"),
+        "take_profit": signal.get("take_profit"),
+        "user_id": str(user_id),
+    }
+
+    if _is_demo_or_invalid(signal):
+        return {
+            **base,
+            "status": "simulated_paper",
+            "note": "Signal DEMO → simulation pure"
+        }
+
     # Vérification risque
     real_balance = equity
     try:
-        client_probe, _ = get_alpaca_client(user_id)
+        client_probe, _ = get_alpaca_client(str(user_id))
         acct = client_probe.get_account()
         real_balance = float(acct.equity)
-    except:
+    except Exception:
         pass
 
     allowed, reason = risk_can_trade(str(user_id), real_balance)
     if not allowed:
         return {
+            **base,
             "status": "blocked_risk_guard",
-            "note": f"🛑 {reason}"
+            "note": f"🛑 Trade bloqué : {reason}"
         }
 
-    # ... (le reste de ta fonction d'exécution reste inchangé)
-    # Je peux te donner le reste si besoin
+    try:
+        client, source = get_alpaca_client(str(user_id))
+        symbol = _normalize_symbol(signal.get("asset", ""))
+        side = OrderSide.BUY if signal.get("direction") == "BUY" else OrderSide.SELL
+
+        order_qty = qty
+        if "/" not in symbol and symbol.isalpha():
+            order_qty = max(1, int(float(qty)))
+
+        order = client.submit_order(
+            MarketOrderRequest(
+                symbol=symbol,
+                qty=order_qty,
+                side=side,
+                time_in_force=TimeInForce.DAY,
+            )
+        )
+
+        return {
+            **base,
+            "status": "submitted_paper",
+            "order_id": str(order.id),
+            "symbol": getattr(order, "symbol", symbol),
+            "method": "alpaca_paper",
+            "account": source,
+        }
+
+    except Exception as e:
+        return {
+            **base,
+            "status": "error",
+            "error": str(e),
+            "note": "Échec lors de l'envoi à Alpaca"
+        }
