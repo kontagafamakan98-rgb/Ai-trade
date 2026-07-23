@@ -1,60 +1,129 @@
+# main.py
 import os
 import asyncio
-import threading
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
-from config import TELEGRAM_BOT_TOKEN
-from database.supabase_client import supabase
+from database.supabase_client import (
+    supabase,
+    create_pending_signal,
+    update_signal_status,
+    get_recent_insights,
+)
 from ai.decision_engine import EmotionlessDecisionEngine
+from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order
-from utils.monitoring import logger, send_admin_alert
-from utils.security import is_private_chat, validate_admin
-
-# === ADMIN ===
-ADMIN_IDS = ["TON_ID_TELEGRAM"]  # Change avec ton ID
+from utils.market_data import get_last_price
+from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
+from database.knowledge_base import upsert_note, list_notes
+from database.broker_credentials import set_broker_credentials, get_broker_credentials, delete_broker_credentials
+from execution.risk_guard import can_trade as risk_can_trade
+from config import TELEGRAM_BOT_TOKEN
+from utils.monitoring import logger, log_and_alert
 
 engine = EmotionlessDecisionEngine()
 
-# ====================== COMMANDES ======================
+print("✅ Environnement chargé")
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (garde ta version originale)
-    await update.message.reply_text("✅ Bot amélioré v2 prêt !\nUtilise /help pour voir les nouvelles commandes.")
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    try:
+        supabase.table("users").upsert({
+            "id": str(user.id),
+            "username": user.username,
+            "first_name": user.first_name,
+            "telegram_chat_id": chat_id,
+            "paper_mode": True
+        }).execute()
 
+        get_preferences(str(user.id))
+
+        await update.message.reply_text(
+            f"✅ Bot Trading IA v2 prêt.\n"
+            f"Bienvenue {user.first_name}!\n\n"
+            f"Commandes principales :\n"
+            f"/analyze BTC-USD\n"
+            f"/portfolio\n"
+            f"/risk 1.5\n"
+            f"/watchlist AAPL,MSFT\n"
+            f"/status"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"Erreur : {e}")
+
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Gestion des boutons (Approve / Reject)"""
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        data = query.data or ""
+        if ":" not in data:
+            await query.edit_message_text("Callback invalide.")
+            return
+
+        action, signal_id = data.split(":", 1)
+
+        row = supabase.table("pending_signals").select("*").eq("id", signal_id).execute()
+        if not row.data:
+            await query.edit_message_text("Signal introuvable.")
+            return
+
+        record = row.data[0]
+        signal = record.get("signal") or {}
+
+        if action == "approve":
+            result = await execute_validated_order(str(record["user_id"]), signal)
+            update_signal_status(signal_id, "executed", result)
+            await query.edit_message_text(f"✅ APPROUVÉ\nActif : {signal.get('asset')}")
+        else:
+            update_signal_status(signal_id, "rejected")
+            await query.edit_message_text(f"❌ REJETÉ\nActif : {signal.get('asset')}")
+
+    except Exception as e:
+        logger.error(f"Button handler error: {e}")
+        await query.edit_message_text(f"Erreur : {str(e)[:200]}")
+
+
+# === Autres commandes (tu peux garder les tiennes) ===
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (ta version existante, elle fonctionne avec le nouveau engine)
+    # ... ta fonction existante ...
     pass
 
-# Nouvelles commandes (point 5)
 async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (code que je t'ai donné précédemment)
-    pass
+    await update.message.reply_text("📊 Portfolio feature coming soon (v2.1)")
 
-async def backtest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... (code précédent)
-    pass
 
-async def admin_pause(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not validate_admin(update, ADMIN_IDS):
-        return await update.message.reply_text("⛔ Accès refusé.")
-    await update.message.reply_text("🛑 Trading global en PAUSE.")
-    # Ajoute logique flag global ici
-
-# ====================== MAIN ======================
 def main():
+    if not TELEGRAM_BOT_TOKEN:
+        print("❌ TELEGRAM_BOT_TOKEN manquant")
+        return
+
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     # Handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("analyze", analyze))
     app.add_handler(CommandHandler("portfolio", portfolio))
-    app.add_handler(CommandHandler("backtest", backtest))
-    app.add_handler(CommandHandler("admin_pause", admin_pause))
-    app.add_handler(CallbackQueryHandler(button_handler))  # garde ton existant
+    app.add_handler(CallbackQueryHandler(button_handler))
 
-    print("🚀 Ai-Trade Amélioré v2 démarré")
+    logger.info("Bot démarré avec succès")
+    print("🚀 Bot Telegram en polling...")
+
     app.run_polling(drop_pending_updates=True)
+
 
 if __name__ == "__main__":
     main()
