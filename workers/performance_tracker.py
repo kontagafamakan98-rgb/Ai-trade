@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from database.supabase_client import supabase
 from utils.market_data import get_last_price
+from execution.self_review import update_lessons
 
 
 async def check_open_signals_performance():
@@ -15,6 +16,8 @@ async def check_open_signals_performance():
 
     if not open_signals:
         return
+
+    any_settled = False
 
     for item in open_signals:
         sig_id = item["id"]
@@ -59,5 +62,13 @@ async def check_open_signals_performance():
                     "status": outcome,
                     "execution_result": exec_res
                 }).eq("id", sig_id).execute()
+                any_settled = True
             except Exception as e:
                 print(f"   ❌ Erreur update résultat : {e}")
+
+    if any_settled:
+        try:
+            update_lessons()
+            print("   → bilan de performance (leçons) mis à jour")
+        except Exception as e:
+            print(f"   ❌ Erreur mise à jour du bilan : {e}")

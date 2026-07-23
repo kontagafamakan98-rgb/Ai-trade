@@ -23,6 +23,7 @@ from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order, get_alpaca_client, get_user_equity
 from utils.market_data import get_last_price
 from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
+from database.knowledge_base import upsert_note, list_notes
 from database.broker_credentials import set_broker_credentials, get_broker_credentials, delete_broker_credentials
 from execution.risk_guard import can_trade as risk_can_trade, _get_or_init_state as risk_get_state
 from config import TELEGRAM_BOT_TOKEN
@@ -346,6 +347,44 @@ async def test_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "Usage : /add_note titre court | contenu de la règle\n\n"
+            "Ex: /add_note stop_loss_regle | Ne jamais risquer plus de 1% "
+            "sur les cryptos en dessous de 50 de Fear&Greed."
+        )
+        return
+
+    raw = " ".join(context.args)
+    if "|" in raw:
+        title, content = raw.split("|", 1)
+        title, content = title.strip(), content.strip()
+    else:
+        title, content = "Note", raw.strip()
+
+    if len(content) > 1500:
+        content = content[:1500] + "\n[...tronqué, garde tes notes courtes]"
+
+    try:
+        upsert_note(source=f"manuel:{title.lower().replace(' ', '_')}", title=title, content=content)
+        await update.message.reply_text(f"✅ Note ajoutée à la base de connaissances : \"{title}\"")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erreur : {e}")
+
+
+async def notes_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        notes = list_notes()
+        if not notes:
+            await update.message.reply_text("📚 Base de connaissances vide pour l'instant.")
+            return
+        lines = [f"• {n['title']} ({n.get('char_count', 0)} car.)" for n in notes]
+        await update.message.reply_text("📚 Notes en base :\n" + "\n".join(lines))
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erreur : {e}")
+
+
 async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     try:
@@ -493,6 +532,8 @@ def main():
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("test_order", test_order))
     app.add_handler(CommandHandler("risk_status", risk_status))
+    app.add_handler(CommandHandler("add_note", add_note))
+    app.add_handler(CommandHandler("notes", notes_cmd))
     app.add_handler(CommandHandler("connect_broker", connect_broker))
     app.add_handler(CommandHandler("disconnect_broker", disconnect_broker))
     app.add_handler(CommandHandler("broker_status", broker_status))
