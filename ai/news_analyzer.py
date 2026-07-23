@@ -29,6 +29,7 @@ from typing import Dict, Any, List, Optional
 import httpx
 
 from config import GROQ_API_KEY, GEMINI_API_KEY
+from database.knowledge_base import get_knowledge_context
 
 try:
     from groq import Groq
@@ -168,13 +169,29 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
 # Analyse PAR LOT (toute la watchlist en 1 seul appel par modèle)
 # ---------------------------------------------------------------------------
 
+def _knowledge_block() -> str:
+    try:
+        kb = get_knowledge_context()
+    except Exception as e:
+        print(f"   ❌ knowledge_base read error: {type(e).__name__}: {e}")
+        return ""
+    if not kb.strip():
+        return ""
+    return (
+        f"\nConnaissances de référence (extrait de ta base de connaissances "
+        f"personnelle — règles/principes permanents, PAS des actualités) :\n{kb}\n"
+    )
+
+
 def _build_batch_prompt(assets: List[str], insights: List[dict]) -> Optional[str]:
     news_block = _news_block(insights)
     if not news_block.strip():
         return None
     asset_list = ", ".join(assets)
+    knowledge = _knowledge_block()
     return (
-        f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n\n"
+        f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n"
+        f"{knowledge}\n"
         f"Actifs à évaluer : {asset_list}\n\n"
         f"Pour CHAQUE actif de cette liste, réponds avec un JSON de cette forme exacte "
         f"(une clé par actif, respecte EXACTEMENT l'orthographe des tickers donnés) :\n"
@@ -200,7 +217,11 @@ def analyze_news_batch(assets: List[str], insights: List[dict]) -> Dict[str, Dic
                 per_model.append({a: _parse_single(data.get(a) or {}) for a in assets})
             except Exception as e:
                 print(f"   ❌ LLM batch ({model_id}) error: {type(e).__name__}: {e}")
-                _mark_failed("groq")
+        if not per_model:
+            # Coupe le circuit seulement si LES DEUX modèles ont échoué —
+            # un seul hoquet JSON d'un des deux ne doit pas priver l'autre
+            # (qui fonctionnait peut-être très bien) pendant 10 minutes.
+            _mark_failed("groq")
 
     if not per_model and GEMINI_API_KEY and _available("gemini"):
         print("   ⚠️ Groq indisponible → secours Gemini (batch)")
@@ -229,8 +250,10 @@ def _build_single_prompt(asset: str, insights: List[dict]) -> Optional[str]:
     news_block = _news_block(insights)
     if not news_block.strip():
         return None
+    knowledge = _knowledge_block()
     return (
-        f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n\n"
+        f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n"
+        f"{knowledge}\n"
         f"Actif à évaluer : {asset}\n\n"
         f"Réponds avec ce JSON exact :\n"
         f'{{"bias": "bullish|bearish|neutral", "score": 0.0-1.0, "reasoning": "1-2 phrases '
@@ -253,7 +276,8 @@ def analyze_news_for_asset(asset: str, insights: List[dict]) -> Dict[str, Any]:
                 results.append(_parse_single(data))
             except Exception as e:
                 print(f"   ❌ LLM ({model_id}) error ({asset}): {type(e).__name__}: {e}")
-                _mark_failed("groq")
+        if not results:
+            _mark_failed("groq")
 
     if not results and GEMINI_API_KEY and _available("gemini"):
         print(f"   ⚠️ Groq indisponible → secours Gemini ({asset})")

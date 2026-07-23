@@ -82,7 +82,6 @@ async def fetch_and_push_web_research(watchlist):
         resp = client.chat.completions.create(
             model="groq/compound",
             messages=[{"role": "user", "content": query}],
-            compound_custom={"tools": {"enabled_tools": ["web_search"]}},
         )
         summary = (resp.choices[0].message.content or "").strip()
         if not summary:
