@@ -1,4 +1,3 @@
-# main.py
 import os
 import asyncio
 from dotenv import load_dotenv
@@ -55,10 +54,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if action == "approve":
             result = await execute_validated_order(str(record["user_id"]), signal)
             update_signal_status(signal_id, "executed", result)
-            await query.edit_message_text(f"✅ APPROUVÉ\n{ signal.get('asset') } {signal.get('direction')}")
+            await query.edit_message_text(f"✅ APPROUVÉ\n{signal.get('asset')} {signal.get('direction')}")
         else:
             update_signal_status(signal_id, "rejected")
-            await query.edit_message_text(f"❌ REJETÉ\n{ signal.get('asset') }")
+            await query.edit_message_text(f"❌ REJETÉ\n{signal.get('asset')}")
 
     except Exception as e:
         logger.error(f"Button error: {e}")
@@ -96,4 +95,34 @@ async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"TP : {signal.get('take_profit')}\n\n"
             f"**Technique**:\n{signal.get('ta_summary', 'N/A')}\n\n"
             f"**Géopolitique**:\n{signal.get('geo_summary', 'N/A')}\n\n"
-            f"**Sentiment**:\n{signal.get('sentiment_summary', 'N/A')}\
+            f"**Sentiment**:\n{signal.get('sentiment_summary', 'N/A')}\n\n"
+            f"**Raisonnement**:\n{signal.get('reasoning', 'N/A')}"
+        )
+
+        keyboard = [[
+            InlineKeyboardButton("✅ APPROUVER", callback_data=f"approve:{signal_id}"),
+            InlineKeyboardButton("❌ REJETER", callback_data=f"reject:{signal_id}"),
+        ]]
+
+        await msg.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+
+    except asyncio.TimeoutError:
+        await msg.edit_text("⏱️ Analyse trop longue.")
+    except Exception as e:
+        logger.error(f"Analyze error: {e}")
+        await msg.edit_text(f"❌ Erreur : {str(e)[:150]}")
+
+
+def main():
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("analyze", analyze))
+    app.add_handler(CallbackQueryHandler(button_handler))
+
+    print("🚀 Bot Telegram v2 démarré")
+    app.run_polling(drop_pending_updates=True)
+
+
+if __name__ == "__main__":
+    main()
