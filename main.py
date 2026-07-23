@@ -20,10 +20,11 @@ from database.supabase_client import (
 )
 from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
-from execution.order_executor import execute_validated_order
+from execution.order_executor import execute_validated_order, get_alpaca_client, get_user_equity
 from utils.market_data import get_last_price
 from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
 from database.broker_credentials import set_broker_credentials, get_broker_credentials, delete_broker_credentials
+from execution.risk_guard import can_trade as risk_can_trade, _get_or_init_state as risk_get_state
 from config import TELEGRAM_BOT_TOKEN
 
 engine = EmotionlessDecisionEngine()
@@ -345,6 +346,44 @@ async def test_order(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
+async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    try:
+        prefs = get_preferences(user_id)
+        equity = get_user_equity(user_id)
+
+        try:
+            client, _ = get_alpaca_client(user_id)
+            acct = client.get_account()
+            balance = float(acct.equity)
+            balance_note = "(solde réel Alpaca)"
+        except Exception:
+            balance = equity
+            balance_note = "(equity paper configurée, pas de compte réel)"
+
+        state = risk_get_state(user_id, balance)
+        starting = float(state.get("starting_balance") or balance)
+        daily_start = float(state.get("daily_start_balance") or balance)
+
+        daily_loss_pct = (daily_start - balance) / daily_start * 100 if daily_start > 0 else 0
+        total_dd_pct = (starting - balance) / starting * 100 if starting > 0 else 0
+
+        allowed, reason = risk_can_trade(user_id, balance)
+        status_txt = "✅ Trading autorisé" if allowed else f"🛑 Trading bloqué : {reason}"
+
+        await update.message.reply_text(
+            f"📊 État du risque {balance_note}\n\n"
+            f"Solde actuel : {balance:.2f}\n"
+            f"Solde début de journée : {daily_start:.2f}\n"
+            f"Solde initial : {starting:.2f}\n\n"
+            f"Perte du jour : {daily_loss_pct:.2f}% (limite {prefs.get('max_daily_loss_pct', 5.0)}%)\n"
+            f"Drawdown total : {total_dd_pct:.2f}% (limite {prefs.get('max_total_drawdown_pct', 10.0)}%)\n\n"
+            f"{status_txt}"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Erreur : {e}")
+
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         won = supabase.table("pending_signals").select("id", count="exact").eq("status", "won").execute()
@@ -453,6 +492,7 @@ def main():
     app.add_handler(CommandHandler("watchlist", watchlist_cmd))
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(CommandHandler("test_order", test_order))
+    app.add_handler(CommandHandler("risk_status", risk_status))
     app.add_handler(CommandHandler("connect_broker", connect_broker))
     app.add_handler(CommandHandler("disconnect_broker", disconnect_broker))
     app.add_handler(CommandHandler("broker_status", broker_status))

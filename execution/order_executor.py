@@ -10,6 +10,7 @@ from config import (
 from database.supabase_client import supabase
 from database.preferences import get_preferences
 from database.broker_credentials import get_broker_credentials
+from execution.risk_guard import can_trade as risk_can_trade
 
 try:
     from alpaca.trading.client import TradingClient
@@ -172,6 +173,25 @@ async def execute_validated_order(
             "status": "simulated_paper",
             "method": "simulated",
             "note": "SDK Alpaca indisponible → simulation pure (risk user appliqué)",
+        }
+
+    # Solde réel si compte personnel connecté (le plus fiable), sinon
+    # repli sur l'equity paper configurée (approximation statique).
+    real_balance = equity
+    try:
+        client_probe, _ = get_alpaca_client(str(user_id))
+        acct = client_probe.get_account()
+        real_balance = float(acct.equity)
+    except Exception:
+        pass  # repli silencieux sur `equity` déjà calculée plus haut
+
+    allowed, reason = risk_can_trade(str(user_id), real_balance)
+    if not allowed:
+        return {
+            **base,
+            "status": "blocked_risk_guard",
+            "method": "blocked",
+            "note": f"🛑 Trade bloqué par le garde-fou de risque : {reason}",
         }
 
     try:
