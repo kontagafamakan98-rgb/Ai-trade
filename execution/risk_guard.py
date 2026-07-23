@@ -1,83 +1,94 @@
-# execution/risk_guard.py
 """
-Garde-fous de risque avancés - Version compatible avec l'ancien code
+Garde-fous de risque par utilisateur — inspirés du RiskManager du bot
+TradeLocker (limite de perte journalière + plafond de drawdown total +
+nombre max de positions ouvertes), adaptés au multi-tenant.
+
+Contrairement au bot TradeLocker (qui bloque avant de placer un ordre en
+mémoire), ici l'état est persisté en base (table user_risk_state) pour
+survivre aux redémarrages et fonctionner correctement avec plusieurs
+utilisateurs en parallèle.
+
+⚠️ Limite connue : pour les comptes utilisant la clé Alpaca PARTAGÉE
+(pas de compte broker personnel connecté), on n'a pas de solde réel à
+suivre — le calcul utilise `paper_equity` (statique) comme approximation.
+Pour un compte personnel connecté, le vrai solde Alpaca est utilisé.
 """
 from datetime import date
 from typing import Tuple
 from database.supabase_client import supabase
 from database.preferences import get_preferences
 
-# ====================== FONCTIONS LEGACY (pour compatibilité) ======================
-def can_trade(user_id: str, current_balance: float, new_asset: str = None) -> Tuple[bool, str]:
-    """Fonction legacy pour ne pas casser order_executor.py"""
-    return RiskGuard.can_trade(user_id, current_balance, new_asset)
+TABLE = "user_risk_state"
 
 
-def _get_or_init_state(user_id: str, balance: float):
-    """Legacy"""
-    return RiskGuard._get_or_init_state(user_id, balance)
+def _get_or_init_state(user_id: str, balance: float) -> dict:
+    res = supabase.table(TABLE).select("*").eq("user_id", user_id).limit(1).execute()
+    if res and res.data:
+        state = res.data[0]
+        today = date.today().isoformat()
+        if state.get("daily_date") != today:
+            # nouveau jour -> on repart d'un compteur journalier frais
+            supabase.table(TABLE).update({
+                "daily_start_balance": balance,
+                "daily_date": today,
+            }).eq("user_id", user_id).execute()
+            state["daily_start_balance"] = balance
+            state["daily_date"] = today
+        return state
+
+    # première fois pour cet utilisateur -> initialisation
+    new_state = {
+        "user_id": user_id,
+        "starting_balance": balance,
+        "daily_start_balance": balance,
+        "daily_date": date.today().isoformat(),
+    }
+    supabase.table(TABLE).insert(new_state).execute()
+    return new_state
 
 
-# ====================== NOUVELLE IMPLÉMENTATION ======================
-class RiskGuard:
-    @staticmethod
-    def _get_or_init_state(user_id: str, balance: float):
-        res = supabase.table("user_risk_state").select("*").eq("user_id", user_id).limit(1).execute()
-        if res.data:
-            state = res.data[0]
-            today = date.today().isoformat()
-            if state.get("daily_date") != today:
-                supabase.table("user_risk_state").update({
-                    "daily_start_balance": balance,
-                    "daily_date": today,
-                }).eq("user_id", user_id).execute()
-                state["daily_start_balance"] = balance
-                state["daily_date"] = today
-            return state
+def _count_open_trades(user_id: str) -> int:
+    res = (
+        supabase.table("pending_signals")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("status", "executed")
+        .execute()
+    )
+    return res.count or 0
 
-        new_state = {
-            "user_id": user_id,
-            "starting_balance": balance,
-            "daily_start_balance": balance,
-            "daily_date": date.today().isoformat(),
-        }
-        supabase.table("user_risk_state").insert(new_state).execute()
-        return new_state
 
-    @staticmethod
-    def can_trade(user_id: str, current_balance: float, new_asset: str = None) -> Tuple[bool, str]:
-        try:
-            prefs = get_preferences(user_id)
-            max_daily_loss_pct = float(prefs.get("max_daily_loss_pct", 5.0))
-            max_drawdown_pct = float(prefs.get("max_total_drawdown_pct", 10.0))
-            max_open_trades = int(prefs.get("max_open_trades", 4))
+def can_trade(user_id: str, current_balance: float) -> Tuple[bool, str]:
+    """Retourne (True, '') si l'utilisateur peut trader, sinon (False, raison)."""
+    try:
+        prefs = get_preferences(user_id)
+        max_daily_loss_pct = float(prefs.get("max_daily_loss_pct") or 5.0)
+        max_drawdown_pct = float(prefs.get("max_total_drawdown_pct") or 10.0)
+        max_open_trades = int(prefs.get("max_open_trades") or 3)
 
-            state = RiskGuard._get_or_init_state(user_id, current_balance)
-            starting_balance = float(state.get("starting_balance", current_balance))
-            daily_start_balance = float(state.get("daily_start_balance", current_balance))
+        state = _get_or_init_state(user_id, current_balance)
+        starting_balance = float(state.get("starting_balance") or current_balance)
+        daily_start_balance = float(state.get("daily_start_balance") or current_balance)
 
-            # Nombre de positions ouvertes
-            open_count_res = supabase.table("pending_signals").select("id", count="exact")\
-                .eq("user_id", user_id).eq("status", "executed").execute()
-            open_count = open_count_res.count or 0
+        open_count = _count_open_trades(user_id)
+        if open_count >= max_open_trades:
+            return False, f"Nombre max de positions ouvertes atteint ({max_open_trades})."
 
-            if open_count >= max_open_trades:
-                return False, f"Nombre maximum de positions ouvertes atteint ({max_open_trades})"
+        if daily_start_balance > 0:
+            daily_loss_pct = (daily_start_balance - current_balance) / daily_start_balance * 100
+            if daily_loss_pct >= max_daily_loss_pct:
+                return False, f"Limite de perte journalière atteinte ({daily_loss_pct:.2f}% ≥ {max_daily_loss_pct}%)."
 
-            # Perte journalière
-            if daily_start_balance > 0:
-                daily_loss_pct = (daily_start_balance - current_balance) / daily_start_balance * 100
-                if daily_loss_pct >= max_daily_loss_pct:
-                    return False, f"Limite de perte journalière atteinte ({daily_loss_pct:.2f}%)"
+        if starting_balance > 0:
+            total_dd_pct = (starting_balance - current_balance) / starting_balance * 100
+            if total_dd_pct >= max_drawdown_pct:
+                return False, f"Plafond de drawdown total atteint ({total_dd_pct:.2f}% ≥ {max_drawdown_pct}%)."
 
-            # Drawdown total
-            if starting_balance > 0:
-                total_dd_pct = (starting_balance - current_balance) / starting_balance * 100
-                if total_dd_pct >= max_drawdown_pct:
-                    return False, f"Plafond de drawdown total atteint ({total_dd_pct:.2f}%)"
-
-            return True, ""
-
-        except Exception as e:
-            print(f"❌ RiskGuard error: {e}")
-            return False, "Erreur lors de la vérification du risque - trade bloqué par sécurité"
+        return True, ""
+    except Exception as e:
+        # Fail-CLOSED volontaire : un garde-fou de risque qui laisse passer
+        # en cas de doute perd tout son sens. Mieux vaut bloquer un trade
+        # par précaution (l'utilisateur peut retenter) qu'ignorer un vrai
+        # problème de calcul de risque.
+        print(f"   ⚠️ risk_guard.can_trade error (fail-closed, trade bloqué): {type(e).__name__}: {e}")
+        return False, "Vérification du risque indisponible temporairement — trade bloqué par précaution."

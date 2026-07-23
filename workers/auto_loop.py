@@ -12,6 +12,7 @@ from workers.signal_guard import recently_sent
 from workers.performance_tracker import check_open_signals_performance
 from utils.market_data import get_last_price
 from database.preferences import get_all_active_preferences, DEFAULT_WATCHLIST
+from database.system_state import is_paused
 
 # Réduite pour tests cloud (tu pourras réélargir après)
 WATCHLIST = [
@@ -109,6 +110,10 @@ async def refresh_collective_data():
 
 
 async def analyze_watchlist_and_notify():
+    if is_paused():
+        print("   🔴 Bot en pause (kill-switch admin) — analyse suspendue.")
+        return
+
     prefs_list = get_all_active_preferences()
 
     # Watchlist effective = union de la watchlist par défaut + toutes les
