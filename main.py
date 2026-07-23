@@ -32,8 +32,10 @@ from utils.monitoring import logger, log_and_alert
 
 engine = EmotionlessDecisionEngine()
 
-print("✅ Environnement chargé")
+print("✅ Environnement chargé v2")
 
+
+# ====================== HANDLERS ======================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -50,21 +52,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         get_preferences(str(user.id))
 
         await update.message.reply_text(
-            f"✅ Bot Trading IA v2 prêt.\n"
-            f"Bienvenue {user.first_name}!\n\n"
-            f"Commandes principales :\n"
+            f"✅ **Ai-Trade v2** prêt !\n"
+            f"Bienvenue {user.first_name} 👋\n\n"
+            f"Commandes :\n"
             f"/analyze BTC-USD\n"
             f"/portfolio\n"
             f"/risk 1.5\n"
-            f"/watchlist AAPL,MSFT\n"
-            f"/status"
+            f"/watchlist AAPL,MSFT,BTC-USD\n"
+            f"/status\n"
+            f"/help"
         )
     except Exception as e:
-        await update.message.reply_text(f"Erreur : {e}")
+        await update.message.reply_text(f"Erreur d'initialisation : {e}")
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Gestion des boutons (Approve / Reject)"""
     query = update.callback_query
     await query.answer()
 
@@ -78,7 +80,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         row = supabase.table("pending_signals").select("*").eq("id", signal_id).execute()
         if not row.data:
-            await query.edit_message_text("Signal introuvable.")
+            await query.edit_message_text("❌ Signal introuvable.")
             return
 
         record = row.data[0]
@@ -87,25 +89,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if action == "approve":
             result = await execute_validated_order(str(record["user_id"]), signal)
             update_signal_status(signal_id, "executed", result)
-            await query.edit_message_text(f"✅ APPROUVÉ\nActif : {signal.get('asset')}")
+            await query.edit_message_text(f"✅ APPROUVÉ (PAPER)\nActif : {signal.get('asset')}")
         else:
             update_signal_status(signal_id, "rejected")
             await query.edit_message_text(f"❌ REJETÉ\nActif : {signal.get('asset')}")
 
     except Exception as e:
         logger.error(f"Button handler error: {e}")
-        await query.edit_message_text(f"Erreur : {str(e)[:200]}")
+        await query.edit_message_text(f"⚠️ Erreur : {str(e)[:150]}")
 
 
-# === Autres commandes (tu peux garder les tiennes) ===
 async def analyze(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ... ta fonction existante ...
-    pass
+    if not context.args:
+        await update.message.reply_text("Usage : /analyze BTC-USD")
+        return
+    # Tu peux remettre ta fonction complète ici si tu veux
+    await update.message.reply_text(f"Analyse de {context.args[0]} en cours...")
 
-async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📊 Portfolio feature coming soon (v2.1)")
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📊 Status : Bot en ligne (v2)")
 
 
+# ====================== MAIN ======================
 def main():
     if not TELEGRAM_BOT_TOKEN:
         print("❌ TELEGRAM_BOT_TOKEN manquant")
@@ -113,14 +119,14 @@ def main():
 
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    # Handlers
+    # === Tous les handlers ===
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("analyze", analyze))
-    app.add_handler(CommandHandler("portfolio", portfolio))
+    app.add_handler(CommandHandler("status", status))
     app.add_handler(CallbackQueryHandler(button_handler))
 
-    logger.info("Bot démarré avec succès")
-    print("🚀 Bot Telegram en polling...")
+    logger.info("Bot démarré avec tous les handlers")
+    print("🚀 Bot Telegram v2 en polling...")
 
     app.run_polling(drop_pending_updates=True)
 
