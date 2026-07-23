@@ -27,3 +27,5 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "")  # format "utilisateur/nom-du-repo"
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+# === Monitoring & Admin ===
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")  # Ton ID Telegram (ex: 123456789)
