@@ -1,3 +1,4 @@
+# run.py
 import asyncio
 import os
 import threading
@@ -11,7 +12,6 @@ from utils.monitoring import logger, log_and_alert
 
 api = FastAPI(title="Ai-Trade Improved")
 
-# Monte le webhook
 api.mount("/webhook", webhook_app)
 
 
@@ -28,7 +28,7 @@ async def health():
 
 def start_api():
     port = int(os.getenv("PORT", "10000"))
-    logger.info("api_server_starting", port=port)
+    print(f"API server starting on port {port}")
     uvicorn.run(api, host="0.0.0.0", port=port, log_level="info")
 
 
@@ -42,18 +42,15 @@ def start_auto_loop():
 
 
 if __name__ == "__main__":
-    logger.info("ai_trade_bot_starting", version="2.0")
-
+    print("🚀 Ai-Trade v2 (Amélioré) démarré")
+    
     try:
-        # Démarrage des services en parallèle
         threading.Thread(target=start_api, daemon=True).start()
         threading.Thread(target=start_auto_loop, daemon=True).start()
 
-        logger.info("services_started")
-        print("✅ Ai-Trade v2 (avec monitoring) démarré")
-        
+        print("✅ Services lancés")
         run_bot()
 
     except Exception as e:
+        print(f"❌ Erreur critique au démarrage: {e}")
         asyncio.run(log_and_alert(f"Bot crashed on startup: {e}", "CRITICAL"))
-        logger.critical("startup_failed", error=str(e))
