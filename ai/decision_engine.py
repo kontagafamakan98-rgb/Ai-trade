@@ -36,16 +36,36 @@ class EmotionlessDecisionEngine:
             out.append(v * k + out[-1] * (1 - k))
         return out
 
+    def _macd(self, closes, fast=12, slow=26, signal=9):
+        """Retourne (macd_line, signal_line, histogram) — dernières valeurs."""
+        ema_fast = self._ema(closes, fast)
+        ema_slow = self._ema(closes, slow)
+        macd_series = [f - s for f, s in zip(ema_fast, ema_slow)]
+        signal_series = self._ema(macd_series, signal)
+        macd_line = macd_series[-1]
+        signal_line = signal_series[-1]
+        return macd_line, signal_line, macd_line - signal_line
+
+    def _bollinger(self, closes, period=20, num_std=2):
+        """Retourne (bande_basse, moyenne, bande_haute) sur les `period` dernières valeurs."""
+        window = closes[-period:]
+        mean = sum(window) / len(window)
+        variance = sum((c - mean) ** 2 for c in window) / len(window)
+        std = variance ** 0.5
+        return mean - num_std * std, mean, mean + num_std * std
+
     def analyze(self, asset: str) -> Optional[Dict[str, Any]]:
         # Bougies horaires (au lieu de journalières) : un croisement RSI/EMA
         # peut désormais se former plusieurs fois par jour au lieu d'une seule.
         closes = get_closes(asset, interval="1h")
-        if len(closes) < 30:
+        if len(closes) < 40:  # marge de sécurité pour la stabilisation du MACD
             return None
 
         rsi = self._rsi(closes)
         ema20 = self._ema(closes, 20)[-1]
         ema50 = self._ema(closes, 50)[-1]
+        macd_line, macd_signal, macd_hist = self._macd(closes)
+        bb_lower, bb_mid, bb_upper = self._bollinger(closes)
         entry = closes[-1]
 
         diffs = [abs(closes[i] - closes[i - 1]) for i in range(1, len(closes))]
@@ -56,19 +76,35 @@ class EmotionlessDecisionEngine:
         ta_score = 0.0
         reasons = []
 
+        # Poids rééquilibrés maintenant que 4 indicateurs contribuent (au lieu
+        # de 2) — évite de saturer le score en permanence à l'extrême.
         if rsi < 32:
-            ta_score += 0.30
+            ta_score += 0.22
             reasons.append(f"RSI oversold ({rsi:.1f})")
         elif rsi > 68:
-            ta_score -= 0.25
+            ta_score -= 0.20
             reasons.append(f"RSI overbought ({rsi:.1f})")
 
         if ema20 > ema50:
-            ta_score += 0.25
+            ta_score += 0.18
             reasons.append("EMA20 > EMA50 (bullish)")
         else:
-            ta_score -= 0.15
+            ta_score -= 0.12
             reasons.append("EMA20 < EMA50 (bearish)")
+
+        if macd_line > macd_signal:
+            ta_score += 0.18
+            reasons.append(f"MACD > Signal ({macd_hist:+.4f}, bullish)")
+        else:
+            ta_score -= 0.15
+            reasons.append(f"MACD < Signal ({macd_hist:+.4f}, bearish)")
+
+        if entry <= bb_lower:
+            ta_score += 0.17
+            reasons.append("Prix ≤ bande de Bollinger basse (survente)")
+        elif entry >= bb_upper:
+            ta_score -= 0.17
+            reasons.append("Prix ≥ bande de Bollinger haute (surachat)")
 
         insights = get_recent_insights(limit=20)
         llm_result = self._news_cache.get(asset, insights)
