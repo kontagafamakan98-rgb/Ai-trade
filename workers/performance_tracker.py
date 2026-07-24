@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from database.supabase_client import supabase
 from utils.market_data import get_last_price
 from execution.self_review import update_lessons
+from execution.trailing_stop import apply_trailing_stop
 
 
 async def check_open_signals_performance():
@@ -21,9 +22,20 @@ async def check_open_signals_performance():
 
     for item in open_signals:
         sig_id = item["id"]
+
+        # Trailing stop : resserre le SL si la position est favorable,
+        # AVANT de vérifier si TP/SL est touché (donc avec le SL à jour).
+        try:
+            updated_signal = apply_trailing_stop(item)
+            if updated_signal:
+                item["signal"] = updated_signal
+        except Exception as e:
+            print(f"   ❌ Erreur trailing stop : {e}")
+
         signal = item.get("signal") or {}
         asset = signal.get("asset")
         direction = signal.get("direction")
+        entry = float(signal.get("entry") or 0)
         tp = float(signal.get("take_profit") or 0)
         sl = float(signal.get("stop_loss") or 0)
 
@@ -39,12 +51,14 @@ async def check_open_signals_performance():
             if current_price >= tp:
                 outcome = "won"
             elif current_price <= sl:
-                outcome = "lost"
+                # Trailing stop actif = SL déjà remonté au-dessus de l'entrée
+                # -> sortie protégée, pas une vraie perte.
+                outcome = "won" if sl >= entry else "lost"
         elif direction == "SELL":
             if current_price <= tp:
                 outcome = "won"
             elif current_price >= sl:
-                outcome = "lost"
+                outcome = "won" if sl <= entry else "lost"
 
         if outcome:
             print(
