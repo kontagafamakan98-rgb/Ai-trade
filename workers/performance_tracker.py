@@ -3,6 +3,7 @@ from database.supabase_client import supabase
 from utils.market_data import get_last_price
 from execution.self_review import update_lessons
 from execution.trailing_stop import apply_trailing_stop
+from execution.partial_take_profit import apply_partial_take_profit
 
 
 async def check_open_signals_performance():
@@ -31,6 +32,13 @@ async def check_open_signals_performance():
                 item["signal"] = updated_signal
         except Exception as e:
             print(f"   ❌ Erreur trailing stop : {e}")
+
+        try:
+            updated_signal = apply_partial_take_profit(item, item.get("user_id"))
+            if updated_signal:
+                item["signal"] = updated_signal
+        except Exception as e:
+            print(f"   ❌ Erreur take-profit partiel : {e}")
 
         signal = item.get("signal") or {}
         asset = signal.get("asset")
