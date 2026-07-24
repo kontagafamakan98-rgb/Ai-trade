@@ -20,6 +20,42 @@ from database.preferences import get_preferences
 
 TABLE = "user_risk_state"
 
+# Groupes de corrélation STATIQUES (pas un vrai calcul statistique de
+# corrélation sur historique de prix — ce serait un chantier à part entière.
+# Ici, une simplification honnête et transparente : des actifs du même
+# groupe ont tendance à bouger ensemble, donc on limite le nombre de
+# positions ouvertes simultanément dans un même groupe).
+CORRELATION_GROUPS = {
+    "us_tech": {"AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA"},
+    "crypto_major": {"BTC-USD", "ETH-USD"},
+    "crypto_alt": {"SOL-USD", "BNB-USD", "XRP-USD", "DOGE-USD"},
+}
+MAX_CORRELATED_POSITIONS = 2  # max de positions ouvertes dans un même groupe
+
+
+def _correlation_group(asset: str) -> str:
+    asset = asset.upper()
+    for group_name, members in CORRELATION_GROUPS.items():
+        if asset in members:
+            return group_name
+    return "other"
+
+
+def _count_open_in_group(user_id: str, group: str) -> int:
+    res = (
+        supabase.table("pending_signals")
+        .select("signal")
+        .eq("user_id", user_id)
+        .eq("status", "executed")
+        .execute()
+    )
+    count = 0
+    for row in (res.data or []):
+        sig = row.get("signal") or {}
+        if _correlation_group(str(sig.get("asset", "")).upper()) == group:
+            count += 1
+    return count
+
 
 def _get_or_init_state(user_id: str, balance: float) -> dict:
     res = supabase.table(TABLE).select("*").eq("user_id", user_id).limit(1).execute()
@@ -58,7 +94,7 @@ def _count_open_trades(user_id: str) -> int:
     return res.count or 0
 
 
-def can_trade(user_id: str, current_balance: float) -> Tuple[bool, str]:
+def can_trade(user_id: str, current_balance: float, asset: str = "") -> Tuple[bool, str]:
     """Retourne (True, '') si l'utilisateur peut trader, sinon (False, raison)."""
     try:
         prefs = get_preferences(user_id)
@@ -73,6 +109,17 @@ def can_trade(user_id: str, current_balance: float) -> Tuple[bool, str]:
         open_count = _count_open_trades(user_id)
         if open_count >= max_open_trades:
             return False, f"Nombre max de positions ouvertes atteint ({max_open_trades})."
+
+        if asset:
+            group = _correlation_group(asset)
+            if group != "other":
+                group_count = _count_open_in_group(user_id, group)
+                if group_count >= MAX_CORRELATED_POSITIONS:
+                    return False, (
+                        f"Trop de positions déjà ouvertes sur des actifs corrélés "
+                        f"({group}, max {MAX_CORRELATED_POSITIONS}) — évite de tout "
+                        f"miser sur le même mouvement de marché."
+                    )
 
         if daily_start_balance > 0:
             daily_loss_pct = (daily_start_balance - current_balance) / daily_start_balance * 100

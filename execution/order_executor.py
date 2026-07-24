@@ -196,7 +196,7 @@ async def execute_validated_order(
     except Exception:
         pass  # repli silencieux sur `equity` déjà calculée plus haut
 
-    allowed, reason = risk_can_trade(str(user_id), real_balance)
+    allowed, reason = risk_can_trade(str(user_id), real_balance, asset=str(signal.get("asset", "")))
     if not allowed:
         return {
             **base,

@@ -22,7 +22,7 @@ from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
 from execution.order_executor import execute_validated_order, get_alpaca_client, get_user_equity
 from utils.market_data import get_last_price
-from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
+from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist, apply_mode
 from database.knowledge_base import upsert_note, list_notes
 from database.broker_credentials import set_broker_credentials, get_broker_credentials, delete_broker_credentials
 from execution.risk_guard import can_trade as risk_can_trade, _get_or_init_state as risk_get_state
@@ -485,6 +485,39 @@ async def portfolio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Erreur : {e}")
 
 
+async def mode_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+
+    if not context.args:
+        prefs = get_preferences(user_id)
+        await update.message.reply_text(
+            f"⚙️ Réglages actuels :\n"
+            f"Risque/trade : {prefs.get('risk_pct')}%\n"
+            f"Perte max/jour : {prefs.get('max_daily_loss_pct', 5.0)}%\n"
+            f"Drawdown max : {prefs.get('max_total_drawdown_pct', 10.0)}%\n"
+            f"Confiance min : {prefs.get('min_confidence')}\n"
+            f"Positions max : {prefs.get('max_open_trades', 3)}\n\n"
+            f"Changer : /mode conservateur | /mode equilibre | /mode agressif"
+        )
+        return
+
+    result = apply_mode(user_id, context.args[0])
+    if not result:
+        await update.message.reply_text(
+            "❌ Mode inconnu. Choix : conservateur, equilibre, agressif"
+        )
+        return
+
+    await update.message.reply_text(
+        f"✅ Mode appliqué : {context.args[0].lower()}\n\n"
+        f"Risque/trade : {result.get('risk_pct')}%\n"
+        f"Perte max/jour : {result.get('max_daily_loss_pct')}%\n"
+        f"Drawdown max : {result.get('max_total_drawdown_pct')}%\n"
+        f"Confiance min : {result.get('min_confidence')}\n"
+        f"Positions max : {result.get('max_open_trades')}"
+    )
+
+
 async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     try:
@@ -636,6 +669,7 @@ def main():
     app.add_handler(CommandHandler("notes", notes_cmd))
     app.add_handler(CommandHandler("admin", admin_cmd))
     app.add_handler(CommandHandler("portfolio", portfolio_cmd))
+    app.add_handler(CommandHandler("mode", mode_cmd))
     app.add_handler(CommandHandler("connect_broker", connect_broker))
     app.add_handler(CommandHandler("disconnect_broker", disconnect_broker))
     app.add_handler(CommandHandler("broker_status", broker_status))

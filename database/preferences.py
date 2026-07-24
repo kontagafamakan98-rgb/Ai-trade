@@ -54,6 +54,46 @@ def set_risk(
     return get_preferences(user_id)
 
 
+RISK_MODES = {
+    "conservateur": {
+        "risk_pct": 0.5,
+        "max_daily_loss_pct": 3.0,
+        "max_total_drawdown_pct": 6.0,
+        "min_confidence": 0.65,
+        "max_open_trades": 2,
+    },
+    "equilibre": {
+        "risk_pct": 1.0,
+        "max_daily_loss_pct": 5.0,
+        "max_total_drawdown_pct": 10.0,
+        "min_confidence": 0.55,
+        "max_open_trades": 3,
+    },
+    "agressif": {
+        "risk_pct": 2.0,
+        "max_daily_loss_pct": 8.0,
+        "max_total_drawdown_pct": 15.0,
+        "min_confidence": 0.50,
+        "max_open_trades": 5,
+    },
+}
+
+
+def apply_mode(user_id: str, mode: str) -> Optional[Dict[str, Any]]:
+    """Applique un préréglage complet de risque (voir RISK_MODES).
+    Retourne les préférences mises à jour, ou None si le mode est inconnu."""
+    mode = mode.lower().strip()
+    # tolère les variantes courantes d'accents/orthographe
+    mode = {"équilibré": "equilibre", "équilibre": "equilibre", "balanced": "equilibre",
+            "conservative": "conservateur", "aggressive": "agressif"}.get(mode, mode)
+    preset = RISK_MODES.get(mode)
+    if not preset:
+        return None
+    payload = {"user_id": user_id, **preset}
+    supabase.table("user_preferences").upsert(payload).execute()
+    return get_preferences(user_id)
+
+
 def get_all_active_preferences() -> List[Dict[str, Any]]:
     """Tous les users paper avec Telegram + prefs."""
     users = (
