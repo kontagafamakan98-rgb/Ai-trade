@@ -10,7 +10,7 @@ from ai.news_analyzer import NewsAnalysisCache
 class EmotionlessDecisionEngine:
     def __init__(self, min_conf: float = MIN_CONFIDENCE):
         self.min_conf = min_conf
-        self._news_cache = NewsAnalysisCache(ttl_seconds=600)
+        self._news_cache = NewsAnalysisCache(ttl_seconds=7200)  # 2h
 
     def _rsi(self, closes, period=14):
         if len(closes) <= period:

@@ -45,7 +45,7 @@ async def get_active_users():
 
 
 _last_web_research = 0.0
-WEB_RESEARCH_EVERY = 3600  # 1h — même logique que le cache LLM, pour ménager le quota
+WEB_RESEARCH_EVERY = 7200  # 2h — évite de retaper la limite journalière du modèle compound
 
 _last_telegram_scan = 0.0
 TELEGRAM_SCAN_EVERY = 1800  # 30 min — scraping simple, pas de quota LLM en jeu
