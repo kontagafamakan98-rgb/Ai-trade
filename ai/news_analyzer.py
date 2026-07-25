@@ -29,6 +29,7 @@ from typing import Dict, Any, List, Optional
 import httpx
 
 from config import GROQ_API_KEY, GEMINI_API_KEY
+from utils.retry import retry_call
 from database.knowledge_base import get_knowledge_context
 
 try:
@@ -110,7 +111,7 @@ def _parse_single(data: dict) -> Dict[str, Any]:
 # Groq — appels bruts (bas niveau)
 # ---------------------------------------------------------------------------
 
-def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
+def _groq_call_raw(model_id: str, prompt: str, max_tokens: int) -> dict:
     resp = _client.chat.completions.create(
         model=model_id,
         max_tokens=max_tokens,
@@ -124,6 +125,16 @@ def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
     text = resp.choices[0].message.content.strip()
     text = text.replace("```json", "").replace("```", "").strip()
     return json.loads(text)
+
+
+def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
+    # Retry sûr : c'est une simple lecture/analyse, aucun effet de bord,
+    # donc rien à risquer à retenter (contrairement à un ordre broker).
+    # Un JSON mal formé une fois n'implique pas qu'il le sera à nouveau.
+    return retry_call(
+        _groq_call_raw, model_id, prompt, max_tokens,
+        retries=2, base_delay=0.8, label=f"groq:{model_id}",
+    )
 
 
 # ---------------------------------------------------------------------------
