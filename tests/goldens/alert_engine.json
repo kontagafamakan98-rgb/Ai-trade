@@ -1,0 +1,162 @@
+{
+  "_comment": "Valeur de référence versionnée : ne pas éditer à la main. Régénérer avec `python scripts/goldens.py --update alert_engine`.",
+  "dataset": "alert_engine",
+  "description": "moteur d'alerte : EMA/ATR sur la série documentée + sortie complète de detect_cross (SL, TP, message)",
+  "values": {
+    "atr": {
+      "14": 4.730046659,
+      "2": 5.695734006,
+      "21": 4.683250324,
+      "5": 4.953372086
+    },
+    "constants": {
+      "ALERT_CONFIDENCE": 0.7,
+      "ATR_PERIOD": 14,
+      "EMA_FAST": 20,
+      "EMA_SLOW": 50,
+      "EXTERNAL_SOURCE": "alert_webhook",
+      "INTERNAL_SOURCE": "internal_alert_engine",
+      "SL_ATR_MULT": 1.5,
+      "TP_ATR_MULT": 3.0
+    },
+    "crosses": {
+      "documented_bearish": {
+        "action": "sell",
+        "atr": 5.85167,
+        "ema_fast": 98.09524,
+        "ema_slow": 99.21569,
+        "message": "EMA20 crossunder EMA50 (baissier)",
+        "price": 80.0,
+        "stop_loss": 88.7775,
+        "take_profit": 62.44499
+      },
+      "documented_bullish": {
+        "action": "buy",
+        "atr": 5.78024,
+        "ema_fast": 101.90476,
+        "ema_slow": 100.78431,
+        "message": "EMA20 crossover EMA50 (haussier)",
+        "price": 120.0,
+        "stop_loss": 111.32964,
+        "take_profit": 137.34072
+      },
+      "documented_bullish_custom_periods": {
+        "action": "buy",
+        "atr": 8.12261,
+        "ema_fast": 106.66667,
+        "ema_slow": 103.63636,
+        "message": "EMA5 crossover EMA10 (haussier)",
+        "price": 120.0,
+        "stop_loss": 107.81609,
+        "take_profit": 144.36782
+      },
+      "documented_bullish_displaced_multipliers": {
+        "action": "buy",
+        "atr": 5.78024,
+        "ema_fast": 101.90476,
+        "ema_slow": 100.78431,
+        "message": "EMA20 crossover EMA50 (haussier)",
+        "price": 120.0,
+        "stop_loss": 114.21976,
+        "take_profit": 131.56048
+      },
+      "flat_market": null,
+      "hand_check_bearish": {
+        "action": "sell",
+        "atr": 5.0,
+        "ema_fast": 13.33333,
+        "ema_slow": 15.0,
+        "message": "EMA2 crossunder EMA3 (baissier)",
+        "price": 10.0,
+        "stop_loss": 17.5,
+        "take_profit": -5.0
+      },
+      "hand_check_bullish": {
+        "action": "buy",
+        "atr": 5.0,
+        "ema_fast": 16.66667,
+        "ema_slow": 15.0,
+        "message": "EMA2 crossover EMA3 (haussier)",
+        "price": 20.0,
+        "stop_loss": 12.5,
+        "take_profit": 35.0
+      },
+      "none_on_level_series": null
+    },
+    "crossing_series": {
+      "amplitude": 20.0,
+      "formula": "close[i]=100 (i<n-1) et close[n-1]=100+/-amplitude ; high=close+1+(i%3) ; low=close-1-(i%4)",
+      "length": 60
+    },
+    "ema_fast": [
+      105.7,
+      106.3,
+      106.557142857,
+      106.885034014,
+      107.276935536,
+      107.726751199,
+      108.228965371,
+      108.778587716,
+      109.371103172,
+      109.621474299,
+      109.943238651,
+      110.329596875,
+      110.774397172,
+      111.272073632,
+      111.817590429,
+      112.406391341,
+      112.653401689,
+      112.972125338,
+      113.355732448,
+      113.798043644,
+      114.293468059,
+      114.836947291,
+      115.423904692,
+      115.669247102,
+      115.986461664,
+      116.36870341,
+      116.809779276,
+      117.304086012,
+      117.846554011,
+      118.432596486,
+      118.677111106,
+      118.993576715,
+      119.375140837,
+      119.815603615,
+      120.309355651,
+      120.85132178,
+      121.436910182,
+      121.681013974,
+      121.997107881,
+      122.378335702,
+      122.818494207
+    ],
+    "ema_slow": [
+      112.18,
+      112.565098039,
+      112.974309881,
+      113.406689885,
+      113.861329498,
+      114.337355792,
+      114.833930075,
+      115.193383797,
+      115.577956982,
+      115.986664551,
+      116.418560059
+    ],
+    "series": {
+      "formula": "close[i]=100+(i%7)+(i//7)*3 ; high=close+1+(i%3) ; low=close-1-(i%4)",
+      "length": 60
+    },
+    "true_ranges_head": [
+      2.0,
+      4.0,
+      6.0,
+      5.0,
+      3.0,
+      5.0,
+      4.0,
+      7.0
+    ]
+  }
+}

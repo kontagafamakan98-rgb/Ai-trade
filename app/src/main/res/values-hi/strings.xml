@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">AI ट्रेडिंग टर्मिनल</string>
+    <string name="paper_balance">डेमो बैलेंस</string>
+    <string name="tab_terminal">टर्मिनल</string>
+    <string name="tab_insights">AI विश्लेषण</string>
+    <string name="tab_risk">जोखिम प्रबंधन</string>
+    <string name="tab_chat">AI चैट और स्कैन</string>
+    <string name="tab_cloud">क्लाउड सिंक और VIP</string>
+    <string name="engine_active">इंजन सक्रिय</string>
+    <string name="engine_stopped">इंजन बंद</string>
+    <string name="start_bot">AI बॉट शुरू करें</string>
+    <string name="stop_bot">AI बॉट रोकें</string>
+    <string name="watchlist_title">वॉचलिस्ट (चार्ट देखने के लिए चुनें)</string>
+    <string name="sync_rates">लाइव भाव अपडेट करें</string>
+    <string name="chart_title">लाइव मार्केट चार्ट</string>
+    <string name="signals_title">पहचाने गए ट्रेडिंग सिग्नल</string>
+    <string name="no_signals_yet">अभी तक कोई सिग्नल नहीं मिला।</string>
+    <string name="buy">खरीदें (BUY)</string>
+    <string name="sell">बेचें (SELL)</string>
+    <string name="status_executed">निष्पादित</string>
+    <string name="status_pending">लंबित</string>
+    <string name="status_blocked_risk">जोखिम अवरुद्ध</string>
+    <string name="insights_title">भू-राजनीतिक और AI भावना विश्लेषण</string>
+    <string name="scan_news_btn">AI समाचार स्कैन चलाएं</string>
+    <string name="scanning_news">Gemini समाचारों का विश्लेषण कर रहा है...</string>
+    <string name="multi_broker_title">मल्टी-ब्रोकर कॉन्फ़िगरेशन</string>
+    <string name="multi_broker_subtitle">स्वचालित ट्रेडिंग के लिए अपने पसंदीदा ब्रोकर को जोड़ें।</string>
+    <string name="active_broker">सक्रिय ब्रोकर</string>
+    <string name="select_broker">ब्रोकर चुनें:</string>
+    <string name="save_broker_config">ब्रोकर कॉन्फ़िगरेशन सहेजें</string>
+    <string name="simulation_mode">सिमुलेशन मोड (पेपर ट्रेडिंग)</string>
+    <string name="live_mode_warning">ब्रोकर पर वास्तविक ऑर्डर निष्पादित होंगे</string>
+    <string name="language_settings_title">एप्लिकेशन भाषा</string>
+    <string name="language_settings_subtitle">इंटरफ़ेस के लिए अपनी पसंदीदा भाषा चुनें।</string>
+    <string name="risk_settings_title">जोखिम प्रबंधन सेटिंग्स</string>
+    <string name="risk_pct_label" formatted="false">प्रति ट्रेड जोखिम (%)</string>
+    <string name="min_confidence_label">न्यूनतम AI विश्वास (0.0 - 1.0)</string>
+    <string name="max_daily_loss_label" formatted="false">अधिकतम दैनिक हानि (%)</string>
+    <string name="max_drawdown_label" formatted="false">अधिकतम कुल ड्रॉडाउन (%)</string>
+    <string name="max_open_trades_label">अधिकतम खुली पोजीशन</string>
+    <string name="save_risk_btn">जोखिम पैरामीटर सहेजें</string>
+    <string name="log_terminal_title">इंजन निष्पादन लॉग</string>
+    <string name="clear_logs_btn">लॉग साफ़ करें</string>
+    <string name="ai_chat_title">AI रणनीति और बाजार सहायक</string>
+    <string name="ai_chat_subtitle">बाजार के रुझान और समाचारों पर सवाल पूछें।</string>
+    <string name="chat_placeholder">BTC, AAPL या ब्याज दरों के बारे में पूछें...</string>
+    <string name="send_btn">भेजें</string>
+    <string name="vip_cloud_title">क्लाउड सिंक और VIP एक्सेस</string>
+    <string name="vip_cloud_subtitle">अपनी रणनीतियों का बैकअप लें और क्लाउड सिंक करें।</string>
+    <string name="sync_now_btn">अभी क्लाउड सिंक करें</string>
+    <string name="portfolio_performance_title">पोर्टफोलियो प्रदर्शन और इक्विटी कर्व</string>
+    <string name="portfolio_performance_subtitle">ट्रेडिंग इतिहास डेटा पर आधारित वास्तविक समय इक्विटी ट्रैकिंग।</string>
+    <string name="total_equity">कुल इक्विटी</string>
+    <string name="realized_pnl">प्राप्त लाभ/हानि</string>
+    <string name="win_rate">जीत दर</string>
+    <string name="total_trades">कुल ट्रेड</string>
+    <string name="entry_label">प्रवेश मूल्य</string>
+    <string name="stop_loss_label">स्टॉप लॉस</string>
+    <string name="take_profit_label">टेक प्रॉफिट</string>
+    <string name="confidence_label">विश्वास</string>
+    <string name="price_label">मूल्य</string>
+    <string name="no_logs_yet">कोई लॉग नहीं। इंजन शुरू करें।</string>
+    <string name="run_gemini_analysis">GEMINI समाचार विश्लेषण चलाएं</string>
+    <string name="no_insights_yet">कोई विश्लेषण उपलब्ध नहीं है।</string>
+    <string name="current_equity_label">वर्तमान इक्विटी</string>
+    <string name="max_drawdown_limit_label">अधिकतम ड्रॉडाउन सीमा</string>
+    <string name="current_drawdown_label">वर्तमान ड्रॉडाउन</string>
+    <string name="save_risk_parameters">जोखिम पैरामीटर सहेजें</string>
+    <string name="configuring_broker">कॉन्फ़िगर कर रहे हैं:</string>
+    <string name="server_gateway_url_label">सर्वर गेटवे URL</string>
+    <string name="save_broker_configuration">ब्रोकर कॉन्फ़िगरेशन सहेजें</string>
+    <string name="reset_entire_trading_data">सभी ट्रेडिंग डेटा रीसेट करें</string>
+    <string name="vip_feature_locked_title">VIP सुविधा लॉक है</string>
+    <string name="search_grounding_label">लाइव वेब खोज</string>
+    <string name="maps_locator_label">मैप्स वित्तीय केंद्र खोजक</string>
+    <string name="deep_reasoning_label">गहन तर्क High-Thinking</string>
+    <string name="flash_mode_label">फास्ट फ्लैश मोड</string>
+    <string name="chat_input_placeholder">स्टॉक, क्रिप्टो, चार्ट के बारे में पूछें...</string>
+    <string name="quant_backtest_title">क्वांट बैकटेस्ट और वॉक-फॉरवर्ड इंजन</string>
+    <string name="quant_backtest_subtitle">आउट-ऑफ-सैंपल सत्यापन और बाय एंड होल्ड तुलना</string>
+    <string name="strategy_return">रणनीति का रिटर्न</string>
+    <string name="benchmark_return">बेंचमार्क (Buy &amp; Hold)</string>
+    <string name="sharpe_ratio">शार्प अनुपात</string>
+    <string name="profit_factor">लाभ कारक</string>
+    <string name="max_drawdown">अधिकतम ड्रॉडाउन</string>
+    <string name="system_health_title">सिस्टम निगरानी और वर्कर इंफ्रा</string>
+    <string name="reset_circuit_breaker">सर्किट ब्रेकर रीसेट करें</string>
+    <string name="worker_queue_throughput">वर्कर कतार थ्रूपुट</string>
+    <string name="jobs_processed">कार्य संसाधित हुए</string>
+    <string name="memory_usage">रैम (RAM) उपयोग</string>
+    <string name="broker_state">ब्रोकर स्थिति</string>
+    <string name="quant_memory_title">विश्लेषणात्मक मेमोरी और लर्निंग लूप</string>
+    <string name="quant_memory_subtitle">बाजार व्यवस्था के आधार पर प्रदर्शन रजिस्ट्री</string>
+    <string name="best_regime">सर्वश्रेष्ठ बाजार व्यवस्था</string>
+    <string name="ai_accuracy">उच्च विश्वास AI सटीकता</string>
+    <string name="pay_with_paypal">PayPal से भुगतान करें</string>
+    <string name="google_pay_sandbox">Google Pay और सैंडबॉक्स कार्ड</string>
+    <string name="cancel_btn">रद्द करें</string>
+    <string name="firebase_auth_title">Firebase प्रमाणीकरण</string>
+    <string name="sign_in_with_google">Google के साथ साइन इन करें</string>
+    <string name="sign_out_from_firebase">Firebase से साइन आउट करें</string>
+    <string name="firestore_db_sync_title">Firestore DB सिंक</string>
+    <string name="elite_vip_license_title">एलीट VIP लाइसेंस</string>
+    <string name="activate_vip_sub">ELITE VIP सदस्यता सक्रिय करें</string>
+    <string name="demo_account">डेमो खाता</string>
+    <string name="demo_balance">डेमो खाते का संतुलन</string>
+    <string name="reset_demo_capital">डेमो पूंजी रीसेट करें</string>
+    <string name="set_initial_capital">नई डेमो पूंजी ($)</string>
+    <string name="update_demo_capital_btn">डेमो बैलेंस अपडेट करें</string>
+    <string name="manage_demo_account">डेमो खाता प्रबंधन</string>
+    <string name="live_broker_account">लाइव ब्रोकर खाता</string>
+    <string name="gemini_parameters_title">Gemini AI मापदंड</string>
+    <string name="vip_locked_text">यह सुविधा VIP Pro सदस्यों के लिए सुरक्षित है। वेब खोज, गहन तर्क और तकनीकी छवि स्कैन को अनलॉक करने के लिए अपग्रेड करें।</string>
+    <string name="institutional_grade_title">संस्थागत स्तर की AI ट्रेडिंग क्षमताएं प्राप्त करें। कम विलंबता संकेतों के साथ महत्वपूर्ण बढ़त हासिल करें।</string>
+    <string name="monthly_vip">मासिक VIP</string>
+    <string name="annual_vip">वार्षिक VIP</string>
+    <string name="lifetime_elite">लाइफटाइम एलीट</string>
+    <string name="best_value">सर्वश्रेष्ठ मूल्य</string>
+    <string name="pay_pal_supported">व्यापारी खाता: makemoney0598@gmail.com (PayPal समर्थित)</string>
+    <string name="vip_active_badge">VIP सदस्य सक्रिय</string>
+    <string name="danger_zone">खतरे का क्षेत्र</string>
+    <string name="keys_configured_label">कुंजियाँ</string>
+    <string name="connected_status_label">कनेक्टेड</string>
+    <string name="disconnected_status_label">डिसकनेक्टेड</string>
+    <string name="synced_status_label">सिंक हुआ</string>
+    <string name="out_of_sync_status_label">आउट ऑफ सिंक</string>
+    <string name="paper_sim_label">डेमो खाता</string>
+    <string name="live_trading_label">लाइव ब्रोकर</string>
+    <string name="ok_btn">ठीक है</string>
+    <string name="active_label">सक्रिय</string>
+    <string name="vip_pro_label">VIP PRO</string>
+    <string name="free_label">मुफ़्त</string>
+    <string name="gemini_bias">Gemini रुझान</string>
+    <string name="bullish_label">तेजी</string>
+    <string name="bearish_label">मंदी</string>
+    <string name="neutral_label">तटस्थ</string>
+    <string name="score_label">स्कोर</string>
+    <string name="geopolitical_label">भू-राजनीतिक</string>
+    <string name="sentiment_label">भावना</string>
+    <string name="bias_impact_label">रुझान प्रभाव</string>
+    <string name="scanning_metrics">Gemini बाजार मेट्रिक्स को स्कैन कर रहा है...</string>
+    <string name="vip_feature1">उन्नत Gemini Pro डीप-थिंकिंग रीजनिंग मोड</string>
+    <string name="vip_feature2">शून्य-विलंबता लाइव वेब खोज ग्राउंडिंग प्रोटोकॉल</string>
+    <string name="vip_feature3">तकनीकी चार्ट स्कैनर स्क्रीनशॉट नोड</string>
+    <string name="vip_feature4">Google मैप्स GPS वित्तीय हब और ट्रेडिंग डेस्क खोजक</string>
+
+    <string name="badge_live_account">वास्तविक खाता</string>
+    <string name="badge_real_demo">वास्तविक डेमो</string>
+    <string name="badge_paper_sim">सिमुलेशन</string>
+    <string name="simulator_notice">स्थानीय सिम्युलेटर: कीमतें, समाचार और बैकटेस्ट जनरेट किए गए हैं। कोई वास्तविक ऑर्डर नहीं।</string>
+    <string name="broker_demo_available_title">वास्तविक  डेमो खाता उपलब्ध है</string>
+    <string name="broker_demo_available_body">आप वर्तमान में एक स्थानीय सिमुलेटर का उपयोग कर रहे हैं। वास्तविक कीमतों के लिए वास्तविक डेमो मोड सक्रिय करें।</string>
+    <string name="broker_activate_demo_btn">डेमो सक्रिय करें (1-क्लिक)</string>
+    <string name="quick_connect_demo_label">वास्तविक डेमो खाता जोड़ें</string>
+    <string name="quick_connect_demo_subtitle">Alpaca Paper API के माध्यम से लाइव मार्केट डेटा और वास्तविक सिमुलेटेड ऑर्डर निष्पादन सक्षम करें।</string>
+    <string name="chat_welcome_message">AI ट्रेड टर्मिनल में आपका स्वागत है! बाजारों, रणनीतियों या Gemini मोड के बारे में कुछ भी पूछें।</string>
+
+    <!-- Traductions (hi) des écrans. -->
+    <string name="chat_send">भेजें</string>
+    <string name="chat_clear">साफ़ करें</string>
+    <string name="chat_sender_user">आप</string>
+    <string name="chat_sender_gemini">GEMINI एआई सहायक</string>
+    <string name="chat_locked_body" formatted="false">%1$s प्रोटोकॉल केवल VIP Trade प्रीमियम सदस्यों के लिए है। लाइव सर्च, गहन तर्क मोड और छवि तकनीकी विश्लेषण अनलॉक करने के लिए अपग्रेड करें।</string>
+    <string name="chat_attached_pattern" formatted="false">संलग्न: %1$s चार्ट पैटर्न (मल्टीमॉडल मोड सक्रिय)</string>
+    <string name="chat_search_grounding_full">Google लाइव सर्च</string>
+    <string name="chat_maps_grounding_full">Google Maps ग्राउंडिंग</string>
+    <string name="chat_high_thinking_mode">गहन तर्क मोड</string>
+    <string name="insights_error_analysis" formatted="false">बाज़ार संदर्भ का विश्लेषण करने में त्रुटि: %1$s</string>
+    <string name="backtest_strategy_mode">बैकटेस्ट रणनीति मोड:</string>
+    <string name="backtest_monte_carlo_stress">मोंटे कार्लो स्ट्रेस टेस्ट</string>
+    <string name="backtest_trade_logs" formatted="false">ट्रेड लॉग (%1$s)</string>
+    <string name="backtest_btc_benchmark">BTC बेंचमार्क</string>
+    <string name="backtest_alpha">अल्फा (अतिरिक्त रिटर्न)</string>
+    <string name="backtest_beta">बीटा (अस्थिरता)</string>
+    <string name="backtest_sharpe">शार्प</string>
+    <string name="backtest_sortino">सॉर्टिनो</string>
+    <string name="backtest_calmar">कल्मर</string>
+    <string name="backtest_max_dd">अधिकतम गिरावट</string>
+    <string name="monte_carlo_title">मोंटे कार्लो जोखिम क्वांटाइल (500 रन)</string>
+    <string name="monte_carlo_var95" formatted="false">VaR 95%</string>
+    <string name="monte_carlo_var99" formatted="false">VaR 99%</string>
+    <string name="monte_carlo_var_at95" formatted="false">95% पर VaR</string>
+    <string name="monte_carlo_cvar">CVaR (अपेक्षित हानि)</string>
+    <string name="monte_carlo_median_equity">मध्य पूंजी</string>
+    <string name="chart_scanner_title">तकनीकी चार्ट स्कैनर</string>
+    <string name="chart_scanner_select">स्कैन करने के लिए चार्ट स्क्रीनशॉट चुनें:</string>
+    <string name="chart_pattern_double_bottom">डबल बॉटम</string>
+    <string name="chart_pattern_head_shoulders">हेड एंड शोल्डर</string>
+    <string name="chart_pattern_hs">H&amp;S पैटर्न</string>
+    <string name="chart_pattern_rsi_divergence">RSI डाइवर्जेंस</string>
+    <string name="agent_desk_title">मल्टी-एजेंट रिसर्च डेस्क</string>
+    <string name="agent_desk_subtitle">मैक्रो + क्वांट + सेंटिमेंट + जोखिम सहमति इंजन</string>
+    <string name="agent_consensus">एआई सहमति</string>
+    <string name="agent_coordinating">4 एआई रिसर्च एजेंटों का समन्वय हो रहा है...</string>
+    <string name="agent_run_research" formatted="false">मल्टी-एजेंट रिसर्च शुरू करें [%1$s]</string>
+    <string name="agent_target_asset" formatted="false">लक्षित परिसंपत्ति: %1$s</string>
+    <string name="agent_confidence" formatted="false">विश्वास: %1$s%%</string>
+    <string name="agent_entry" formatted="false">एंट्री: %1$s $</string>
+    <string name="agent_stop_loss" formatted="false">स्टॉप लॉस: %1$s $</string>
+    <string name="agent_take_profit" formatted="false">टेक प्रॉफ़िट: %1$s $</string>
+    <string name="agent_cio_synthesis">मुख्य निवेश अधिकारी का निष्कर्ष:</string>
+    <string name="agent_inject_signal">सहमति सिग्नल को लाइव निष्पादन पाइपलाइन में डालें</string>
+    <string name="portfolio_starting_capital">प्रारंभिक पूंजी आधार</string>
+    <string name="portfolio_current_equity">वर्तमान पोर्टफ़ोलियो पूंजी</string>
+    <string name="portfolio_point" formatted="false">बिंदु #%1$s</string>
+    <string name="portfolio_pnl" formatted="false">लाभ/हानि: %1$s %2$s $</string>
+    <string name="portfolio_filter_all">सभी</string>
+    <string name="portfolio_filter_ytd">वर्ष की शुरुआत से</string>
+    <string name="trade_log_history">वॉक-फ़ॉरवर्ड ट्रेड लॉग इतिहास:</string>
+    <string name="trade_log_entry" formatted="false">एंट्री: %1$s $</string>
+    <string name="vip_paypal_active">PayPal सक्रिय</string>
+    <string name="vip_plan_monthly">VIP मासिक स्टार्टर</string>
+    <string name="vip_plan_annual">वार्षिक संस्थागत प्लान</string>
+    <string name="vip_plan_lifetime">Elite आजीवन लाइसेंस</string>
+    <string name="vip_standard_access">मानक पहुँच</string>
+    <string name="vip_save_annual" formatted="false">सालाना %1$d%% बचाएँ</string>
+    <string name="vip_pay_once">एक बार भुगतान</string>
+    <string name="vip_institutional_unlocked">संस्थागत VIP अनलॉक हुआ</string>
+    <string name="vip_license_active">लाइसेंस: Premium सक्रिय (वार्षिक मल्टी-नोड कोर)</string>
+    <string name="vip_all_features_active">सभी गहन तर्क पथ, मल्टीमॉडल स्क्रीनशॉट स्कैनर, रीयल-टाइम वेब क्रॉलर और मानचित्र भू-स्थान सेवाएँ पूरी तरह कार्यरत हैं।</string>
+    <string name="gpay_title">सुरक्षित भुगतान गेटवे</string>
+    <string name="gpay_upgrade_plan" formatted="false">अपग्रेड प्लान: %1$s</string>
+    <string name="gpay_total_charge" formatted="false">कुल शुल्क: %1$s</string>
+    <string name="gpay_merchant_note">सदस्यताएँ सुरक्षित रूप से टर्मिनल के व्यापारी खाते makemoney0598@gmail.com पर भेजी जाती हैं। नीचे अपना भुगतान विकल्प चुनें।</string>
+    <string name="gpay_authorizing">सुरक्षित गेटवे लेनदेन को अधिकृत किया जा रहा है...</string>
+    <string name="gpay_credit_card">क्रेडिट कार्ड</string>
+    <string name="gpay_paypal_logo">PayPal लोगो</string>
+    <string name="firebase_auth_note">सिग्नल, लॉग और प्राथमिकताओं को उपकरणों के बीच सिंक करने के लिए Google Auth से सुरक्षित रूप से साइन इन करें।</string>
+    <string name="firestore_connect_btn">FIRESTORE से कनेक्ट करें</string>
+    <string name="firestore_sync_note" formatted="false">अपने %1$s ट्रेडिंग सिग्नल, लॉग और पोर्टफ़ोलियो जोखिम पैरामीटर Firestore क्लाउड नोड्स के साथ रीयल-टाइम में सिंक करें।</string>
+    <string name="firestore_synced_label">सिंक हो गया</string>
+    <string name="firestore_out_of_sync_label">सिंक नहीं है</string>
+    <string name="learn_title">एआई लर्निंग और स्व-सुधार</string>
+    <string name="learn_subtitle">त्रुटियों का पोस्ट-मॉर्टम विश्लेषण और गतिशील समायोजन</string>
+    <string name="learn_reevaluate">पुनर्मूल्यांकन करें</string>
+    <string name="learn_weights_adjusted">मल्टी-फैक्टर भार पुनः समायोजित:</string>
+    <string name="learn_weight_ta" formatted="false">तकनीकी विश्लेषण: %1$s%%</string>
+    <string name="learn_weight_macro" formatted="false">मैक्रो पक्षपात: %1$s%%</string>
+    <string name="learn_weight_sentiment" formatted="false">एआई सेंटिमेंट: %1$s%%</string>
+    <string name="learn_rules_generated">उत्पन्न स्व-सुधार नियम:</string>
+    <string name="learn_post_mortem_lessons">नवीनतम पोस्ट-मॉर्टम सीख:</string>
+    <string name="exec_mode_live_title">निष्पादन मोड: लाइव (वास्तविक पूंजी)</string>
+    <string name="exec_mode_paper_title">निष्पादन मोड: वर्चुअल सैंडबॉक्स (पेपर)</string>
+    <string name="exec_live_note" formatted="false">ऑर्डर ब्रोकर के वास्तविक सर्वर पर भेजे गए (%1$s)</string>
+    <string name="exec_paper_note">वर्चुअल निष्पादन और लाइव मूल्य फ़ीड के साथ सैंडबॉक्स सिमुलेशन</string>
+    <string name="exec_switch_paper">सैंडबॉक्स पर स्विच करें</string>
+    <string name="exec_switch_live">लाइव पर स्विच करें</string>
+    <string name="health_broker_paper_sandbox">वर्चुअल सैंडबॉक्स (कोई कुंजी आवश्यक नहीं)</string>
+    <string name="health_broker_alpaca_paper">Alpaca डेमो खाता कनेक्टेड</string>
+    <string name="health_broker_alpaca_live">Alpaca प्रोडक्शन खाता सक्रिय</string>
+    <string name="health_broker_unknown">वर्चुअल सैंडबॉक्स</string>
+    <string name="broker_quick_connect">क्विक कनेक्ट</string>
+    <string name="broker_executes_simulated">जोखिम-मुक्त सिम्युलेटेड ऑर्डर निष्पादित करता है</string>
+    <string name="broker_webhook_token">Webhook प्रमाणीकरण टोकन / API कुंजी</string>
+    <string name="broker_password_secret">खाता पासवर्ड / API सीक्रेट</string>
+    <string name="broker_api_key_of" formatted="false">%1$s API कुंजी</string>
+    <string name="broker_api_secret_of" formatted="false">%1$s API सीक्रेट</string>
+    <string name="broker_desc_stocks_crypto">शेयर और क्रिप्टो</string>
+    <string name="broker_desc_global_equities">वैश्विक शेयर और विकल्प</string>
+    <string name="broker_desc_prop_firm">प्रॉप फर्म फंडिंग और चैलेंज</string>
+    <string name="broker_desc_raw_spreads">फ़ॉरेक्स और CFD रॉ स्प्रेड</string>
+    <string name="broker_desc_stp">STP फ़ॉरेक्स और शेयर</string>
+    <string name="broker_desc_ecn">ECN निष्पादन और फ़ॉरेक्स</string>
+    <string name="broker_desc_micro">माइक्रो और मानक खाते</string>
+    <string name="broker_desc_leverage">असीमित लीवरेज फ़ॉरेक्स CFD</string>
+    <string name="broker_desc_dma">डायरेक्ट मार्केट एक्सेस CFD</string>
+    <string name="broker_desc_fixed_floating">स्थिर और फ़्लोटिंग स्प्रेड</string>
+    <string name="broker_desc_multi_asset">मल्टी-एसेट MT5 डेस्क</string>
+    <string name="broker_desc_forex_commodities">फ़ॉरेक्स और कमोडिटी CFD</string>
+    <string name="broker_desc_crypto_spot_derivatives">क्रिप्टो स्पॉट और डेरिवेटिव</string>
+    <string name="broker_desc_crypto_spot_futures">क्रिप्टो स्पॉट और फ़्यूचर्स</string>
+    <string name="broker_desc_proprietary">प्रोप्राइटरी डेस्क / Webhook</string>
+
+
+    <!-- Deuxième vague (hi). -->
+    <string name="signal_ta_summary" formatted="false">तकनीकी विश्लेषण: %1$s</string>
+    <string name="signal_sentiment" formatted="false">भावना: %1$s</string>
+    <string name="status_closed">बंद</string>
+    <string name="action_strong_buy">मजबूत खरीद</string>
+    <string name="action_neutral_hold">तटस्थ होल्ड</string>
+    <string name="action_strong_sell">मजबूत बिक्री</string>
+    <string name="conviction_high">उच्च</string>
+    <string name="conviction_medium">मध्यम</string>
+    <string name="conviction_low">कम</string>
+    <string name="portfolio_vs_baseline" formatted="false">बनाम $%1$s</string>
+    <string name="portfolio_filter_1w">1स</string>
+    <string name="portfolio_filter_1m">1म</string>
+    <string name="price_history_pair_title" formatted="false">%1$s/USD %2$s</string>
+    <string name="quant_memory_stats" formatted="false">%1$s ट्रेड | जीत दर: %2$s%% | PnL: %3$s$%4$s</string>
+    <string name="health_memory_mb" formatted="false">%1$s MB</string>
+    <string name="broker_account_id_of" formatted="false">%1$s खाता आईडी</string>
+    <string name="date_time_pattern_short">dd MMM, HH:mm</string>
+    <string name="vip_price_monthly">$19.99</string>
+    <string name="vip_price_annual">$99.99</string>
+    <string name="vip_price_lifetime">$199.99</string>
+    <string name="vip_period_monthly">$19.99 / माह</string>
+    <string name="vip_period_annual">$99.99 / वर्ष</string>
+
+
+    <!-- Troisième vague (hi). -->
+    <string name="learn_rule_rsi_overbought">नियम 1: RSI 68 से ऊपर होने पर ओवरबॉट खरीद को फ़िल्टर करें।</string>
+    <string name="learn_rule_high_impact_news">नियम 2: उच्च प्रभाव वाली खबरों के दौरान ऑर्डर रोकें।</string>
+    <string name="learn_feedback_active">स्व-शिक्षण फ़ीडबैक लूप सक्रिय है।</string>
+    <string name="log_self_learning_review" formatted="false">स्व-शिक्षण समीक्षा: ट्रेडों का पुनर्मूल्यांकन पूरा हुआ। समायोजित भार: TA %1$s%%, मैक्रो %2$s%%, भावना %3$s%%. विश्वास सीमा: %4$s.</string>
+    <string name="log_backtest_summary" formatted="false">वॉक-फ़ॉरवर्ड बैकटेस्ट (%1$s - %2$s): रिटर्न %3$s%%, शार्प: %4$s, VaR95: %5$s%%.</string>
+    <string name="log_backtest_synthetic">सिंथेटिक बैकटेस्ट: श्रृंखलाएँ स्थानीय रूप से बनी हैं और वास्तविक बाज़ार की प्रतिनिधि नहीं हैं। केवल प्रदर्शन हेतु।</string>
+    <string name="insight_multi_agent_title" formatted="false">मल्टी-एजेंट शोध [%1$s]: %2$s (%3$s%%)</string>
+    <string name="log_multi_agent_research" formatted="false">%1$s के लिए मल्टी-एजेंट शोध परत चलाई गई: सर्वसम्मति = %2$s (%3$s%% विश्वास)</string>
+    <string name="log_consensus_injected" formatted="false">मल्टी-एजेंट शोध की सर्वसम्मति %1$s के लाइव निष्पादन पाइपलाइन में डाली गई</string>
+    <string name="log_circuit_breaker_reset">वैश्विक सर्किट ब्रेकर उपयोगकर्ता द्वारा मैन्युअल रूप से रीसेट किया गया।</string>
+    <string name="log_loop_paused">स्वचालित लूप रोका गया।</string>
+    <string name="log_loop_started">AI ट्रेडिंग बॉट सफलतापूर्वक शुरू हुआ। रीयल-टाइम मल्टी-फैक्टर निगरानी सक्रिय है।</string>
+    <string name="log_loop_queue_started">स्वचालित मल्टी-फैक्टर ट्रेडिंग लूप शुरू हुआ (वर्कर कतार सक्रिय)।</string>
+    <string name="log_portfolio_risk_breach" formatted="false">पोर्टफ़ोलियो जोखिम उल्लंघन: %1$s</string>
+    <string name="log_bootstrap_signal" formatted="false">%1$s के लिए आरंभीकरण सिग्नल बनाया गया (AI इंजन सक्रिय)।</string>
+    <string name="log_cycle_scan" formatted="false">चक्र #%1$s: %2$s जोड़ों की सक्रिय स्कैनिंग। इंजन निगरानी में (न्यूनतम विश्वास फ़िल्टर: %3$s%%)।</string>
+    <string name="log_loop_error" formatted="false">स्वचालित लूप चक्र में त्रुटि: %1$s</string>
+    <string name="log_position_closed_sl" formatted="false">पोज़िशन बंद (स्टॉप लॉस): %1$s %2$s %3$s ने %4$s $ पर SL छुआ। PnL: %5$s $</string>
+    <string name="log_position_closed_tp" formatted="false">पोज़िशन बंद (टेक प्रॉफ़िट): %1$s %2$s %3$s ने %4$s $ पर TP छुआ। PnL: +%5$s $</string>
+    <string name="log_tenant_breach" formatted="false">टेनेंट अलगाव उल्लंघन: %1$s</string>
+    <string name="log_order_executed" formatted="false">ऑर्डर निष्पादित [मोड: %1$s]: %2$s %3$s %4$s, %5$s $ पर। SL: %6$s $, TP: %7$s $</string>
+    <string name="log_signal_blocked" formatted="false">%1$s के लिए सिग्नल अवरुद्ध: %2$s</string>
+    <string name="log_risk_updated">जोखिम पैरामीटर सफलतापूर्वक अपडेट किए गए।</string>
+    <string name="log_watchlist_updated" formatted="false">वॉचलिस्ट बदली गई: %1$s</string>
+    <string name="log_language_updated" formatted="false">भाषा अपडेट की गई: %1$s</string>
+    <string name="log_broker_saved" formatted="false">[%1$s] के लिए ब्रोकर क्रेडेंशियल सहेजे गए (%2$s मोड)।</string>
+    <string name="mode_paper">डेमो</string>
+    <string name="mode_live">लाइव</string>
+    <string name="log_switched_live">सावधान: निष्पादन मोड वास्तविक ब्रोकर ट्रेडिंग पर बदल दिया गया!</string>
+    <string name="log_switched_paper">निष्पादन मोड पेपर / वर्चुअल सैंडबॉक्स ट्रेडिंग पर बदल दिया गया।</string>
+    <string name="log_demo_reset">डेमो खाते की पूंजी 100,000.00 $ पर रीसेट की गई।</string>
+    <string name="log_demo_balance_set" formatted="false">डेमो खाते का बैलेंस %1$s $ पर सेट किया गया</string>
+    <string name="insight_sentiment_api_title" formatted="false">%1$s की भावना (Gemini API)</string>
+    <string name="log_sentiment_api_done" formatted="false">%1$s के लिए Gemini AI भावना विश्लेषण पूरा हुआ: स्कोर = %2$s</string>
+    <string name="error_parsing" formatted="false">पार्सिंग त्रुटि: %1$s</string>
+    <string name="error_null_response">Gemini सर्वर से खाली प्रतिक्रिया मिली</string>
+    <string name="direction_bullish">तेजी</string>
+    <string name="direction_bearish">मंदी</string>
+    <string name="direction_neutral">तटस्थ</string>
+    <string name="insight_simulated_reasoning" formatted="false">गणना किया गया रुझान %1$s है। बाज़ार समाचार %2$s पर स्थिर वॉल्यूम और मजबूत मैक्रो गति दर्शाते हैं। प्रमुख तकनीकी सहायता स्तर कम बिक्री दबाव के साथ समेकन का संकेत देते हैं।</string>
+    <string name="insight_sentiment_simulator_title" formatted="false">%1$s की भावना (बैकअप सिम्युलेटर)</string>
+    <string name="log_sentiment_fallback_done" formatted="false">%1$s के लिए बैकअप भावना विश्लेषण पूरा हुआ: स्कोर = %2$s</string>
+    <string name="log_firebase_signed_in" formatted="false">Firebase के माध्यम से सफल प्रमाणीकरण: Google से साइन इन (%1$s)।</string>
+    <string name="log_firebase_signed_out">Google खाते और Firebase Auth से साइन आउट किया गया।</string>
+    <string name="error_firestore_unauthenticated">Firestore से सिंक नहीं हो सकता: उपयोगकर्ता प्रमाणित नहीं है।</string>
+    <string name="log_firestore_synced" formatted="false">Firestore सिंक सफल। %1$s सिग्नल और लॉग का बैकअप लिया गया।</string>
+    <string name="log_vip_activated">प्रीमियम सदस्यता सक्रिय! Gemini Pro गहन चिंतन मोड, लाइव खोज, मैप्स और चार्ट स्कैनर अनलॉक।</string>
+    <string name="chat_analyzing_image">चार्ट छवि का विश्लेषण हो रहा है…</string>
+    <string name="chat_sim_fallback_header">[स्थानीय AI सिम्युलेटर - लाइव AI के लिए Secrets में Gemini कुंजी जोड़ें]\n\n</string>
+    <string name="chat_sim_image_done">आपके चार्ट स्क्रीनशॉट का सिम्युलेटेड स्कैन पूरा हुआ।\n</string>
+    <string name="chat_sim_image_analysis">तकनीकी विश्लेषण: ब्रेकआउट संरचना मिली। ऐतिहासिक स्तरों पर प्रमुख सहायता मज़बूत बनी हुई है।\n</string>
+    <string name="chat_sim_image_reco">सिफ़ारिश: तेजी की गति मिली। स्थानीय चैनल के ठीक नीचे स्टॉप लॉस रखने पर विचार करें।</string>
+    <string name="chat_sim_regarding" formatted="false">«%1$s» के बारे में\n\n</string>
+    <string name="chat_sim_intro">इस स्थानीय सिम्युलेशन में, मानक सिफ़ारिशें ये हैं:\n</string>
+    <string name="chat_sim_bullet_volume">- वॉचलिस्ट वॉल्यूम मज़बूत गति दिखा रहा है। जोखिम प्रबंधन पैरामीटर पर ध्यान रखें।\n</string>
+    <string name="chat_sim_bullet_modes">- सुविधाएँ देखने के लिए लाइव खोज, गहन चिंतन या कम विलंबता मोड चालू करें।</string>
+
+
+    <string name="signal_reason_blocked_by_risk" formatted="false">जोखिम गार्ड द्वारा अवरुद्ध: %1$s</string>
+
+
+    <!-- प्रदर्शन (hi): प्रारंभिक विश्लेषण और संकेत। -->
+    <string name="demo_insight_cpi_title">CPI मुद्रास्फीति रिपोर्ट</string>
+    <string name="demo_insight_cpi_content" formatted="false">अमेरिकी सीपीआई उम्मीद से थोड़ा कम 2.9% पर आया, जिससे इक्विटी और क्रिप्टो में तेजी का रुख देखा जा रहा है।</string>
+    <string name="demo_insight_geopolitical_title">मध्य पूर्व भू-राजनीतिक घर्षण</string>
+    <string name="demo_insight_geopolitical_content">मध्य पूर्व शिपिंग लेन में भू-राजनीतिक तनाव बढ़ने से वैश्विक आपूर्ति श्रृंखला पर दबाव पड़ रहा है और ऊर्जा क्षेत्र में अस्थिरता आ रही है।</string>
+    <string name="demo_insight_fed_title">फेड ब्याज दर में कटौती की संभावनाएं</string>
+    <string name="demo_insight_fed_content">फेड बैठक के मिनट्स आगामी सितंबर सत्रों में 25 बीपीएस की ब्याज दर कटौती की संभावना का संकेत देते हैं, जिससे निवेशकों का जोखिम लेने का उत्साह बढ़ा है।</string>
+    <string name="demo_signal_btc_ema_ta">EMA20 &gt; EMA50 क्रॉसओवर</string>
+    <string name="demo_signal_btc_ema_geo">क्रिप्टो अपनाने की लहर</string>
+    <string name="demo_signal_btc_ema_sentiment">तेजी का रुख 0.78</string>
+    <string name="demo_signal_btc_ema_reasoning">ETF में मजबूत प्रवाह से लक्ष्य हासिल।</string>
+    <string name="demo_signal_nvda_bull_flag_ta">बुल फ्लैग ब्रेकआउट</string>
+    <string name="demo_signal_nvda_bull_flag_geo">AI इन्फ्रास्ट्रक्चर की मांग</string>
+    <string name="demo_signal_nvda_bull_flag_sentiment">तेजी का रुख 0.85</string>
+    <string name="demo_signal_nvda_bull_flag_reasoning">आय अनुमान से बेहतर रही।</string>
+    <string name="demo_signal_aapl_rsi_ta">RSI ओवरबॉट से गिरावट</string>
+    <string name="demo_signal_aapl_rsi_geo">आपूर्ति श्रृंखला का पुनर्गठन</string>
+    <string name="demo_signal_aapl_rsi_sentiment">तटस्थ 0.52</string>
+    <string name="demo_signal_aapl_rsi_reasoning">टेक रैली में स्टॉप लॉस ट्रिगर हुआ।</string>
+    <string name="demo_signal_eth_macd_ta">MACD हिस्टोग्राम का मोड़</string>
+    <string name="demo_signal_eth_macd_geo">Layer 2 गतिविधि में उछाल</string>
+    <string name="demo_signal_eth_macd_sentiment">तेजी का रुख 0.72</string>
+    <string name="demo_signal_eth_macd_reasoning">नेटवर्क अपग्रेड वॉल्यूम से लक्ष्य हासिल।</string>
+    <string name="demo_signal_tsla_support_ta">$210 सपोर्ट से उछाल</string>
+    <string name="demo_signal_tsla_support_geo">EV सब्सिडी का नवीनीकरण</string>
+    <string name="demo_signal_tsla_support_sentiment">तेजी का रुख 0.68</string>
+    <string name="demo_signal_tsla_support_reasoning">डिलीवरी आंकड़ों के बाद मुनाफावसूली हुई।</string>
+    <string name="demo_signal_googl_double_top_ta">डबल टॉप से अस्वीकृति</string>
+    <string name="demo_signal_googl_double_top_geo">एंटीट्रस्ट सुनवाई</string>
+    <string name="demo_signal_googl_double_top_sentiment">मंदी का रुख 0.41</string>
+    <string name="demo_signal_googl_double_top_reasoning">बाजार में व्यापक तेजी से स्टॉप लॉस ट्रिगर हुआ।</string>
+    <string name="demo_signal_btc_golden_cross_ta">गोल्डन क्रॉस की पुष्टि</string>
+    <string name="demo_signal_btc_golden_cross_geo">मैक्रो लिक्विडिटी में बदलाव</string>
+    <string name="demo_signal_btc_golden_cross_sentiment">बहुत तेजी 0.88</string>
+    <string name="demo_signal_btc_golden_cross_reasoning">पोजीशन निष्पादित और मुनाफे में सक्रिय।</string>
+    <string name="admin_open_button">डेटाबेस प्रशासन</string>
+    <string name="admin_screen_title">Supabase प्रोब</string>
+    <string name="admin_screen_intro">यह स्क्रीन बैकएंड प्रोब चलाती है। जाँच केवल पढ़ती है; राउंड-ट्रिप आपके बताए टेबल पर लिखती, वापस पढ़ती और फिर हटाती है।</string>
+    <string name="admin_close_button">बंद करें</string>
+    <string name="admin_config_title">बैकएंड कनेक्शन</string>
+    <string name="admin_base_url_label">बैकएंड URL</string>
+    <string name="admin_api_key_label">आंतरिक कुंजी</string>
+    <string name="admin_config_note">कुंजी इसी डिवाइस पर एन्क्रिप्ट होकर रहती है और ऐप में कभी शामिल नहीं होती।</string>
+    <string name="admin_save_endpoint">कनेक्शन सहेजें</string>
+    <string name="admin_check_title">केवल पढ़ने वाली जाँच</string>
+    <string name="admin_check_button">जाँच चलाएँ</string>
+    <string name="admin_not_configured">अभी कोई बैकएंड सहेजा नहीं गया: प्रोब को URL और आंतरिक कुंजी चाहिए। दोनों भरने तक कुछ भी नहीं भेजा जाता।</string>
+    <string name="admin_roundtrip_title">राउंड-ट्रिप (लिखती है)</string>
+    <string name="admin_roundtrip_note">आपके बताए टेबल पर लिखती, वापस पढ़ती और प्रोब पंक्तियाँ हटाती है। अज्ञात नाम किसी भी लेखन से पहले अस्वीकार हो जाता है।</string>
+    <string name="admin_roundtrip_tables_label">टेबल या समूह</string>
+    <string name="admin_roundtrip_button">राउंड-ट्रिप चलाएँ</string>
+    <string name="admin_roundtrip_confirm_title">इन टेबल पर लिखें?</string>
+    <string name="admin_roundtrip_confirm_body" formatted="false">राउंड-ट्रिप इन पर लिखती, वापस पढ़ती और हटाती है: %1$s। बची पंक्तियाँ रिपोर्ट में दिखेंगी।</string>
+    <string name="admin_roundtrip_confirm_write">लिखें</string>
+    <string name="admin_report_title">रिपोर्ट</string>
+    <string name="admin_report_passed">सभी जाँचें पास</string>
+    <string name="admin_report_failed">कम से कम एक जाँच विफल</string>
+    <string name="admin_check_ok">पास</string>
+    <string name="admin_check_failed">विफल</string>
+    <string name="admin_report_selection" formatted="false">लक्षित टेबल: %1$s</string>
+    <string name="admin_report_writes" formatted="false">लिखी गई टेबल: %1$s</string>
+    <string name="admin_report_leftovers" formatted="false">डेटाबेस में बची पंक्तियाँ: %1$s</string>
+    <string name="admin_report_none">कोई नहीं</string>
+    <string name="admin_report_command" formatted="false">समतुल्य कमांड: %1$s</string>
+    <string name="admin_error_title">प्रोब ने जवाब नहीं दिया</string>
+    <string name="admin_error_bad_url" formatted="false">बैकएंड URL उपयोग योग्य नहीं: %1$s</string>
+    <string name="admin_error_refused" formatted="false">बैकएंड ने कॉल अस्वीकार कर दिया (%1$s): %2$s</string>
+    <string name="admin_error_unreachable" formatted="false">बैकएंड से संपर्क नहीं हुआ: %1$s</string>
+</resources>

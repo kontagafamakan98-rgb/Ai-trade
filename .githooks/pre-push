@@ -1,0 +1,130 @@
+#!/bin/sh
+# Hook pre-push : refuse un push si les secrets ne sont pas *sains*.
+#
+# Répartition des responsabilités entre les deux hooks du dépôt :
+#
+#   * `.githooks/pre-commit` — empêche d'**introduire** une valeur de secret
+#     dans un commit. Il est volontairement tolérant (aucun secret configuré →
+#     avertissement, pas de blocage) : un commit doit rester possible sur une
+#     machine qui ne détient aucun secret, sinon le hook serait contourné.
+#
+#   * `.githooks/pre-push` — exige l'**audit complet** avant diffusion :
+#     présence, robustesse (longueur, entropie, format Fernet/Telegram),
+#     rotation à jour (registre `security/secret_rotation.json`) et scan
+#     anti-fuite du dépôt. C'est le même contrôle que le pre-deploy
+#     (`python scripts/verify_secrets.py`), mais déclenché automatiquement.
+#
+# Installation (une fois par clone) :
+#     python scripts/pre_commit_secrets.py --install
+# qui configure `core.hooksPath=.githooks` — ce qui active pre-commit ET
+# pre-push d'un seul coup.
+#
+# Machine sans aucun secret (simple clone) : l'audit n'a rien à contrôler, le
+# hook l'annonce et laisse passer (`--skip-if-unconfigured`). Pour exiger le
+# gate même dans ce cas, lancer le push avec :
+#     SECRETS_HOOK_STRICT=1 git push
+#
+# Contournement volontaire et explicite : `git push --no-verify`.
+#
+# CONTRAT DE SORTIE — les trois codes de `scripts/verify_secrets.py`, plus UN
+# code que l'outil n'émet jamais :
+#
+#     0  l'audit a tourné et a conclu : push autorisé
+#     1  l'audit a tourné et a conclu : DÉPLOIEMENT REFUSÉ
+#     2  invocation invalide
+#     3  l'outillage n'a PAS pu démarrer : RIEN n'a été audité
+#
+# 3 existe pour qu'un incident d'OS (fork MSYS2 saturé, interpréteur
+# introuvable, script absent) ne puisse plus se lire comme un refus. Limite à
+# connaître : `git push` ÉCRASE le code de ses hooks à 1, quel qu'il soit — la
+# distinction ne survit donc que si le wrapper est invoqué directement (c'est
+# ainsi que les tests la vérifient). Pour ne jamais la perdre à travers git, le
+# wrapper écrit toujours, sur sa sortie d'erreur, laquelle des quatre issues a
+# eu lieu.
+
+set -u
+
+#: Aucune décision n'a été prise. À ne confondre ni avec 0 (autoriser) ni avec 1
+#: (refus) : le contrat des deux outils s'arrête à 2.
+EXIT_TOOLING=3
+
+# `dirname`, `cd` : les seuls moments où ce hook dépend d'autre chose que du
+# shell. Un échec ici est un incident d'OS, pas un refus — et surtout pas un
+# « je laisse passer ».
+HOOK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || {
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — dossier du hook introuvable, RIEN n'a été audité." >&2
+    exit "$EXIT_TOOLING"
+}
+REPO_ROOT=$(CDPATH= cd -- "$HOOK_DIR/.." && pwd) || {
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — racine du dépôt introuvable depuis $HOOK_DIR, RIEN n'a été audité." >&2
+    exit "$EXIT_TOOLING"
+}
+
+AUDIT="$REPO_ROOT/scripts/verify_secrets.py"
+
+# `python3` d'abord : sur certaines distributions, `python` n'existe pas (ou
+# pointe encore vers Python 2). Le script lui-même est compatible 3.9+.
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — interpréteur Python introuvable, RIEN n'a été audité." >&2
+    echo "          Installez Python, ou assumez explicitement le contournement : git push --no-verify." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+# Se placer à la racine : `verify_secrets.py` lit `.env` et le registre de
+# rotation par des chemins RELATIFS. Git le fait déjà pour un dépôt non nu,
+# mais l'expliciter évite toute dépendance à ce détail d'implémentation.
+if ! cd "$REPO_ROOT"; then
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — impossible de se placer dans $REPO_ROOT, RIEN n'a été audité." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+if [ ! -r "$AUDIT" ]; then
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — $AUDIT illisible, RIEN n'a été audité." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+# Les arguments du protocole pre-push (nom et URL du remote, refs à pousser)
+# sont fournis sur stdin — ce hook ne les consomme pas.
+if [ "${SECRETS_HOOK_STRICT:-0}" = "1" ]; then
+    set --
+else
+    set -- --skip-if-unconfigured
+fi
+
+echo "pre-push : audit des secrets (présence, robustesse, rotation)…" >&2
+
+# L'audit est lancé SANS `exec` : c'est le seul moyen de lire son code et de
+# décider à sa place quand il n'a rien décidé. Sa sortie est capturée pour
+# distinguer « l'audit a conclu » de « l'audit est mort sans rien dire » — les
+# deux outils écrivent toujours quand ils tournent, donc un code non nul AVEC
+# une sortie vide n'est jamais une décision (c'est la signature exacte de la
+# saturation de fork sous MSYS2). Le coût est une fourche de plus ; si c'est
+# elle qui échoue, la capture revient vide et l'issue reste la bonne : 3.
+if REPORT=$("$PYTHON" "$AUDIT" "$@" 2>&1); then
+    STATUS=0
+else
+    STATUS=$?
+fi
+
+# Le rapport ne sort plus par le flux standard : on le rend sur la sortie
+# d'erreur, que git relaie toujours (y compris quand le hook réussit).
+[ -n "$REPORT" ] && printf '%s\n' "$REPORT" >&2
+
+if [ "$STATUS" -ne 0 ] && [ -z "$REPORT" ]; then
+    echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — l'audit est mort sans conclure (code $STATUS, aucune sortie), RIEN n'a été audité." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+case "$STATUS" in
+    0 | 1 | 2)
+        exit "$STATUS"
+        ;;
+    *)
+        echo "pre-push: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — l'audit a rendu $STATUS, hors de son contrat 0/1/2 : il n'a rien décidé." >&2
+        exit "$EXIT_TOOLING"
+        ;;
+esac

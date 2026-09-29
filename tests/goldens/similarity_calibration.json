@@ -1,0 +1,293 @@
+{
+  "_comment": "Valeur de référence versionnée : ne pas éditer à la main. Régénérer avec `python scripts/goldens.py --update similarity_calibration`.",
+  "dataset": "similarity_calibration",
+  "description": "seuil de similarité des médias : bruit mesuré sur la base, percentile, marge, bornes, et extraits que la règle de sélection retient",
+  "values": {
+    "constants": {
+      "CALIBRATION_DOCS": 40,
+      "CALIBRATION_MIN_DOCS": 5,
+      "CALIBRATION_TTL_SECONDS": 900,
+      "FLOOR_BOUNDS": [
+        0.2,
+        0.9
+      ],
+      "NOISE_MARGIN": 0.05,
+      "NOISE_PERCENTILE": 95.0,
+      "cosine_hand_check": 0.96,
+      "cosine_orthogonal": 0.0,
+      "percentile_median_1_to_4": 2.5,
+      "probes": [
+        "recette de tarte aux pommes pour six personnes",
+        "itinéraire de randonnée en montagne avec dénivelé",
+        "résumé du match de football d'hier soir",
+        "liste de courses pour la semaine"
+      ]
+    },
+    "high_noise_base": {
+      "documents": 5,
+      "floor": 0.9,
+      "floor_at_p100": 0.9,
+      "floor_at_p50": 0.9,
+      "floor_at_p90": 0.9,
+      "max": 1.0,
+      "median": 0.999010196,
+      "min": 0.994521932,
+      "noise_at_percentile": 1.0,
+      "p75": 0.999847688,
+      "p90": 1.0,
+      "p95": 1.0,
+      "pairs": 10,
+      "probe_vectors": [
+        [
+          0.707107,
+          0.707107
+        ],
+        [
+          0.669131,
+          0.743145
+        ]
+      ],
+      "probes": 2,
+      "vectors": [
+        [
+          0.743145,
+          0.669131
+        ],
+        [
+          0.71934,
+          0.694658
+        ],
+        [
+          0.707107,
+          0.707107
+        ],
+        [
+          0.694658,
+          0.71934
+        ],
+        [
+          0.669131,
+          0.743145
+        ]
+      ]
+    },
+    "low_noise_base": {
+      "documents": 5,
+      "floor": 0.20034783,
+      "floor_at_p100": 0.223648631,
+      "floor_at_p50": 0.2,
+      "floor_at_p90": 0.2,
+      "max": 0.173648631,
+      "median": 0.0,
+      "min": -0.173648631,
+      "noise_at_percentile": 0.15034783,
+      "p75": 0.078451151,
+      "p90": 0.127047029,
+      "p95": 0.15034783,
+      "pairs": 10,
+      "probe_vectors": [
+        [
+          0.087156,
+          0.996195
+        ],
+        [
+          -0.087156,
+          0.996195
+        ]
+      ],
+      "probes": 2,
+      "vectors": [
+        [
+          0.996195,
+          -0.087156
+        ],
+        [
+          0.999391,
+          -0.034899
+        ],
+        [
+          1.0,
+          0.0
+        ],
+        [
+          0.999391,
+          0.034899
+        ],
+        [
+          0.996195,
+          0.087156
+        ]
+      ]
+    },
+    "media_selection": {
+      "candidates": [
+        {
+          "asset": "BTC-USD",
+          "content": "volume BTC",
+          "media_id": "tagged-close",
+          "similarity": 0.88
+        },
+        {
+          "asset": null,
+          "content": "cassure BTC",
+          "media_id": "close-untagged",
+          "similarity": 0.75
+        },
+        {
+          "asset": "BTC-USD",
+          "content": "photo du graphique",
+          "media_id": "tagged-far",
+          "similarity": 0.6
+        },
+        {
+          "asset": null,
+          "content": "notes",
+          "media_id": "weak-untagged",
+          "similarity": 0.62
+        },
+        {
+          "asset": "ETH-USD",
+          "content": "range ETH",
+          "media_id": "other-asset",
+          "similarity": 0.45
+        },
+        {
+          "asset": null,
+          "content": "réunion",
+          "media_id": "noise-untagged",
+          "similarity": 0.22
+        },
+        {
+          "asset": "BTC-USD",
+          "content": "recette",
+          "media_id": "tagged-off-topic",
+          "similarity": 0.19
+        }
+      ],
+      "tagged_hard_floor": 0.2,
+      "with_measured_floor": {
+        "floor": 0.692787531,
+        "kept": [
+          {
+            "media_id": "tagged-close",
+            "similarity": 0.88,
+            "tagged": true
+          },
+          {
+            "media_id": "tagged-far",
+            "similarity": 0.6,
+            "tagged": true
+          },
+          {
+            "media_id": "close-untagged",
+            "similarity": 0.75,
+            "tagged": false
+          }
+        ]
+      },
+      "with_strict_floor": {
+        "floor": 0.9,
+        "kept": [
+          {
+            "media_id": "tagged-close",
+            "similarity": 0.88,
+            "tagged": true
+          },
+          {
+            "media_id": "tagged-far",
+            "similarity": 0.6,
+            "tagged": true
+          }
+        ]
+      },
+      "without_floor": {
+        "floor": null,
+        "kept": [
+          {
+            "media_id": "tagged-close",
+            "similarity": 0.88,
+            "tagged": true
+          },
+          {
+            "media_id": "tagged-far",
+            "similarity": 0.6,
+            "tagged": true
+          },
+          {
+            "media_id": "tagged-off-topic",
+            "similarity": 0.19,
+            "tagged": true
+          },
+          {
+            "media_id": "close-untagged",
+            "similarity": 0.75,
+            "tagged": false
+          },
+          {
+            "media_id": "weak-untagged",
+            "similarity": 0.62,
+            "tagged": false
+          },
+          {
+            "media_id": "other-asset",
+            "similarity": 0.45,
+            "tagged": false
+          },
+          {
+            "media_id": "noise-untagged",
+            "similarity": 0.22,
+            "tagged": false
+          }
+        ]
+      }
+    },
+    "mid_noise_base": {
+      "documents": 5,
+      "floor": 0.692787531,
+      "floor_at_p100": 0.692787531,
+      "floor_at_p50": 0.623576164,
+      "floor_at_p90": 0.692787531,
+      "max": 0.642787531,
+      "median": 0.573576164,
+      "min": 0.499999513,
+      "noise_at_percentile": 0.642787531,
+      "p75": 0.601814357,
+      "p90": 0.642787531,
+      "p95": 0.642787531,
+      "pairs": 10,
+      "probe_vectors": [
+        [
+          0.819152,
+          0.573576
+        ],
+        [
+          -0.819152,
+          0.573576
+        ]
+      ],
+      "probes": 2,
+      "vectors": [
+        [
+          0.087156,
+          0.996195
+        ],
+        [
+          0.034899,
+          0.999391
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          -0.034899,
+          0.999391
+        ],
+        [
+          -0.087156,
+          0.996195
+        ]
+      ]
+    }
+  }
+}

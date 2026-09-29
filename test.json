@@ -1,9 +1,9 @@
 {
-  "secret": "client1998",
+  "secret": "REMPLACE_PAR_TON_WEBHOOK_SECRET",
   "ticker": "MSFT",
   "action": "buy",
-  "price":  420.0,
+  "price": 420.0,
   "stop_loss": 415.0,
   "take_profit": 430.0,
-  "message": "Test manuel 2"
+  "message": "Payload de test — remplace 'secret' par ta valeur WEBHOOK_SECRET avant envoi."
 }

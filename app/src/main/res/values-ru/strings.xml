@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">Торговый Терминал ИИ</string>
+    <string name="paper_balance">Демо Баланс</string>
+    <string name="tab_terminal">Терминал</string>
+    <string name="tab_insights">Аналитика ИИ</string>
+    <string name="tab_risk">Риск-Менеджмент</string>
+    <string name="tab_chat">Чат ИИ и Сканер</string>
+    <string name="tab_cloud">Облако и VIP</string>
+    <string name="engine_active">ДВИГАТЕЛЬ АКТИВЕН</string>
+    <string name="engine_stopped">ДВИГАТЕЛЬ ОСТАНОВЛЕН</string>
+    <string name="start_bot">ЗАПУСТИТЬ БОТА</string>
+    <string name="stop_bot">ОСТАНОВИТЬ БОТА</string>
+    <string name="watchlist_title">Список Наблюдения (Нажмите для графика)</string>
+    <string name="sync_rates">Обновить котировки</string>
+    <string name="chart_title">График в Реальном Времени</string>
+    <string name="signals_title">Обнаруженные Сигналы</string>
+    <string name="no_signals_yet">Сигналов пока нет.</string>
+    <string name="buy">ПОКУПКА</string>
+    <string name="sell">ПРОДАЖА</string>
+    <string name="status_executed">ИСПОЛНЕНО</string>
+    <string name="status_pending">В ОЖИДАНИИ</string>
+    <string name="status_blocked_risk">ЗАБЛОКИРОВАНО РИСКОМ</string>
+    <string name="insights_title">Геополитика и Сентимент ИИ</string>
+    <string name="scan_news_btn">Сканировать Новости ИИ</string>
+    <string name="scanning_news">Gemini анализирует новости...</string>
+    <string name="multi_broker_title">Мульти-Брокер Конфигурация</string>
+    <string name="multi_broker_subtitle">Подключите брокера для авто-торговли.</string>
+    <string name="active_broker">АКТИВНЫЙ БРОКЕР</string>
+    <string name="select_broker">Выберите брокера:</string>
+    <string name="save_broker_config">СОХРАНИТЬ НАСТРОЙКИ БРОКЕРА</string>
+    <string name="simulation_mode">Симуляция (Paper Trading)</string>
+    <string name="live_mode_warning">ВНИМАНИЕ: РЕАЛЬНЫЕ ОРДЕРА НА БРОКЕРЕ</string>
+    <string name="language_settings_title">Язык Приложения</string>
+    <string name="language_settings_subtitle">Выберите предпочитаемый язык.</string>
+    <string name="risk_settings_title">Настройки Управления Риском</string>
+    <string name="risk_pct_label" formatted="false">Риск на Сделку (%)</string>
+    <string name="min_confidence_label">Мин. Уверенность ИИ (0.0 - 1.0)</string>
+    <string name="max_daily_loss_label" formatted="false">Макс. Дневной Убыток (%)</string>
+    <string name="max_drawdown_label" formatted="false">Макс. Просадка (%)</string>
+    <string name="max_open_trades_label">Макс. Открытых Сделок</string>
+    <string name="save_risk_btn">СОХРАНИТЬ ПАРАМЕТРЫ РИСКА</string>
+    <string name="log_terminal_title">Журнал Исполнения</string>
+    <string name="clear_logs_btn">Очистить Логи</string>
+    <string name="ai_chat_title">ИИ Ассистент и Стратег</string>
+    <string name="ai_chat_subtitle">Задавайте вопросы о трендах и новостях рынка.</string>
+    <string name="chat_placeholder">Спросите про BTC, AAPL или процентные ставки...</string>
+    <string name="send_btn">ОТПРАВИТЬ</string>
+    <string name="vip_cloud_title">Облачная Синхронизация и VIP</string>
+    <string name="vip_cloud_subtitle">Сохраняйте свои стратегии в облаке Supabase.</string>
+    <string name="sync_now_btn">СИНХРОНИЗИРОВАТЬ С ОБЛАКОМ</string>
+    <string name="portfolio_performance_title">Доходность Портфеля и Кривая Капитала</string>
+    <string name="portfolio_performance_subtitle">Отслеживание динамики депозита в реальном времени.</string>
+    <string name="total_equity">Общий Депозит</string>
+    <string name="realized_pnl">Реализованный PnL</string>
+    <string name="win_rate">Процент Побед</string>
+    <string name="total_trades">Всего Сделок</string>
+    <string name="entry_label">Вход</string>
+    <string name="stop_loss_label">Стоп-Лосс</string>
+    <string name="take_profit_label">Тейк-Профит</string>
+    <string name="confidence_label">Увер.</string>
+    <string name="price_label">Цена</string>
+    <string name="no_logs_yet">Логов пока нет. Запустите бота.</string>
+    <string name="run_gemini_analysis">ЗАПУСТИТЬ АНАЛИЗ GEMINI</string>
+    <string name="no_insights_yet">Аналитики пока нет.</string>
+    <string name="current_equity_label">Текущий Депозит</string>
+    <string name="max_drawdown_limit_label">Лимит Макс. Просадки</string>
+    <string name="current_drawdown_label">Текущая Просадка</string>
+    <string name="save_risk_parameters">СОХРАНИТЬ ПАРАМЕТРЫ РИСКА</string>
+    <string name="configuring_broker">Настройка:</string>
+    <string name="server_gateway_url_label">URL Сервера Шлюза</string>
+    <string name="save_broker_configuration">СОХРАНИТЬ НАСТРОЙКИ БРОКЕРА</string>
+    <string name="reset_entire_trading_data">СБРОСИТЬ ВСЕ ДАННЫЕ</string>
+    <string name="vip_feature_locked_title">Функция VIP Заблокирована</string>
+    <string name="search_grounding_label">Веб-Поиск Поисковая Привязка</string>
+    <string name="maps_locator_label">Финансовый Локатор Maps</string>
+    <string name="deep_reasoning_label">Глубокое Рассуждение High-Thinking</string>
+    <string name="flash_mode_label">Быстрый Режим Flash</string>
+    <string name="chat_input_placeholder">Спросите Gemini об акциях, крипте, графиках...</string>
+    <string name="quant_backtest_title">Движок Бэктеста Quant &amp; Walk-Forward</string>
+    <string name="quant_backtest_subtitle">Валидация вне выборки и сравнение с Buy &amp; Hold</string>
+    <string name="strategy_return">Доходность Стратегии</string>
+    <string name="benchmark_return">Бенчмарк (Buy &amp; Hold)</string>
+    <string name="sharpe_ratio">Коэффициент Шарпа</string>
+    <string name="profit_factor">Профит-Фактор</string>
+    <string name="max_drawdown">Макс. Просадка</string>
+    <string name="system_health_title">Мониторинг и Инфраструктура Worker</string>
+    <string name="reset_circuit_breaker">Сброс Предохранителя</string>
+    <string name="worker_queue_throughput">Пропускная Способность Очереди</string>
+    <string name="jobs_processed">задач обработано</string>
+    <string name="memory_usage">ОЗУ Память</string>
+    <string name="broker_state">Состояние Брокера</string>
+    <string name="quant_memory_title">Аналитическая Память и Обучение</string>
+    <string name="quant_memory_subtitle">Реестр результатов по режимам рынка</string>
+    <string name="best_regime">Лучший Режим</string>
+    <string name="ai_accuracy">Точность ИИ (High-Conf)</string>
+    <string name="pay_with_paypal">Оплатить через PayPal</string>
+    <string name="google_pay_sandbox">Google Pay и Sandbox Карта</string>
+    <string name="cancel_btn">ОТМЕНА</string>
+    <string name="firebase_auth_title">Аутентификация Firebase</string>
+    <string name="sign_in_with_google">Войти через Google</string>
+    <string name="sign_out_from_firebase">ВЫЙТИ ИЗ FIREBASE</string>
+    <string name="firestore_db_sync_title">Синхронизация Firestore DB</string>
+    <string name="elite_vip_license_title">Лицензия Elite VIP</string>
+    <string name="activate_vip_sub">АКТИВИРОВАТЬ ПОДПИСКУ ELITE VIP</string>
+    <string name="demo_account">Демо-счет</string>
+    <string name="demo_balance">Баланс демо-счета</string>
+    <string name="reset_demo_capital">Сбросить демо-капитал</string>
+    <string name="set_initial_capital">Новый демо-капитал ($)</string>
+    <string name="update_demo_capital_btn">ОБНОВИТЬ ДЕМО-БАЛАНС</string>
+    <string name="manage_demo_account">Управление демо-счетом</string>
+    <string name="live_broker_account">Реальный брокерский счет</string>
+    <string name="gemini_parameters_title">Параметры Gemini AI</string>
+    <string name="vip_locked_text">Доступно только для VIP Pro. Обновите подписку, чтобы разблокировать поиск в сети, режим глубокого мышления и технический сканер.</string>
+    <string name="institutional_grade_title">Получите возможности ИИ-трейдинга институционального уровня. Получите ключевое преимущество с сигналами с низкой задержкой.</string>
+    <string name="monthly_vip">Ежемесячный VIP</string>
+    <string name="annual_vip">Ежегодный VIP</string>
+    <string name="lifetime_elite">Пожизненный Elite</string>
+    <string name="best_value">ВЫГОДНОЕ ПРЕДЛОЖЕНИЕ</string>
+    <string name="pay_pal_supported">Аккаунт продавца: makemoney0598@gmail.com (Поддержка PayPal)</string>
+    <string name="vip_active_badge">VIP АКТИВЕН</string>
+    <string name="danger_zone">Опасная зона</string>
+    <string name="keys_configured_label">Ключи</string>
+    <string name="connected_status_label">ПОДКЛЮЧЕНО</string>
+    <string name="disconnected_status_label">ОТКЛЮЧЕНО</string>
+    <string name="synced_status_label">СИНХРОНИЗИРОВАНО</string>
+    <string name="out_of_sync_status_label">НЕ СИНХРОНИЗИРОВАНО</string>
+    <string name="paper_sim_label">ДЕМО-СЧЕТ</string>
+    <string name="live_trading_label">РЕАЛЬНЫЙ БРОКЕР</string>
+    <string name="ok_btn">ОК</string>
+    <string name="active_label">АКТИВНО</string>
+    <string name="vip_pro_label">VIP PRO</string>
+    <string name="free_label">БЕСПЛАТНО</string>
+    <string name="gemini_bias">Тренд Gemini</string>
+    <string name="bullish_label">БЫЧИЙ</string>
+    <string name="bearish_label">МЕДВЕЖИЙ</string>
+    <string name="neutral_label">НЕЙТРАЛЬНЫЙ</string>
+    <string name="score_label">Оценка</string>
+    <string name="geopolitical_label">ГЕОПОЛИТИКА</string>
+    <string name="sentiment_label">НАСТРОЕНИЕ</string>
+    <string name="bias_impact_label">Влияние тренда</string>
+    <string name="scanning_metrics">Gemini сканирует рыночные метрики...</string>
+    <string name="vip_feature1">Продвинутый режим глубокого размышления Gemini Pro</string>
+    <string name="vip_feature2">Протокол живого поиска в сети с нулевой задержкой</string>
+    <string name="vip_feature3">Узел технического сканирования скриншотов графиков</string>
+    <string name="vip_feature4">GPS-локатор финансовых центров и торговых столов Google Maps</string>
+
+    <string name="badge_live_account">РЕАЛЬНЫЙ СЧЕТ</string>
+    <string name="badge_real_demo">РЕАЛЬНЫЙ ДЕМО</string>
+    <string name="badge_paper_sim">ЛОКАЛЬНЫЙ ДЕМО</string>
+    <string name="simulator_notice">ЛОКАЛЬНЫЙ СИМУЛЯТОР: цены, новости и бэктест сгенерированы. Реальные ордера не исполняются.</string>
+    <string name="broker_demo_available_title">Реальный демо-счет доступен</string>
+    <string name="broker_demo_available_body">Вы используете локальный симулятор. Включите реальный демо-счет для получения живых котировок.</string>
+    <string name="broker_activate_demo_btn">АКТИВИРОВАТЬ ДЕМО (1 КЛИК)</string>
+    <string name="quick_connect_demo_label">Подключить реальный демо-счет</string>
+    <string name="quick_connect_demo_subtitle">Включите живой поток рыночных данных и реальную симуляцию ордеров через Alpaca Paper API.</string>
+    <string name="chat_welcome_message">Добро пожаловать в AI Trade Terminal! Спросите меня о рынках, стратегиях или режимах Gemini.</string>
+
+    <!-- Traductions (ru) des écrans. -->
+    <string name="chat_send">Отправить</string>
+    <string name="chat_clear">Очистить</string>
+    <string name="chat_sender_user">ВЫ</string>
+    <string name="chat_sender_gemini">ИИ-АССИСТЕНТ GEMINI</string>
+    <string name="chat_locked_body" formatted="false">Протокол %1$s доступен только участникам VIP Trade Premium. Оформите подписку, чтобы открыть поиск в реальном времени, режим глубоких рассуждений и технический анализ изображений.</string>
+    <string name="chat_attached_pattern" formatted="false">Вложение: графическая модель %1$s (мультимодальный режим включён)</string>
+    <string name="chat_search_grounding_full">Поиск Google в реальном времени</string>
+    <string name="chat_maps_grounding_full">Привязка к Google Maps</string>
+    <string name="chat_high_thinking_mode">Режим глубоких рассуждений</string>
+    <string name="insights_error_analysis" formatted="false">Ошибка анализа рыночного контекста: %1$s</string>
+    <string name="backtest_strategy_mode">Режим стратегии бэктеста:</string>
+    <string name="backtest_monte_carlo_stress">Стресс-тест Монте-Карло</string>
+    <string name="backtest_trade_logs" formatted="false">Журнал сделок (%1$s)</string>
+    <string name="backtest_btc_benchmark">Эталон BTC</string>
+    <string name="backtest_alpha">Альфа (сверхдоходность)</string>
+    <string name="backtest_beta">Бета (волатильность)</string>
+    <string name="backtest_sharpe">Шарп</string>
+    <string name="backtest_sortino">Сортино</string>
+    <string name="backtest_calmar">Калмар</string>
+    <string name="backtest_max_dd">Макс. просадка</string>
+    <string name="monte_carlo_title">Квантили риска Монте-Карло (500 прогонов)</string>
+    <string name="monte_carlo_var95" formatted="false">VaR 95 %</string>
+    <string name="monte_carlo_var99" formatted="false">VaR 99 %</string>
+    <string name="monte_carlo_var_at95" formatted="false">VaR на уровне 95 %</string>
+    <string name="monte_carlo_cvar">CVaR (ожидаемый убыток)</string>
+    <string name="monte_carlo_median_equity">Медианный капитал</string>
+    <string name="chart_scanner_title">Технический сканер графиков</string>
+    <string name="chart_scanner_select">Выберите скриншот графика для анализа:</string>
+    <string name="chart_pattern_double_bottom">Двойное дно</string>
+    <string name="chart_pattern_head_shoulders">Голова и плечи</string>
+    <string name="chart_pattern_hs">Модель «голова и плечи»</string>
+    <string name="chart_pattern_rsi_divergence">Дивергенция RSI</string>
+    <string name="agent_desk_title">Мультиагентный исследовательский стол</string>
+    <string name="agent_desk_subtitle">Движок консенсуса: макро + квант + настроения + риск</string>
+    <string name="agent_consensus">КОНСЕНСУС ИИ</string>
+    <string name="agent_coordinating">Координация 4 исследовательских ИИ-агентов...</string>
+    <string name="agent_run_research" formatted="false">ЗАПУСТИТЬ МУЛЬТИАГЕНТНОЕ ИССЛЕДОВАНИЕ [%1$s]</string>
+    <string name="agent_target_asset" formatted="false">Целевой актив: %1$s</string>
+    <string name="agent_confidence" formatted="false">Уверенность: %1$s %%</string>
+    <string name="agent_entry" formatted="false">Вход: %1$s $</string>
+    <string name="agent_stop_loss" formatted="false">Стоп-лосс: %1$s $</string>
+    <string name="agent_take_profit" formatted="false">Тейк-профит: %1$s $</string>
+    <string name="agent_cio_synthesis">Заключение директора по инвестициям:</string>
+    <string name="agent_inject_signal">ВНЕДРИТЬ КОНСЕНСУСНЫЙ СИГНАЛ В КОНВЕЙЕР РЕАЛЬНОГО ИСПОЛНЕНИЯ</string>
+    <string name="portfolio_starting_capital">Начальный капитал</string>
+    <string name="portfolio_current_equity">Текущая стоимость портфеля</string>
+    <string name="portfolio_point" formatted="false">Точка № %1$s</string>
+    <string name="portfolio_pnl" formatted="false">Прибыль/убыток: %1$s %2$s $</string>
+    <string name="portfolio_filter_all">ВСЕ</string>
+    <string name="portfolio_filter_ytd">С НАЧАЛА ГОДА</string>
+    <string name="trade_log_history">Журнал сделок walk-forward:</string>
+    <string name="trade_log_entry" formatted="false">Вход: %1$s $</string>
+    <string name="vip_paypal_active">PayPal активен</string>
+    <string name="vip_plan_monthly">VIP месячный Starter</string>
+    <string name="vip_plan_annual">Институциональный годовой план</string>
+    <string name="vip_plan_lifetime">Пожизненная лицензия Elite</string>
+    <string name="vip_standard_access">Стандартный доступ</string>
+    <string name="vip_save_annual" formatted="false">Экономия %1$d %% в год</string>
+    <string name="vip_pay_once">Единый платёж</string>
+    <string name="vip_institutional_unlocked">ИНСТИТУЦИОНАЛЬНЫЙ VIP РАЗБЛОКИРОВАН</string>
+    <string name="vip_license_active">Лицензия: Premium активна (годовое многонодовое ядро)</string>
+    <string name="vip_all_features_active">Все пути глубоких рассуждений, мультимодальные сканеры скриншотов, веб-краулеры в реальном времени и сервисы геолокации полностью работоспособны.</string>
+    <string name="gpay_title">Безопасный платёжный шлюз</string>
+    <string name="gpay_upgrade_plan" formatted="false">План для повышения: %1$s</string>
+    <string name="gpay_total_charge" formatted="false">Итоговая сумма: %1$s</string>
+    <string name="gpay_merchant_note">Подписки безопасно направляются на торговый счёт терминала makemoney0598@gmail.com. Выберите способ оплаты ниже.</string>
+    <string name="gpay_authorizing">Авторизация защищённой транзакции...</string>
+    <string name="gpay_credit_card">Банковская карта</string>
+    <string name="gpay_paypal_logo">Логотип PayPal</string>
+    <string name="firebase_auth_note">Войдите безопасно через Google Auth, чтобы синхронизировать сигналы, журналы и настройки между устройствами.</string>
+    <string name="firestore_connect_btn">ПОДКЛЮЧИТЬСЯ К FIRESTORE</string>
+    <string name="firestore_sync_note" formatted="false">Синхронизируйте %1$s торговых сигналов, журналы и параметры риска с облачными узлами Firestore в реальном времени.</string>
+    <string name="firestore_synced_label">СИНХРОНИЗИРОВАНО</string>
+    <string name="firestore_out_of_sync_label">НЕ СИНХРОНИЗИРОВАНО</string>
+    <string name="learn_title">ОБУЧЕНИЕ ИИ И САМОКОРРЕКЦИЯ</string>
+    <string name="learn_subtitle">Пост-анализ ошибок и динамическая настройка</string>
+    <string name="learn_reevaluate">Переоценить</string>
+    <string name="learn_weights_adjusted">Веса мультифакторной модели перенастроены:</string>
+    <string name="learn_weight_ta" formatted="false">Технический анализ: %1$s %%</string>
+    <string name="learn_weight_macro" formatted="false">Макро-уклон: %1$s %%</string>
+    <string name="learn_weight_sentiment" formatted="false">Настроения ИИ: %1$s %%</string>
+    <string name="learn_rules_generated">Сгенерированные правила самокоррекции:</string>
+    <string name="learn_post_mortem_lessons">Последние пост-аналитические выводы:</string>
+    <string name="exec_mode_live_title">РЕЖИМ ИСПОЛНЕНИЯ: РЕАЛЬНЫЙ (НАСТОЯЩИЙ КАПИТАЛ)</string>
+    <string name="exec_mode_paper_title">РЕЖИМ ИСПОЛНЕНИЯ: ВИРТУАЛЬНАЯ ПЕСОЧНИЦА (PAPER)</string>
+    <string name="exec_live_note" formatted="false">Ордера направлены на реальные серверы брокера (%1$s)</string>
+    <string name="exec_paper_note">Симуляция в песочнице с виртуальным исполнением и реальными потоками цен</string>
+    <string name="exec_switch_paper">ПЕРЕЙТИ В ПЕСОЧНИЦУ</string>
+    <string name="exec_switch_live">ПЕРЕЙТИ НА РЕАЛЬНЫЙ РЕЖИМ</string>
+    <string name="health_broker_paper_sandbox">Виртуальная песочница (ключ не требуется)</string>
+    <string name="health_broker_alpaca_paper">Демо-счёт Alpaca подключён</string>
+    <string name="health_broker_alpaca_live">Рабочий счёт Alpaca активен</string>
+    <string name="health_broker_unknown">Виртуальная песочница</string>
+    <string name="broker_quick_connect">Быстрое подключение</string>
+    <string name="broker_executes_simulated">Исполняет симулированные ордера без риска</string>
+    <string name="broker_webhook_token">Токен аутентификации webhook / ключ API</string>
+    <string name="broker_password_secret">Пароль счёта / секрет API</string>
+    <string name="broker_api_key_of" formatted="false">Ключ API %1$s</string>
+    <string name="broker_api_secret_of" formatted="false">Секрет API %1$s</string>
+    <string name="broker_desc_stocks_crypto">Акции и криптовалюты</string>
+    <string name="broker_desc_global_equities">Мировые акции и опционы</string>
+    <string name="broker_desc_prop_firm">Финансирование и челлендж проп-фирм</string>
+    <string name="broker_desc_raw_spreads">Сырые спреды форекс и CFD</string>
+    <string name="broker_desc_stp">Форекс и акции по STP</string>
+    <string name="broker_desc_ecn">Исполнение ECN и форекс</string>
+    <string name="broker_desc_micro">Микро- и стандартные счета</string>
+    <string name="broker_desc_leverage">CFD на форекс с неограниченным плечом</string>
+    <string name="broker_desc_dma">CFD с прямым доступом к рынку</string>
+    <string name="broker_desc_fixed_floating">Фиксированные и плавающие спреды</string>
+    <string name="broker_desc_multi_asset">Мультиактивный стол MT5</string>
+    <string name="broker_desc_forex_commodities">CFD на форекс и сырьё</string>
+    <string name="broker_desc_crypto_spot_derivatives">Крипто-спот и деривативы</string>
+    <string name="broker_desc_crypto_spot_futures">Крипто-спот и фьючерсы</string>
+    <string name="broker_desc_proprietary">Собственный стол / Webhook</string>
+
+
+    <!-- Deuxième vague (ru). -->
+    <string name="signal_ta_summary" formatted="false">ТА: %1$s</string>
+    <string name="signal_sentiment" formatted="false">Настроение: %1$s</string>
+    <string name="status_closed">ЗАКРЫТО</string>
+    <string name="action_strong_buy">СИЛЬНАЯ ПОКУПКА</string>
+    <string name="action_neutral_hold">УДЕРЖАНИЕ</string>
+    <string name="action_strong_sell">СИЛЬНАЯ ПРОДАЖА</string>
+    <string name="conviction_high">ВЫСОКАЯ</string>
+    <string name="conviction_medium">СРЕДНЯЯ</string>
+    <string name="conviction_low">НИЗКАЯ</string>
+    <string name="portfolio_vs_baseline" formatted="false">против $%1$s</string>
+    <string name="portfolio_filter_1w">1Н</string>
+    <string name="portfolio_filter_1m">1М</string>
+    <string name="price_history_pair_title" formatted="false">%1$s/USD %2$s</string>
+    <string name="quant_memory_stats" formatted="false">%1$s сделок | Доля прибыльных: %2$s%% | PnL: %3$s$%4$s</string>
+    <string name="health_memory_mb" formatted="false">%1$s МБ</string>
+    <string name="broker_account_id_of" formatted="false">ID счёта %1$s</string>
+    <string name="date_time_pattern_short">dd MMM, HH:mm</string>
+    <string name="vip_price_monthly">$19.99</string>
+    <string name="vip_price_annual">$99.99</string>
+    <string name="vip_price_lifetime">$199.99</string>
+    <string name="vip_period_monthly">$19.99 / мес</string>
+    <string name="vip_period_annual">$99.99 / год</string>
+
+
+    <!-- Troisième vague (ru). -->
+    <string name="learn_rule_rsi_overbought">Правило №1: фильтровать покупки при перекупленности, когда RSI выше 68.</string>
+    <string name="learn_rule_high_impact_news">Правило №2: блокировать ордера во время новостей высокого влияния.</string>
+    <string name="learn_feedback_active">Цикл самообучающейся обратной связи активен.</string>
+    <string name="log_self_learning_review" formatted="false">ИТОГИ САМООБУЧЕНИЯ: переоценка сделок завершена. Скорректированные веса: TA %1$s%%, макро %2$s%%, настроение %3$s%%. Порог уверенности: %4$s.</string>
+    <string name="log_backtest_summary" formatted="false">Walk-forward тест (%1$s - %2$s): доходность %3$s%%, Шарп: %4$s, VaR95: %5$s%%.</string>
+    <string name="log_backtest_synthetic">СИНТЕТИЧЕСКИЙ тест: ряды сгенерированы локально и не отражают реальный рынок. Только для демонстрации.</string>
+    <string name="insight_multi_agent_title" formatted="false">Мультиагентное исследование [%1$s]: %2$s (%3$s%%)</string>
+    <string name="log_multi_agent_research" formatted="false">Слой мультиагентного исследования выполнен для %1$s: консенсус = %2$s (уверенность %3$s%%)</string>
+    <string name="log_consensus_injected" formatted="false">Консенсус мультиагентного исследования внедрён в контур реального исполнения для %1$s</string>
+    <string name="log_circuit_breaker_reset">Глобальный предохранитель сброшен пользователем вручную.</string>
+    <string name="log_loop_paused">Автоматический цикл приостановлен.</string>
+    <string name="log_loop_started">ИИ-торговый бот успешно запущен. Мониторинг по многим факторам включён.</string>
+    <string name="log_loop_queue_started">Автоматический многофакторный торговый цикл запущен (очередь задач активна).</string>
+    <string name="log_portfolio_risk_breach" formatted="false">НАРУШЕНИЕ РИСКА ПОРТФЕЛЯ: %1$s</string>
+    <string name="log_bootstrap_signal" formatted="false">Сгенерирован сигнал инициализации для %1$s (ИИ-движок активен).</string>
+    <string name="log_cycle_scan" formatted="false">Цикл №%1$s: активное сканирование %2$s пар. Движок наблюдает (фильтр минимальной уверенности: %3$s%%).</string>
+    <string name="log_loop_error" formatted="false">Ошибка в автоматическом цикле: %1$s</string>
+    <string name="log_position_closed_sl" formatted="false">Позиция закрыта (стоп-лосс): %1$s %2$s %3$s достиг SL на %4$s $. PnL: %5$s $</string>
+    <string name="log_position_closed_tp" formatted="false">Позиция закрыта (тейк-профит): %1$s %2$s %3$s достиг TP на %4$s $. PnL: +%5$s $</string>
+    <string name="log_tenant_breach" formatted="false">НАРУШЕНИЕ ИЗОЛЯЦИИ КЛИЕНТА: %1$s</string>
+    <string name="log_order_executed" formatted="false">Ордер исполнен [режим: %1$s]: %2$s %3$s %4$s по %5$s $. SL: %6$s $, TP: %7$s $</string>
+    <string name="log_signal_blocked" formatted="false">Сигнал заблокирован для %1$s: %2$s</string>
+    <string name="log_risk_updated">Параметры риска успешно обновлены.</string>
+    <string name="log_watchlist_updated" formatted="false">Список наблюдения изменён: %1$s</string>
+    <string name="log_language_updated" formatted="false">Язык обновлён: %1$s</string>
+    <string name="log_broker_saved" formatted="false">Учётные данные брокера сохранены для [%1$s] (режим %2$s).</string>
+    <string name="mode_paper">Демо</string>
+    <string name="mode_live">Реальный</string>
+    <string name="log_switched_live">ВНИМАНИЕ: режим исполнения переключён на РЕАЛЬНУЮ ТОРГОВЛЮ ЧЕРЕЗ БРОКЕРА!</string>
+    <string name="log_switched_paper">Режим исполнения переключён на симулированную торговлю (виртуальная песочница).</string>
+    <string name="log_demo_reset">Капитал демо-счёта сброшен до 100 000,00 $.</string>
+    <string name="log_demo_balance_set" formatted="false">Баланс демо-счёта установлен на %1$s $</string>
+    <string name="insight_sentiment_api_title" formatted="false">Настроение по %1$s (Gemini API)</string>
+    <string name="log_sentiment_api_done" formatted="false">Анализ настроений ИИ Gemini для %1$s завершён: оценка = %2$s</string>
+    <string name="error_parsing" formatted="false">Ошибка разбора: %1$s</string>
+    <string name="error_null_response">Пустой ответ сервера Gemini</string>
+    <string name="direction_bullish">бычий</string>
+    <string name="direction_bearish">медвежий</string>
+    <string name="direction_neutral">нейтральный</string>
+    <string name="insight_simulated_reasoning" formatted="false">Расчётный тренд: %1$s. Новости рынка указывают на стабильный объём по %2$s при сильном макроэкономическом импульсе. Ключевые уровни технической поддержки говорят о консолидации при низком давлении продавцов.</string>
+    <string name="insight_sentiment_simulator_title" formatted="false">Настроение по %1$s (резервный симулятор)</string>
+    <string name="log_sentiment_fallback_done" formatted="false">Резервный анализ настроений для %1$s завершён: оценка = %2$s</string>
+    <string name="log_firebase_signed_in" formatted="false">Успешная аутентификация через Firebase: выполнен вход через Google (%1$s).</string>
+    <string name="log_firebase_signed_out">Выполнен выход из аккаунта Google и Firebase Auth.</string>
+    <string name="error_firestore_unauthenticated">Не удаётся синхронизировать с Firestore: пользователь не аутентифицирован.</string>
+    <string name="log_firestore_synced" formatted="false">Синхронизация с Firestore успешна. Сохранено %1$s сигналов и журналов.</string>
+    <string name="log_vip_activated">Премиум-подписка активна! Режим глубокого мышления Gemini Pro, живой поиск, карты и сканер графиков разблокированы.</string>
+    <string name="chat_analyzing_image">Анализ изображения графика…</string>
+    <string name="chat_sim_fallback_header">[Локальный ИИ-симулятор - подключите ключ Gemini в Secrets для работы с живым ИИ]\n\n</string>
+    <string name="chat_sim_image_done">Симулированное сканирование вашего скриншота завершено.\n</string>
+    <string name="chat_sim_image_analysis">ТЕХНИЧЕСКИЙ АНАЛИЗ: обнаружена структура пробоя. Ключевая поддержка на исторических уровнях остаётся прочной.\n</string>
+    <string name="chat_sim_image_reco">РЕКОМЕНДАЦИЯ: обнаружен бычий импульс. Рассмотрите стоп-лосс чуть ниже локального канала.</string>
+    <string name="chat_sim_regarding" formatted="false">Относительно «%1$s»\n\n</string>
+    <string name="chat_sim_intro">В этой локальной симуляции вот стандартные рекомендации:\n</string>
+    <string name="chat_sim_bullet_volume">- Объём в списке наблюдения показывает высокий импульс. Следите за параметрами риск-менеджмента.\n</string>
+    <string name="chat_sim_bullet_modes">- Включите живой поиск, режим глубокого мышления или низкую задержку, чтобы изучить возможности.</string>
+
+
+    <string name="signal_reason_blocked_by_risk" formatted="false">Заблокировано риск-контролем: %1$s</string>
+
+
+    <!-- Демонстрация (ru): начальные анализы и сигналы. -->
+    <string name="demo_insight_cpi_title">Отчет по инфляции CPI</string>
+    <string name="demo_insight_cpi_content" formatted="false">Потребительские цены (CPI) в США оказались чуть ниже ожиданий на уровне 2,9%, что способствует росту акций и криптовалют.</string>
+    <string name="demo_insight_geopolitical_title">Геополитическое напряжение на Ближнем Востоке</string>
+    <string name="demo_insight_geopolitical_content">Эскалация геополитического напряжения на судоходных путях Ближнего Востока оказывает давление на глобальные цепочки поставок и вызывает волатильность энергоресурсов.</string>
+    <string name="demo_insight_fed_title">Вероятность снижения ставки ФРС</string>
+    <string name="demo_insight_fed_content">Протоколы заседаний ФРС указывают на возможное снижение процентной ставки на 25 б.п. в сентябре, что повышает интерес инвесторов к риску.</string>
+    <string name="demo_signal_btc_ema_ta">Пересечение EMA20 &gt; EMA50</string>
+    <string name="demo_signal_btc_ema_geo">Волна внедрения криптовалют</string>
+    <string name="demo_signal_btc_ema_sentiment">Бычьи настроения 0.78</string>
+    <string name="demo_signal_btc_ema_reasoning">Цель достигнута на сильном притоке в ETF.</string>
+    <string name="demo_signal_nvda_bull_flag_ta">Пробой бычьего флага</string>
+    <string name="demo_signal_nvda_bull_flag_geo">Спрос на инфраструктуру ИИ</string>
+    <string name="demo_signal_nvda_bull_flag_sentiment">Бычьи настроения 0.85</string>
+    <string name="demo_signal_nvda_bull_flag_reasoning">Прибыль превысила ожидания.</string>
+    <string name="demo_signal_aapl_rsi_ta">Откат RSI из зоны перекупленности</string>
+    <string name="demo_signal_aapl_rsi_geo">Реструктуризация цепочек поставок</string>
+    <string name="demo_signal_aapl_rsi_sentiment">Нейтрально 0.52</string>
+    <string name="demo_signal_aapl_rsi_reasoning">Стоп-лосс сработал на росте технологических акций.</string>
+    <string name="demo_signal_eth_macd_ta">Разворот гистограммы MACD</string>
+    <string name="demo_signal_eth_macd_geo">Всплеск активности Layer 2</string>
+    <string name="demo_signal_eth_macd_sentiment">Бычьи настроения 0.72</string>
+    <string name="demo_signal_eth_macd_reasoning">Цель достигнута на объемах обновления сети.</string>
+    <string name="demo_signal_tsla_support_ta">Отскок от поддержки на $210</string>
+    <string name="demo_signal_tsla_support_geo">Продление субсидий на электромобили</string>
+    <string name="demo_signal_tsla_support_sentiment">Бычьи настроения 0.68</string>
+    <string name="demo_signal_tsla_support_reasoning">Тейк-профит достигнут после данных о поставках.</string>
+    <string name="demo_signal_googl_double_top_ta">Отбой от двойной вершины</string>
+    <string name="demo_signal_googl_double_top_geo">Антимонопольные слушания</string>
+    <string name="demo_signal_googl_double_top_sentiment">Медвежьи настроения 0.41</string>
+    <string name="demo_signal_googl_double_top_reasoning">Стоп-лосс сработал на общем росте рынка.</string>
+    <string name="demo_signal_btc_golden_cross_ta">Подтверждение золотого креста</string>
+    <string name="demo_signal_btc_golden_cross_geo">Сдвиг макроликвидности</string>
+    <string name="demo_signal_btc_golden_cross_sentiment">Сильно бычьи настроения 0.88</string>
+    <string name="demo_signal_btc_golden_cross_reasoning">Позиция исполнена и приносит прибыль.</string>
+    <string name="admin_open_button">АДМИНИСТРИРОВАНИЕ БАЗЫ</string>
+    <string name="admin_screen_title">Зонд Supabase</string>
+    <string name="admin_screen_intro">Этот экран запускает зонд серверной части. Проверка только читает; тест записи-чтения пишет, читает обратно и затем удаляет в указанных вами таблицах.</string>
+    <string name="admin_close_button">ЗАКРЫТЬ</string>
+    <string name="admin_config_title">Подключение к серверной части</string>
+    <string name="admin_base_url_label">URL серверной части</string>
+    <string name="admin_api_key_label">Внутренний ключ</string>
+    <string name="admin_config_note">Ключ хранится на этом устройстве в зашифрованном виде и никогда не компилируется в приложение.</string>
+    <string name="admin_save_endpoint">СОХРАНИТЬ ПОДКЛЮЧЕНИЕ</string>
+    <string name="admin_check_title">Проверка только на чтение</string>
+    <string name="admin_check_button">ЗАПУСТИТЬ ПРОВЕРКУ</string>
+    <string name="admin_not_configured">Серверная часть ещё не сохранена: зонду нужны URL и внутренний ключ. Ничего не отправляется, пока не заполнены оба.</string>
+    <string name="admin_roundtrip_title">Тест записи-чтения (пишет)</string>
+    <string name="admin_roundtrip_note">Пишет, читает обратно и затем удаляет строки зонда в указанных таблицах. Неизвестное имя отклоняется до первой записи.</string>
+    <string name="admin_roundtrip_tables_label">Таблицы или группы</string>
+    <string name="admin_roundtrip_button">ЗАПУСТИТЬ ТЕСТ</string>
+    <string name="admin_roundtrip_confirm_title">Записать в эти таблицы?</string>
+    <string name="admin_roundtrip_confirm_body" formatted="false">Тест запишет, прочитает и затем удалит в: %1$s. Оставшиеся строки попадут в отчёт.</string>
+    <string name="admin_roundtrip_confirm_write">ЗАПИСАТЬ</string>
+    <string name="admin_report_title">Отчёт</string>
+    <string name="admin_report_passed">Все проверки пройдены</string>
+    <string name="admin_report_failed">Как минимум одна проверка не пройдена</string>
+    <string name="admin_check_ok">ОК</string>
+    <string name="admin_check_failed">ОШИБКА</string>
+    <string name="admin_report_selection" formatted="false">Целевые таблицы: %1$s</string>
+    <string name="admin_report_writes" formatted="false">Таблицы записи: %1$s</string>
+    <string name="admin_report_leftovers" formatted="false">Осталось строк в базе: %1$s</string>
+    <string name="admin_report_none">нет</string>
+    <string name="admin_report_command" formatted="false">Эквивалентная команда: %1$s</string>
+    <string name="admin_error_title">Зонд не ответил</string>
+    <string name="admin_error_bad_url" formatted="false">URL серверной части непригоден: %1$s</string>
+    <string name="admin_error_refused" formatted="false">Серверная часть отклонила вызов (%1$s): %2$s</string>
+    <string name="admin_error_unreachable" formatted="false">Серверная часть недоступна: %1$s</string>
+</resources>

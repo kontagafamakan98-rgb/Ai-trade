@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">Terminal de Trading IA</string>
+    <string name="paper_balance">Saldo Simulado</string>
+    <string name="tab_terminal">Terminal</string>
+    <string name="tab_insights">Análisis IA</string>
+    <string name="tab_risk">Gestión de Riesgo</string>
+    <string name="tab_chat">Chat IA y Escáner</string>
+    <string name="tab_cloud">Sincro Cloud y VIP</string>
+    <string name="engine_active">MOTOR ACTIVO</string>
+    <string name="engine_stopped">MOTOR DETENIDO</string>
+    <string name="start_bot">INICIAR BOT IA</string>
+    <string name="stop_bot">DETENER BOT IA</string>
+    <string name="watchlist_title">Lista de Seguimiento (Seleccionar para ver gráfico)</string>
+    <string name="sync_rates">Sincronizar precios en vivo</string>
+    <string name="chart_title">Gráfico en Tiempo Real</string>
+    <string name="signals_title">Señales de Trading Detectadas</string>
+    <string name="no_signals_yet">Aún no se han generado señales.</string>
+    <string name="buy">COMPRAR</string>
+    <string name="sell">VENDER</string>
+    <string name="status_executed">EJECUTADO</string>
+    <string name="status_pending">PENDIENTE</string>
+    <string name="status_blocked_risk">RIESGO BLOQUEADO</string>
+    <string name="insights_title">Análisis Geopolítico y Sentimiento IA</string>
+    <string name="scan_news_btn">Escanear Noticias con IA</string>
+    <string name="scanning_news">Gemini está analizando las noticias...</string>
+    <string name="multi_broker_title">Configuración Multi-Broker</string>
+    <string name="multi_broker_subtitle">Conecte su bróker preferido para ejecutar órdenes.</string>
+    <string name="active_broker">BRÓKER ACTIVO</string>
+    <string name="select_broker">Seleccionar Bróker:</string>
+    <string name="save_broker_config">GUARDAR CONFIGURACIÓN DE BRÓKER</string>
+    <string name="simulation_mode">Modo Simulación (Paper Trading)</string>
+    <string name="live_mode_warning">ÓRDENES REALES EN EL BRÓKER</string>
+    <string name="language_settings_title">Idioma de la Aplicación</string>
+    <string name="language_settings_subtitle">Seleccione su idioma preferido.</string>
+    <string name="risk_settings_title">Ajustes de Gestión de Riesgo</string>
+    <string name="risk_pct_label" formatted="false">Riesgo por Operación (%)</string>
+    <string name="min_confidence_label">Confianza Mínima IA (0.0 - 1.0)</string>
+    <string name="max_daily_loss_label" formatted="false">Pérdida Máxima Diaria (%)</string>
+    <string name="max_drawdown_label" formatted="false">Drawdown Máximo Tolera (%)</string>
+    <string name="max_open_trades_label">Operaciones Máximas Abiertas</string>
+    <string name="save_risk_btn">GUARDAR PARÁMETROS DE RIESGO</string>
+    <string name="log_terminal_title">Registros de Ejecución</string>
+    <string name="clear_logs_btn">Borrar Registros</string>
+    <string name="ai_chat_title">Asistente y Estratega IA</string>
+    <string name="ai_chat_subtitle">Haga preguntas sobre mercados, noticias y señales.</string>
+    <string name="chat_placeholder">Pregunte sobre BTC, AAPL o tipos de interés...</string>
+    <string name="send_btn">ENVIAR</string>
+    <string name="vip_cloud_title">Sincronización Cloud y VIP</string>
+    <string name="vip_cloud_subtitle">Respalde sus estrategias con la nube Supabase.</string>
+    <string name="sync_now_btn">SINCRONIZAR AHORA</string>
+    <string name="portfolio_performance_title">Rendimiento y Curva de Capital</string>
+    <string name="portfolio_performance_subtitle">Seguimiento en tiempo real basado en historial.</string>
+    <string name="total_equity">Capital Total</string>
+    <string name="realized_pnl">PnL Realizado</string>
+    <string name="win_rate">Tasa de Acierto</string>
+    <string name="total_trades">Operaciones Totales</string>
+    <string name="entry_label">Entrada</string>
+    <string name="stop_loss_label">Stop Loss</string>
+    <string name="take_profit_label">Take Profit</string>
+    <string name="confidence_label">Conf.</string>
+    <string name="price_label">Precio</string>
+    <string name="no_logs_yet">No hay registros aún. Inicie el motor.</string>
+    <string name="run_gemini_analysis">ANALIZAR NOTICIAS CON GEMINI</string>
+    <string name="no_insights_yet">Sin análisis disponibles aún.</string>
+    <string name="current_equity_label">Capital Actual</string>
+    <string name="max_drawdown_limit_label">Límite Máx Drawdown</string>
+    <string name="current_drawdown_label">Drawdown Actual</string>
+    <string name="save_risk_parameters">GUARDAR PARÁMETROS RIESGO</string>
+    <string name="configuring_broker">Configurando:</string>
+    <string name="server_gateway_url_label">URL de Servidor Gateway</string>
+    <string name="save_broker_configuration">GUARDAR CONFIGURACIÓN BRÓKER</string>
+    <string name="reset_entire_trading_data">REINICIAR TODOS LOS DATOS</string>
+    <string name="vip_feature_locked_title">Función VIP Bloqueada</string>
+    <string name="search_grounding_label">Búsqueda Web Anclada</string>
+    <string name="maps_locator_label">Localizador Financiero Maps</string>
+    <string name="deep_reasoning_label">Razonamiento Profundo High-Thinking</string>
+    <string name="flash_mode_label">Modo Flash Rápido</string>
+    <string name="chat_input_placeholder">Pregunte sobre acciones, cripto, gráficos...</string>
+    <string name="quant_backtest_title">Motor Backtest Quant y Walk-Forward</string>
+    <string name="quant_backtest_subtitle">Validación fuera de muestra y comparación Buy &amp; Hold</string>
+    <string name="strategy_return">Retorno Estrategia</string>
+    <string name="benchmark_return">Benchmark (Buy &amp; Hold)</string>
+    <string name="sharpe_ratio">Ratio de Sharpe</string>
+    <string name="profit_factor">Factor de Beneficio</string>
+    <string name="max_drawdown">Drawdown Máximo</string>
+    <string name="system_health_title">Observabilidad e Infraestructura Worker</string>
+    <string name="reset_circuit_breaker">Reiniciar Cortacircuitos</string>
+    <string name="worker_queue_throughput">Rendimiento Cola Worker</string>
+    <string name="jobs_processed">trabajos procesados</string>
+    <string name="memory_usage">Memoria RAM</string>
+    <string name="broker_state">Estado del Bróker</string>
+    <string name="quant_memory_title">Memoria Analítica y Aprendizaje</string>
+    <string name="quant_memory_subtitle">Registro de atribución por régimen de mercado</string>
+    <string name="best_regime">Mejor Régimen</string>
+    <string name="ai_accuracy">Precisión IA Alta Confianza</string>
+    <string name="pay_with_paypal">Pagar con PayPal</string>
+    <string name="google_pay_sandbox">Google Pay y Tarjeta Sandbox</string>
+    <string name="cancel_btn">CANCELAR</string>
+    <string name="firebase_auth_title">Autenticación Firebase</string>
+    <string name="sign_in_with_google">Iniciar sesión con Google</string>
+    <string name="sign_out_from_firebase">CERRAR SESIÓN FIREBASE</string>
+    <string name="firestore_db_sync_title">Sincronización Firestore DB</string>
+    <string name="elite_vip_license_title">Licencia Élite VIP</string>
+    <string name="activate_vip_sub">ACTIVAR SUSCRIPCIÓN ELITE VIP</string>
+    <string name="demo_account">Cuenta Demo</string>
+    <string name="demo_balance">Saldo de la Cuenta Demo</string>
+    <string name="reset_demo_capital">Restablecer Capital Demo</string>
+    <string name="set_initial_capital">Nuevo Capital Demo ($)</string>
+    <string name="update_demo_capital_btn">ACTUALIZAR SALDO DEMO</string>
+    <string name="manage_demo_account">Gestión de Cuenta Demo</string>
+    <string name="live_broker_account">Cuenta Broker Real</string>
+    <string name="gemini_parameters_title">Parámetros Gemini AI</string>
+    <string name="vip_locked_text">Reservado para miembros VIP Pro. Actualice para desbloquear la búsqueda en web, el modo de razonamiento profundo y el escáner de imágenes.</string>
+    <string name="institutional_grade_title">Obtenga capacidades de trading con IA de nivel institucional. Obtenga una ventaja crítica con señales de baja latencia.</string>
+    <string name="monthly_vip">VIP Mensual</string>
+    <string name="annual_vip">VIP Anual</string>
+    <string name="lifetime_elite">Elite De Por Vida</string>
+    <string name="best_value">MEJOR VALOR</string>
+    <string name="pay_pal_supported">Cuenta Mercantil: makemoney0598@gmail.com (PayPal Soportado)</string>
+    <string name="vip_active_badge">MIEMBRO VIP ACTIVO</string>
+    <string name="danger_zone">Zona Peligrosa</string>
+    <string name="keys_configured_label">Claves</string>
+    <string name="connected_status_label">CONECTADO</string>
+    <string name="disconnected_status_label">DESCONECTADO</string>
+    <string name="synced_status_label">SINCRONIZADO</string>
+    <string name="out_of_sync_status_label">DESINCRONIZADO</string>
+    <string name="paper_sim_label">CUENTA DEMO</string>
+    <string name="live_trading_label">BROKER REAL</string>
+    <string name="ok_btn">OK</string>
+    <string name="active_label">ACTIVO</string>
+    <string name="vip_pro_label">VIP PRO</string>
+    <string name="free_label">GRATIS</string>
+    <string name="gemini_bias">Sesgo Gemini</string>
+    <string name="bullish_label">ALCISTA</string>
+    <string name="bearish_label">BAJISTA</string>
+    <string name="neutral_label">NEUTRAL</string>
+    <string name="score_label">Puntuación</string>
+    <string name="geopolitical_label">GEOPOLÍTICO</string>
+    <string name="sentiment_label">SENTIMIENTO</string>
+    <string name="bias_impact_label">Impacto del sesgo</string>
+    <string name="scanning_metrics">Gemini escaneando métricas del mercado...</string>
+    <string name="vip_feature1">Modo de Razonamiento Avanzado Gemini Pro</string>
+    <string name="vip_feature2">Protocolo de Búsqueda Web en Vivo sin Latencia</string>
+    <string name="vip_feature3">Nodo de Escaneo Técnico de Gráficos por Captura</string>
+    <string name="vip_feature4">Localizador GPS de Centros Financieros y Mesas de Trading</string>
+
+    <string name="badge_live_account">CUENTA REAL</string>
+    <string name="badge_real_demo">DEMO REAL</string>
+    <string name="badge_paper_sim">SIMULADO</string>
+    <string name="simulator_notice">SIMULADOR LOCAL: precios, noticias y backtest generados. No se ejecutan órdenes reales.</string>
+    <string name="broker_demo_available_title">Cuenta Demo Real Disponible</string>
+    <string name="broker_demo_available_body">Actualmente usa un simulador local. Active el modo Demo Real (Alpaca Paper / MetaTrader) para transmisión de precios reales.</string>
+    <string name="broker_activate_demo_btn">ACTIVAR DEMO REAL (1-CLIC)</string>
+    <string name="quick_connect_demo_label">Conectar Cuenta Demo Real</string>
+    <string name="quick_connect_demo_subtitle">Habilite flujo de mercado en vivo y simulación de órdenes reales mediante Alpaca Paper API.</string>
+    <string name="chat_welcome_message">¡Bienvenido a AI Trade Terminal! Pregúnteme sobre los mercados, estrategias o modos de Gemini.</string>
+
+    <!-- Traductions (es) des écrans. -->
+    <string name="chat_send">Enviar</string>
+    <string name="chat_clear">Borrar</string>
+    <string name="chat_sender_user">USTED</string>
+    <string name="chat_sender_gemini">ASISTENTE IA GEMINI</string>
+    <string name="chat_locked_body" formatted="false">El protocolo %1$s está reservado a los miembros VIP Trade Premium. Mejore su plan para desbloquear la búsqueda en directo, el modo de razonamiento profundo y el análisis técnico de imágenes.</string>
+    <string name="chat_attached_pattern" formatted="false">Adjunto: patrón gráfico %1$s (modo multimodal activo)</string>
+    <string name="chat_search_grounding_full">Búsqueda de Google en directo</string>
+    <string name="chat_maps_grounding_full">Anclaje de Google Maps</string>
+    <string name="chat_high_thinking_mode">Modo de razonamiento profundo</string>
+    <string name="insights_error_analysis" formatted="false">Error al analizar el contexto de mercado: %1$s</string>
+    <string name="backtest_strategy_mode">Modo de estrategia de backtest:</string>
+    <string name="backtest_monte_carlo_stress">Prueba de estrés Monte Carlo</string>
+    <string name="backtest_trade_logs" formatted="false">Registro de operaciones (%1$s)</string>
+    <string name="backtest_btc_benchmark">Referencia BTC</string>
+    <string name="backtest_alpha">Alfa (rendimiento superior)</string>
+    <string name="backtest_beta">Beta (volatilidad)</string>
+    <string name="backtest_sharpe">Sharpe</string>
+    <string name="backtest_sortino">Sortino</string>
+    <string name="backtest_calmar">Calmar</string>
+    <string name="backtest_max_dd">Pérdida máx.</string>
+    <string name="monte_carlo_title">Cuantiles de riesgo Monte Carlo (500 simulaciones)</string>
+    <string name="monte_carlo_var95" formatted="false">VaR 95 %</string>
+    <string name="monte_carlo_var99" formatted="false">VaR 99 %</string>
+    <string name="monte_carlo_var_at95" formatted="false">VaR al 95 %</string>
+    <string name="monte_carlo_cvar">CVaR (pérdida esperada)</string>
+    <string name="monte_carlo_median_equity">Capital mediano</string>
+    <string name="chart_scanner_title">Escáner técnico de gráficos</string>
+    <string name="chart_scanner_select">Seleccione la captura de gráfico que desea analizar:</string>
+    <string name="chart_pattern_double_bottom">Doble suelo</string>
+    <string name="chart_pattern_head_shoulders">Hombro-cabeza-hombro</string>
+    <string name="chart_pattern_hs">Patrón H-C-H</string>
+    <string name="chart_pattern_rsi_divergence">Divergencia del RSI</string>
+    <string name="agent_desk_title">Mesa de investigación multiagente</string>
+    <string name="agent_desk_subtitle">Motor de consenso macro + cuantitativo + sentimiento + riesgo</string>
+    <string name="agent_consensus">CONSENSO IA</string>
+    <string name="agent_coordinating">Coordinando 4 agentes de investigación IA...</string>
+    <string name="agent_run_research" formatted="false">INICIAR INVESTIGACIÓN MULTIAGENTE [%1$s]</string>
+    <string name="agent_target_asset" formatted="false">Activo objetivo: %1$s</string>
+    <string name="agent_confidence" formatted="false">Confianza: %1$s %%</string>
+    <string name="agent_entry" formatted="false">Entrada: %1$s $</string>
+    <string name="agent_stop_loss" formatted="false">Stop loss: %1$s $</string>
+    <string name="agent_take_profit" formatted="false">Toma de beneficios: %1$s $</string>
+    <string name="agent_cio_synthesis">Síntesis del director de inversiones:</string>
+    <string name="agent_inject_signal">INYECTAR LA SEÑAL DE CONSENSO EN EL PIPELINE DE EJECUCIÓN REAL</string>
+    <string name="portfolio_starting_capital">Capital inicial</string>
+    <string name="portfolio_current_equity">Capital actual de la cartera</string>
+    <string name="portfolio_point" formatted="false">Punto n.º %1$s</string>
+    <string name="portfolio_pnl" formatted="false">PyG: %1$s %2$s $</string>
+    <string name="portfolio_filter_all">TODO</string>
+    <string name="portfolio_filter_ytd">AÑO EN CURSO</string>
+    <string name="trade_log_history">Historial de operaciones walk-forward:</string>
+    <string name="trade_log_entry" formatted="false">Entrada: %1$s $</string>
+    <string name="vip_paypal_active">PayPal activo</string>
+    <string name="vip_plan_monthly">VIP mensual Starter</string>
+    <string name="vip_plan_annual">Plan institucional anual</string>
+    <string name="vip_plan_lifetime">Licencia Elite de por vida</string>
+    <string name="vip_standard_access">Acceso estándar</string>
+    <string name="vip_save_annual" formatted="false">Ahorre un %1$d %% al año</string>
+    <string name="vip_pay_once">Pago único</string>
+    <string name="vip_institutional_unlocked">VIP INSTITUCIONAL DESBLOQUEADO</string>
+    <string name="vip_license_active">Licencia: Premium activa (núcleo anual multinodo)</string>
+    <string name="vip_all_features_active">Todas las rutas de razonamiento profundo, los escáneres multimodales de capturas, los rastreadores web en tiempo real y los localizadores geográficos están plenamente operativos.</string>
+    <string name="gpay_title">Pasarela de pago segura</string>
+    <string name="gpay_upgrade_plan" formatted="false">Plan a mejorar: %1$s</string>
+    <string name="gpay_total_charge" formatted="false">Importe total: %1$s</string>
+    <string name="gpay_merchant_note">Las suscripciones se enrutan de forma segura a la cuenta de comerciante del terminal makemoney0598@gmail.com. Elija su opción de pago a continuación.</string>
+    <string name="gpay_authorizing">Autorizando la transacción segura...</string>
+    <string name="gpay_credit_card">Tarjeta de crédito</string>
+    <string name="gpay_paypal_logo">Logotipo de PayPal</string>
+    <string name="firebase_auth_note">Autentíquese de forma segura con Google Auth para sincronizar señales, registros y preferencias entre dispositivos.</string>
+    <string name="firestore_connect_btn">CONECTAR CON FIRESTORE</string>
+    <string name="firestore_sync_note" formatted="false">Sincronice sus %1$s señales de trading, registros y parámetros de riesgo con los nodos de Firestore en tiempo real.</string>
+    <string name="firestore_synced_label">SINCRONIZADO</string>
+    <string name="firestore_out_of_sync_label">SIN SINCRONIZAR</string>
+    <string name="learn_title">APRENDIZAJE IA Y AUTOCORRECCIÓN</string>
+    <string name="learn_subtitle">Análisis post-mortem de errores y ajuste dinámico</string>
+    <string name="learn_reevaluate">Reevaluar</string>
+    <string name="learn_weights_adjusted">Pesos multifactor reajustados:</string>
+    <string name="learn_weight_ta" formatted="false">Análisis técnico: %1$s %%</string>
+    <string name="learn_weight_macro" formatted="false">Sesgo macro: %1$s %%</string>
+    <string name="learn_weight_sentiment" formatted="false">Sentimiento IA: %1$s %%</string>
+    <string name="learn_rules_generated">Reglas de autocorrección generadas:</string>
+    <string name="learn_post_mortem_lessons">Últimas lecciones post-mortem:</string>
+    <string name="exec_mode_live_title">MODO DE EJECUCIÓN: REAL (CAPITAL REAL)</string>
+    <string name="exec_mode_paper_title">MODO DE EJECUCIÓN: SANDBOX VIRTUAL (PAPER)</string>
+    <string name="exec_live_note" formatted="false">Órdenes enviadas a los servidores reales del bróker (%1$s)</string>
+    <string name="exec_paper_note">Simulación sandbox con ejecución virtual y flujos de precios reales</string>
+    <string name="exec_switch_paper">CAMBIAR A SANDBOX</string>
+    <string name="exec_switch_live">CAMBIAR A REAL</string>
+    <string name="health_broker_paper_sandbox">Sandbox virtual (sin clave)</string>
+    <string name="health_broker_alpaca_paper">Cuenta demo de Alpaca conectada</string>
+    <string name="health_broker_alpaca_live">Cuenta de producción de Alpaca activa</string>
+    <string name="health_broker_unknown">Sandbox virtual</string>
+    <string name="broker_quick_connect">Conexión rápida</string>
+    <string name="broker_executes_simulated">Ejecuta órdenes simuladas sin riesgo</string>
+    <string name="broker_webhook_token">Token de autenticación webhook / clave API</string>
+    <string name="broker_password_secret">Contraseña de la cuenta / secreto API</string>
+    <string name="broker_api_key_of" formatted="false">Clave API de %1$s</string>
+    <string name="broker_api_secret_of" formatted="false">Secreto API de %1$s</string>
+    <string name="broker_desc_stocks_crypto">Acciones y cripto</string>
+    <string name="broker_desc_global_equities">Renta variable y opciones globales</string>
+    <string name="broker_desc_prop_firm">Financiación y reto de prop firm</string>
+    <string name="broker_desc_raw_spreads">Spreads brutos de forex y CFD</string>
+    <string name="broker_desc_stp">Forex y acciones por STP</string>
+    <string name="broker_desc_ecn">Ejecuciones ECN y forex</string>
+    <string name="broker_desc_micro">Cuentas micro y estándar</string>
+    <string name="broker_desc_leverage">CFD de forex con apalancamiento ilimitado</string>
+    <string name="broker_desc_dma">CFD con acceso directo al mercado</string>
+    <string name="broker_desc_fixed_floating">Spreads fijos y variables</string>
+    <string name="broker_desc_multi_asset">Mesa multiactivo MT5</string>
+    <string name="broker_desc_forex_commodities">CFD de forex y materias primas</string>
+    <string name="broker_desc_crypto_spot_derivatives">Cripto al contado y derivados</string>
+    <string name="broker_desc_crypto_spot_futures">Cripto al contado y futuros</string>
+    <string name="broker_desc_proprietary">Mesa propia / webhook</string>
+
+
+    <!-- Deuxième vague (es). -->
+    <string name="signal_ta_summary" formatted="false">AT: %1$s</string>
+    <string name="signal_sentiment" formatted="false">Sentimiento: %1$s</string>
+    <string name="status_closed">CERRADO</string>
+    <string name="action_strong_buy">COMPRA FUERTE</string>
+    <string name="action_neutral_hold">MANTENER</string>
+    <string name="action_strong_sell">VENTA FUERTE</string>
+    <string name="conviction_high">ALTA</string>
+    <string name="conviction_medium">MEDIA</string>
+    <string name="conviction_low">BAJA</string>
+    <string name="portfolio_vs_baseline" formatted="false">vs %1$s $</string>
+    <string name="portfolio_filter_1w">1S</string>
+    <string name="portfolio_filter_1m">1M</string>
+    <string name="price_history_pair_title" formatted="false">%1$s/USD %2$s</string>
+    <string name="quant_memory_stats" formatted="false">%1$s operaciones | Tasa de acierto: %2$s%% | PnL: %3$s$%4$s</string>
+    <string name="health_memory_mb" formatted="false">%1$s MB</string>
+    <string name="broker_account_id_of" formatted="false">ID de cuenta %1$s</string>
+    <string name="date_time_pattern_short">dd MMM, HH:mm</string>
+    <string name="vip_price_monthly">19,99 $</string>
+    <string name="vip_price_annual">99,99 $</string>
+    <string name="vip_price_lifetime">199,99 $</string>
+    <string name="vip_period_monthly">19,99 $ / mes</string>
+    <string name="vip_period_annual">99,99 $ / año</string>
+
+
+    <!-- Troisième vague (es). -->
+    <string name="learn_rule_rsi_overbought">Regla n.º 1: filtrar las compras en sobrecompra cuando el RSI supera 68.</string>
+    <string name="learn_rule_high_impact_news">Regla n.º 2: bloquear órdenes durante noticias de alto impacto.</string>
+    <string name="learn_feedback_active">Bucle de retroalimentación autoaprendizaje activo.</string>
+    <string name="log_self_learning_review" formatted="false">BALANCE DE AUTOAPRENDIZAJE: reevaluación de operaciones finalizada. Pesos adaptados: TA %1$s%%, macro %2$s%%, sentimiento %3$s%%. Umbral de confianza: %4$s.</string>
+    <string name="log_backtest_summary" formatted="false">Backtest walk-forward (%1$s - %2$s): retorno %3$s%%, Sharpe: %4$s, VaR95: %5$s%%.</string>
+    <string name="log_backtest_synthetic">Backtest SINTÉTICO: series generadas localmente, no representativas del mercado real. Solo con fines de demostración.</string>
+    <string name="insight_multi_agent_title" formatted="false">Investigación multiagente [%1$s]: %2$s (%3$s%%)</string>
+    <string name="log_multi_agent_research" formatted="false">Capa de investigación multiagente ejecutada para %1$s: consenso = %2$s (confianza %3$s%%)</string>
+    <string name="log_consensus_injected" formatted="false">Consenso de investigación multiagente inyectado en el pipeline de ejecución real para %1$s</string>
+    <string name="log_circuit_breaker_reset">Interruptor global restablecido manualmente por el usuario.</string>
+    <string name="log_loop_paused">Bucle automatizado en pausa.</string>
+    <string name="log_loop_started">Bot de trading con IA iniciado correctamente. Monitorización multifactor en tiempo real activada.</string>
+    <string name="log_loop_queue_started">Bucle de trading multifactor automatizado iniciado (cola de workers activa).</string>
+    <string name="log_portfolio_risk_breach" formatted="false">VIOLACIÓN DE RIESGO DE CARTERA: %1$s</string>
+    <string name="log_bootstrap_signal" formatted="false">Señal de inicialización generada para %1$s (motor de IA activo).</string>
+    <string name="log_cycle_scan" formatted="false">Ciclo n.º %1$s: escaneo activo de %2$s pares. Motor en vigilancia (filtro de confianza mín.: %3$s%%).</string>
+    <string name="log_loop_error" formatted="false">Error en el ciclo automático: %1$s</string>
+    <string name="log_position_closed_sl" formatted="false">Posición cerrada (stop loss): %1$s %2$s %3$s alcanzó el SL en %4$s $. PnL: %5$s $</string>
+    <string name="log_position_closed_tp" formatted="false">Posición cerrada (take profit): %1$s %2$s %3$s alcanzó el TP en %4$s $. PnL: +%5$s $</string>
+    <string name="log_tenant_breach" formatted="false">VIOLACIÓN DE AISLAMIENTO DE INQUILINO: %1$s</string>
+    <string name="log_order_executed" formatted="false">Orden ejecutada [modo: %1$s]: %2$s %3$s %4$s en %5$s $. SL: %6$s $, TP: %7$s $</string>
+    <string name="log_signal_blocked" formatted="false">Señal bloqueada para %1$s: %2$s</string>
+    <string name="log_risk_updated">Parámetros de riesgo actualizados correctamente.</string>
+    <string name="log_watchlist_updated" formatted="false">Lista de seguimiento modificada: %1$s</string>
+    <string name="log_language_updated" formatted="false">Idioma actualizado: %1$s</string>
+    <string name="log_broker_saved" formatted="false">Credenciales del bróker guardadas para [%1$s] (modo %2$s).</string>
+    <string name="mode_paper">Demo</string>
+    <string name="mode_live">Real</string>
+    <string name="log_switched_live">PRECAUCIÓN: ¡el modo de ejecución ha pasado a TRADING REAL CON BRÓKER!</string>
+    <string name="log_switched_paper">Modo de ejecución cambiado a trading simulado (sandbox virtual).</string>
+    <string name="log_demo_reset">Capital de la cuenta demo restablecido a 100.000,00 $.</string>
+    <string name="log_demo_balance_set" formatted="false">Saldo de la cuenta demo establecido en %1$s $</string>
+    <string name="insight_sentiment_api_title" formatted="false">Sentimiento de %1$s (API Gemini)</string>
+    <string name="log_sentiment_api_done" formatted="false">Análisis de sentimiento con IA Gemini completado para %1$s: puntuación = %2$s</string>
+    <string name="error_parsing" formatted="false">Error de análisis: %1$s</string>
+    <string name="error_null_response">Respuesta vacía del servidor Gemini</string>
+    <string name="direction_bullish">alcista</string>
+    <string name="direction_bearish">bajista</string>
+    <string name="direction_neutral">neutral</string>
+    <string name="insight_simulated_reasoning" formatted="false">El sesgo de tendencia calculado es %1$s. Las noticias destacan un volumen constante en %2$s con un fuerte impulso macroeconómico. Los niveles clave de soporte técnico indican consolidación con baja presión vendedora.</string>
+    <string name="insight_sentiment_simulator_title" formatted="false">Sentimiento de %1$s (simulador de respaldo)</string>
+    <string name="log_sentiment_fallback_done" formatted="false">Análisis de sentimiento de respaldo completado para %1$s: puntuación = %2$s</string>
+    <string name="log_firebase_signed_in" formatted="false">Autenticación correcta con Firebase: sesión iniciada con Google (%1$s).</string>
+    <string name="log_firebase_signed_out">Sesión cerrada en la cuenta de Google y Firebase Auth.</string>
+    <string name="error_firestore_unauthenticated">No se puede sincronizar con Firestore: el usuario no está autenticado.</string>
+    <string name="log_firestore_synced" formatted="false">Sincronización con Firestore correcta. Copias de %1$s señales y registros guardadas.</string>
+    <string name="log_vip_activated">¡Suscripción Premium activa! Modo de razonamiento Gemini Pro, búsqueda en vivo, mapas y escáner de gráficos desbloqueados.</string>
+    <string name="chat_analyzing_image">Analizando la imagen del gráfico…</string>
+    <string name="chat_sim_fallback_header">[Simulador local de IA - conecta una clave Gemini en Secrets para usar la IA en vivo]\n\n</string>
+    <string name="chat_sim_image_done">He completado el escaneo simulado de tu captura de pantalla.\n</string>
+    <string name="chat_sim_image_analysis">ANÁLISIS TÉCNICO: estructura de ruptura detectada. El soporte clave en niveles históricos se mantiene sólido.\n</string>
+    <string name="chat_sim_image_reco">RECOMENDACIÓN: impulso alcista detectado. Considera colocar un stop loss justo bajo el canal local.</string>
+    <string name="chat_sim_regarding" formatted="false">Sobre «%1$s»\n\n</string>
+    <string name="chat_sim_intro">En esta simulación local, estas son las recomendaciones estándar:\n</string>
+    <string name="chat_sim_bullet_volume">- El volumen de la lista de seguimiento muestra un gran impulso. Vigila los parámetros de gestión de riesgo.\n</string>
+    <string name="chat_sim_bullet_modes">- Activa la búsqueda en vivo, el modo de razonamiento o la baja latencia para explorar las funciones.</string>
+
+
+    <string name="signal_reason_blocked_by_risk" formatted="false">Bloqueado por el guardián de riesgo: %1$s</string>
+
+
+    <!-- Demostración (es) : análisis y señales iniciales. -->
+    <string name="demo_insight_cpi_title">Informe de Inflación del IPC</string>
+    <string name="demo_insight_cpi_content" formatted="false">El IPC de EE. UU. se sitúa ligeramente por debajo de lo previsto en un 2.9%, lo que impulsa un sentimiento alcista en acciones y criptomonedas.</string>
+    <string name="demo_insight_geopolitical_title">Fricción Geopolítica en Oriente Medio</string>
+    <string name="demo_insight_geopolitical_content">La escalada de fricciones geopolíticas en las rutas marítimas de Oriente Medio presiona los flujos de la cadena de suministro global y activa la volatilidad energética.</string>
+    <string name="demo_insight_fed_title">Probabilidades de Recorte de Tasas de la Fed</string>
+    <string name="demo_insight_fed_content">Las actas de la reunión de la Fed sugerían posibles recortes de tasas de interés de 25 pb en septiembre, impulsando el apetito por el riesgo de los inversores.</string>
+    <string name="demo_signal_btc_ema_ta">Cruce EMA20 &gt; EMA50</string>
+    <string name="demo_signal_btc_ema_geo">Ola de adopción cripto</string>
+    <string name="demo_signal_btc_ema_sentiment">Sentimiento alcista 0.78</string>
+    <string name="demo_signal_btc_ema_reasoning">Objetivo alcanzado por fuertes entradas de ETF.</string>
+    <string name="demo_signal_nvda_bull_flag_ta">Ruptura de bandera alcista</string>
+    <string name="demo_signal_nvda_bull_flag_geo">Demanda de infraestructura de IA</string>
+    <string name="demo_signal_nvda_bull_flag_sentiment">Sentimiento alcista 0.85</string>
+    <string name="demo_signal_nvda_bull_flag_reasoning">Las ganancias superaron las expectativas.</string>
+    <string name="demo_signal_aapl_rsi_ta">Retroceso de RSI sobrecomprado</string>
+    <string name="demo_signal_aapl_rsi_geo">Restructuración de cadena de suministro</string>
+    <string name="demo_signal_aapl_rsi_sentiment">Neutro 0.52</string>
+    <string name="demo_signal_aapl_rsi_reasoning">Stop Loss activado por el rally tecnológico.</string>
+    <string name="demo_signal_eth_macd_ta">Giro de histograma MACD</string>
+    <string name="demo_signal_eth_macd_geo">Pico de actividad en Layer 2</string>
+    <string name="demo_signal_eth_macd_sentiment">Sentimiento alcista 0.72</string>
+    <string name="demo_signal_eth_macd_reasoning">Objetivo alcanzado tras la actualización de red.</string>
+    <string name="demo_signal_tsla_support_ta">Rebote de soporte en $210</string>
+    <string name="demo_signal_tsla_support_geo">Renovación de subsidios de VE</string>
+    <string name="demo_signal_tsla_support_sentiment">Sentimiento alcista 0.68</string>
+    <string name="demo_signal_tsla_support_reasoning">Toma de ganancias alcanzada tras métricas de entrega.</string>
+    <string name="demo_signal_googl_double_top_ta">Rechazo de doble techo</string>
+    <string name="demo_signal_googl_double_top_geo">Audiencia antimonopolio</string>
+    <string name="demo_signal_googl_double_top_sentiment">Bajista 0.41</string>
+    <string name="demo_signal_googl_double_top_reasoning">Stop Loss activado por la expansión del mercado.</string>
+    <string name="demo_signal_btc_golden_cross_ta">Confirmación de Golden Cross</string>
+    <string name="demo_signal_btc_golden_cross_geo">Cambio de liquidez macro</string>
+    <string name="demo_signal_btc_golden_cross_sentiment">Muy alcista 0.88</string>
+    <string name="demo_signal_btc_golden_cross_reasoning">Posición ejecutada y activa en ganancia.</string>
+    <string name="admin_open_button">ADMINISTRACIÓN DE LA BASE</string>
+    <string name="admin_screen_title">Sonda Supabase</string>
+    <string name="admin_screen_intro">Esta pantalla ejecuta la sonda del backend. La consulta solo lee; el ida y vuelta escribe, relee y luego borra en las tablas que nombres.</string>
+    <string name="admin_close_button">CERRAR</string>
+    <string name="admin_config_title">Conexión con el backend</string>
+    <string name="admin_base_url_label">URL del backend</string>
+    <string name="admin_api_key_label">Clave interna</string>
+    <string name="admin_config_note">La clave se queda en este dispositivo, cifrada, y nunca se compila dentro de la aplicación.</string>
+    <string name="admin_save_endpoint">GUARDAR CONEXIÓN</string>
+    <string name="admin_check_title">Consulta de solo lectura</string>
+    <string name="admin_check_button">EJECUTAR CONSULTA</string>
+    <string name="admin_not_configured">Aún no hay backend guardado: la sonda necesita una URL y una clave interna. No se envía nada hasta que ambas estén rellenas.</string>
+    <string name="admin_roundtrip_title">Ida y vuelta (escribe)</string>
+    <string name="admin_roundtrip_note">Escribe, relee y luego borra filas de sonda en las tablas que nombres. Un nombre desconocido se rechaza antes de escribir nada.</string>
+    <string name="admin_roundtrip_tables_label">Tablas o grupos</string>
+    <string name="admin_roundtrip_button">EJECUTAR IDA Y VUELTA</string>
+    <string name="admin_roundtrip_confirm_title">¿Escribir en estas tablas?</string>
+    <string name="admin_roundtrip_confirm_body" formatted="false">El ida y vuelta escribe, relee y luego borra en: %1$s. Las filas que queden vuelven en el informe.</string>
+    <string name="admin_roundtrip_confirm_write">ESCRIBIR</string>
+    <string name="admin_report_title">Informe</string>
+    <string name="admin_report_passed">Todas las comprobaciones pasan</string>
+    <string name="admin_report_failed">Al menos una comprobación ha fallado</string>
+    <string name="admin_check_ok">OK</string>
+    <string name="admin_check_failed">FALLO</string>
+    <string name="admin_report_selection" formatted="false">Tablas objetivo: %1$s</string>
+    <string name="admin_report_writes" formatted="false">Tablas escritas: %1$s</string>
+    <string name="admin_report_leftovers" formatted="false">Filas que quedan en la base: %1$s</string>
+    <string name="admin_report_none">ninguna</string>
+    <string name="admin_report_command" formatted="false">Comando equivalente: %1$s</string>
+    <string name="admin_error_title">La sonda no ha respondido</string>
+    <string name="admin_error_bad_url" formatted="false">URL del backend inutilizable: %1$s</string>
+    <string name="admin_error_refused" formatted="false">El backend rechazó la llamada (%1$s): %2$s</string>
+    <string name="admin_error_unreachable" formatted="false">Backend inalcanzable: %1$s</string>
+</resources>

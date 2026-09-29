@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">AI 交易终端</string>
+    <string name="paper_balance">模拟资金</string>
+    <string name="tab_terminal">交易终端</string>
+    <string name="tab_insights">AI 研报</string>
+    <string name="tab_risk">风控中心</string>
+    <string name="tab_chat">AI 助手与扫描</string>
+    <string name="tab_cloud">云同步与 VIP</string>
+    <string name="engine_active">引擎运行中</string>
+    <string name="engine_stopped">引擎已停止</string>
+    <string name="start_bot">启动 AI 机器人</string>
+    <string name="stop_bot">停止 AI 机器人</string>
+    <string name="watchlist_title">自选列表 (点击查看图表)</string>
+    <string name="sync_rates">同步实时行情</string>
+    <string name="chart_title">实时市场 K 线图</string>
+    <string name="signals_title">检测到的交易信号</string>
+    <string name="no_signals_yet">暂无交易信号生成。</string>
+    <string name="buy">买入</string>
+    <string name="sell">卖出</string>
+    <string name="status_executed">已执行</string>
+    <string name="status_pending">等待中</string>
+    <string name="status_blocked_risk">风控拦截</string>
+    <string name="insights_title">地缘政治与 AI 情绪研报</string>
+    <string name="scan_news_btn">运行 AI 新闻扫描</string>
+    <string name="scanning_news">Gemini 正在分析宏观资讯...</string>
+    <string name="multi_broker_title">多券商交易对接</string>
+    <string name="multi_broker_subtitle">连接您的实盘或模拟券商执行自动信号。</string>
+    <string name="active_broker">当前券商</string>
+    <string name="select_broker">选择目标券商:</string>
+    <string name="save_broker_config">保存券商配置</string>
+    <string name="simulation_mode">模拟模式 (Paper Trading)</string>
+    <string name="live_mode_warning">实盘模式：将直接在券商下达真实订单</string>
+    <string name="language_settings_title">应用语言设置</string>
+    <string name="language_settings_subtitle">选择您偏好的界面语言。</string>
+    <string name="risk_settings_title">风控与仓位管理设置</string>
+    <string name="risk_pct_label" formatted="false">单笔交易风险 (%)</string>
+    <string name="min_confidence_label">最低 AI 置信度 (0.0 - 1.0)</string>
+    <string name="max_daily_loss_label" formatted="false">单日最大亏损 (%)</string>
+    <string name="max_drawdown_label" formatted="false">最大回撤限制 (%)</string>
+    <string name="max_open_trades_label">最大同时持仓数</string>
+    <string name="save_risk_btn">保存风控参数</string>
+    <string name="log_terminal_title">交易引擎运行日志</string>
+    <string name="clear_logs_btn">清除日志</string>
+    <string name="ai_chat_title">AI 策略与市场助手</string>
+    <string name="ai_chat_subtitle">随时咨询行情趋势、新闻分析和交易策略。</string>
+    <string name="chat_placeholder">询问 BTC, AAPL 或美联储利率动态...</string>
+    <string name="send_btn">发送</string>
+    <string name="vip_cloud_title">云端同步与 VIP 特权</string>
+    <string name="vip_cloud_subtitle">将您的策略备份至 Supabase 云端。</string>
+    <string name="sync_now_btn">立即同步至云端</string>
+    <string name="portfolio_performance_title">账户资金曲线与绩效</string>
+    <string name="portfolio_performance_subtitle">根据历史交易实时绘制权益变动图表。</string>
+    <string name="total_equity">总权益</string>
+    <string name="realized_pnl">已实现盈亏</string>
+    <string name="win_rate">胜率</string>
+    <string name="total_trades">总交易笔数</string>
+    <string name="entry_label">入场价</string>
+    <string name="stop_loss_label">止损价</string>
+    <string name="take_profit_label">止盈价</string>
+    <string name="confidence_label">置信度</string>
+    <string name="price_label">价格</string>
+    <string name="no_logs_yet">暂无日志，请启动交易引擎。</string>
+    <string name="run_gemini_analysis">运行 GEMINI 资讯分析</string>
+    <string name="no_insights_yet">暂无研报生成。</string>
+    <string name="current_equity_label">当前资金</string>
+    <string name="max_drawdown_limit_label">最大回撤限制</string>
+    <string name="current_drawdown_label">当前回撤</string>
+    <string name="save_risk_parameters">保存风控参数</string>
+    <string name="configuring_broker">配置券商:</string>
+    <string name="server_gateway_url_label">网关服务器 URL</string>
+    <string name="save_broker_configuration">保存券商配置</string>
+    <string name="reset_entire_trading_data">重置所有交易数据</string>
+    <string name="vip_feature_locked_title">VIP 功能已锁定</string>
+    <string name="search_grounding_label">联网搜索增强</string>
+    <string name="maps_locator_label">地图金融网点定位</string>
+    <string name="deep_reasoning_label">深度思考模式</string>
+    <string name="flash_mode_label">低延迟极速模式</string>
+    <string name="chat_input_placeholder">向 Gemini 咨询股票、加密货币和图表...</string>
+    <string name="quant_backtest_title">量化回测与 Walk-Forward 引擎</string>
+    <string name="quant_backtest_subtitle">样本外验证与 Buy &amp; Hold 基准对比</string>
+    <string name="strategy_return">策略收益率</string>
+    <string name="benchmark_return">基准收益率 (Buy &amp; Hold)</string>
+    <string name="sharpe_ratio">夏普比率</string>
+    <string name="profit_factor">盈亏比因子</string>
+    <string name="max_drawdown">最大回撤</string>
+    <string name="system_health_title">系统可观测性与 Worker 架构</string>
+    <string name="reset_circuit_breaker">重置熔断保护</string>
+    <string name="worker_queue_throughput">Worker 队列吞吐量</string>
+    <string name="jobs_processed">个任务已处理</string>
+    <string name="memory_usage">内存占用</string>
+    <string name="broker_state">券商连接状态</string>
+    <string name="quant_memory_title">量化归因记忆与学习环路</string>
+    <string name="quant_memory_subtitle">按市场环境归因的绩效归纳注册表</string>
+    <string name="best_regime">最佳市场环境</string>
+    <string name="ai_accuracy">高置信度 AI 准确率</string>
+    <string name="pay_with_paypal">使用 PayPal 支付</string>
+    <string name="google_pay_sandbox">Google Pay 与沙盒卡</string>
+    <string name="cancel_btn">取消</string>
+    <string name="firebase_auth_title">Firebase 身份验证</string>
+    <string name="sign_in_with_google">使用 Google 账号登录</string>
+    <string name="sign_out_from_firebase">退出 Firebase 登录</string>
+    <string name="firestore_db_sync_title">Firestore 数据库同步</string>
+    <string name="elite_vip_license_title">尊享 Elite VIP 许可证</string>
+    <string name="activate_vip_sub">激活 ELITE VIP 会员</string>
+    <string name="demo_account">模拟账户</string>
+    <string name="demo_balance">模拟资金余额</string>
+    <string name="reset_demo_capital">重置模拟资金</string>
+    <string name="set_initial_capital">设置新模拟资金 ($)</string>
+    <string name="update_demo_capital_btn">更新模拟资金余额</string>
+    <string name="manage_demo_account">模拟账户管理</string>
+    <string name="live_broker_account">实盘经纪商账户</string>
+    <string name="gemini_parameters_title">Gemini AI 参数设置</string>
+    <string name="vip_locked_text">该功能仅限 VIP Pro 专属。升级以解锁谷歌实时搜索、深度推理思考模式和图表分析。</string>
+    <string name="institutional_grade_title">获取机构级 AI 交易能力。通过低延迟信号和多轮实时助手赢得市场优势。</string>
+    <string name="monthly_vip">月度 VIP</string>
+    <string name="annual_vip">年度 VIP</string>
+    <string name="lifetime_elite">终身精英</string>
+    <string name="best_value">最佳超值</string>
+    <string name="pay_pal_supported">商家账户: makemoney0598@gmail.com (支持 PayPal)</string>
+    <string name="vip_active_badge">VIP 会员已激活</string>
+    <string name="danger_zone">危险区域</string>
+    <string name="keys_configured_label">密钥</string>
+    <string name="connected_status_label">已连接</string>
+    <string name="disconnected_status_label">已断开</string>
+    <string name="synced_status_label">已同步</string>
+    <string name="out_of_sync_status_label">未同步</string>
+    <string name="paper_sim_label">模拟账户</string>
+    <string name="live_trading_label">实盘交易</string>
+    <string name="ok_btn">确定</string>
+    <string name="active_label">已激活</string>
+    <string name="vip_pro_label">VIP PRO</string>
+    <string name="free_label">免费</string>
+    <string name="gemini_bias">Gemini 偏向</string>
+    <string name="bullish_label">看涨</string>
+    <string name="bearish_label">看跌</string>
+    <string name="neutral_label">中性</string>
+    <string name="score_label">得分</string>
+    <string name="geopolitical_label">地缘政治</string>
+    <string name="sentiment_label">情绪</string>
+    <string name="bias_impact_label">偏向影响</string>
+    <string name="scanning_metrics">Gemini 正在扫描市场指标...</string>
+    <string name="vip_feature1">高级 Gemini Pro 深度思考推理模式</string>
+    <string name="vip_feature2">零延迟实时网络搜索增强协议</string>
+    <string name="vip_feature3">技术图表扫描器截图节点</string>
+    <string name="vip_feature4">Google 地图 GPS 金融中心与交易台定位器</string>
+
+    <string name="badge_live_account">实盘账户</string>
+    <string name="badge_real_demo">真实模拟</string>
+    <string name="badge_paper_sim">沙盒模拟</string>
+    <string name="simulator_notice">本地模拟器：价格、新闻和回测均为生成数据。不会执行真实订单。</string>
+    <string name="broker_demo_available_title">真实模拟账户可用</string>
+    <string name="broker_demo_available_body">您当前使用的是本地模拟器。激活真实模拟模式（Alpaca Paper / MetaTrader）以获取实时价格行情。</string>
+    <string name="broker_activate_demo_btn">一键激活真实模拟</string>
+    <string name="quick_connect_demo_label">连接真实模拟账户</string>
+    <string name="quick_connect_demo_subtitle">通过 Alpaca Paper API 激活实时市场行情与真实模拟订单执行。</string>
+    <string name="chat_welcome_message">欢迎使用 AI 交易终端！随时向我询问市场、策略或 Gemini 模式。</string>
+
+    <!-- Traductions (zh) des écrans. -->
+    <string name="chat_send">发送</string>
+    <string name="chat_clear">清除</string>
+    <string name="chat_sender_user">您</string>
+    <string name="chat_sender_gemini">GEMINI 人工智能助手</string>
+    <string name="chat_locked_body" formatted="false">%1$s 协议仅供 VIP Trade 高级会员使用。升级即可解锁实时搜索、深度推理模式和图像技术分析。</string>
+    <string name="chat_attached_pattern" formatted="false">已附加：%1$s 图表形态（多模态模式已开启）</string>
+    <string name="chat_search_grounding_full">Google 实时搜索</string>
+    <string name="chat_maps_grounding_full">Google 地图定位</string>
+    <string name="chat_high_thinking_mode">深度推理模式</string>
+    <string name="insights_error_analysis" formatted="false">分析市场环境时出错：%1$s</string>
+    <string name="backtest_strategy_mode">回测策略模式：</string>
+    <string name="backtest_monte_carlo_stress">蒙特卡洛压力测试</string>
+    <string name="backtest_trade_logs" formatted="false">交易记录（%1$s）</string>
+    <string name="backtest_btc_benchmark">BTC 基准</string>
+    <string name="backtest_alpha">阿尔法（超额收益）</string>
+    <string name="backtest_beta">贝塔（波动率）</string>
+    <string name="backtest_sharpe">夏普</string>
+    <string name="backtest_sortino">索提诺</string>
+    <string name="backtest_calmar">卡玛</string>
+    <string name="backtest_max_dd">最大回撤</string>
+    <string name="monte_carlo_title">蒙特卡洛风险分位数（500 次模拟）</string>
+    <string name="monte_carlo_var95" formatted="false">VaR 95%</string>
+    <string name="monte_carlo_var99" formatted="false">VaR 99%</string>
+    <string name="monte_carlo_var_at95" formatted="false">95% 置信度 VaR</string>
+    <string name="monte_carlo_cvar">CVaR（预期损失）</string>
+    <string name="monte_carlo_median_equity">资金中位数</string>
+    <string name="chart_scanner_title">技术图表扫描器</string>
+    <string name="chart_scanner_select">请选择要扫描的图表截图：</string>
+    <string name="chart_pattern_double_bottom">双重底</string>
+    <string name="chart_pattern_head_shoulders">头肩顶</string>
+    <string name="chart_pattern_hs">头肩形态</string>
+    <string name="chart_pattern_rsi_divergence">RSI 背离</string>
+    <string name="agent_desk_title">多智能体研究台</string>
+    <string name="agent_desk_subtitle">宏观 + 量化 + 情绪 + 风险共识引擎</string>
+    <string name="agent_consensus">人工智能共识</string>
+    <string name="agent_coordinating">正在协调 4 个 AI 研究智能体……</string>
+    <string name="agent_run_research" formatted="false">启动多智能体研究 [%1$s]</string>
+    <string name="agent_target_asset" formatted="false">目标资产：%1$s</string>
+    <string name="agent_confidence" formatted="false">置信度：%1$s%%</string>
+    <string name="agent_entry" formatted="false">入场价：%1$s $</string>
+    <string name="agent_stop_loss" formatted="false">止损：%1$s $</string>
+    <string name="agent_take_profit" formatted="false">止盈：%1$s $</string>
+    <string name="agent_cio_synthesis">首席投资官综合研判：</string>
+    <string name="agent_inject_signal">将共识信号注入实盘执行管道</string>
+    <string name="portfolio_starting_capital">初始资本基线</string>
+    <string name="portfolio_current_equity">当前投资组合净值</string>
+    <string name="portfolio_point" formatted="false">第 %1$s 个点</string>
+    <string name="portfolio_pnl" formatted="false">盈亏：%1$s %2$s $</string>
+    <string name="portfolio_filter_all">全部</string>
+    <string name="portfolio_filter_ytd">年初至今</string>
+    <string name="trade_log_history">滚动前向交易记录历史：</string>
+    <string name="trade_log_entry" formatted="false">入场价：%1$s $</string>
+    <string name="vip_paypal_active">PayPal 已启用</string>
+    <string name="vip_plan_monthly">VIP 月度入门版</string>
+    <string name="vip_plan_annual">机构年度方案</string>
+    <string name="vip_plan_lifetime">Elite 终身授权</string>
+    <string name="vip_standard_access">标准权限</string>
+    <string name="vip_save_annual" formatted="false">按年节省 %1$d%%</string>
+    <string name="vip_pay_once">一次付费，永久使用</string>
+    <string name="vip_institutional_unlocked">机构级 VIP 已解锁</string>
+    <string name="vip_license_active">授权：Premium 有效（年度多节点核心）</string>
+    <string name="vip_all_features_active">所有深度推理路径、多模态截图扫描、实时网络爬取和地图地理定位工具均已全面运行。</string>
+    <string name="gpay_title">安全支付网关</string>
+    <string name="gpay_upgrade_plan" formatted="false">升级方案：%1$s</string>
+    <string name="gpay_total_charge" formatted="false">应付总额：%1$s</string>
+    <string name="gpay_merchant_note">订阅费用将安全汇入终端商户账户 makemoney0598@gmail.com。请在下方选择支付方式。</string>
+    <string name="gpay_authorizing">正在授权安全网关交易……</string>
+    <string name="gpay_credit_card">信用卡</string>
+    <string name="gpay_paypal_logo">PayPal 标志</string>
+    <string name="firebase_auth_note">通过 Google Auth 安全登录，即可在设备之间同步信号、日志和偏好设置。</string>
+    <string name="firestore_connect_btn">连接到 FIRESTORE</string>
+    <string name="firestore_sync_note" formatted="false">将您的 %1$s 条交易信号、日志和组合风险参数与 Firestore 云节点实时同步。</string>
+    <string name="firestore_synced_label">已同步</string>
+    <string name="firestore_out_of_sync_label">未同步</string>
+    <string name="learn_title">人工智能学习与自我修正</string>
+    <string name="learn_subtitle">错误事后剖析与动态调整</string>
+    <string name="learn_reevaluate">重新评估</string>
+    <string name="learn_weights_adjusted">多因子权重已重新调整：</string>
+    <string name="learn_weight_ta" formatted="false">技术分析：%1$s%%</string>
+    <string name="learn_weight_macro" formatted="false">宏观倾向：%1$s%%</string>
+    <string name="learn_weight_sentiment" formatted="false">AI 情绪：%1$s%%</string>
+    <string name="learn_rules_generated">已生成的自我修正规则：</string>
+    <string name="learn_post_mortem_lessons">最新事后经验：</string>
+    <string name="exec_mode_live_title">执行模式：实盘（真实资金）</string>
+    <string name="exec_mode_paper_title">执行模式：虚拟沙盒（模拟盘）</string>
+    <string name="exec_live_note" formatted="false">订单已发送至经纪商真实服务器（%1$s）</string>
+    <string name="exec_paper_note">带虚拟成交和实时行情流的沙盒模拟</string>
+    <string name="exec_switch_paper">切换到沙盒</string>
+    <string name="exec_switch_live">切换到实盘</string>
+    <string name="health_broker_paper_sandbox">虚拟沙盒（无需密钥）</string>
+    <string name="health_broker_alpaca_paper">Alpaca 模拟账户已连接</string>
+    <string name="health_broker_alpaca_live">Alpaca 生产账户已启用</string>
+    <string name="health_broker_unknown">虚拟沙盒</string>
+    <string name="broker_quick_connect">快速连接</string>
+    <string name="broker_executes_simulated">执行无风险的模拟订单</string>
+    <string name="broker_webhook_token">Webhook 认证令牌 / API 密钥</string>
+    <string name="broker_password_secret">账户密码 / API 密钥</string>
+    <string name="broker_api_key_of" formatted="false">%1$s API 密钥</string>
+    <string name="broker_api_secret_of" formatted="false">%1$s API 私钥</string>
+    <string name="broker_desc_stocks_crypto">股票与加密货币</string>
+    <string name="broker_desc_global_equities">全球股票与期权</string>
+    <string name="broker_desc_prop_firm">自营交易公司资金与挑战</string>
+    <string name="broker_desc_raw_spreads">外汇与 CFD 原始点差</string>
+    <string name="broker_desc_stp">STP 外汇与股票</string>
+    <string name="broker_desc_ecn">ECN 成交与外汇</string>
+    <string name="broker_desc_micro">微型与标准账户</string>
+    <string name="broker_desc_leverage">无限杠杆外汇 CFD</string>
+    <string name="broker_desc_dma">直接市场接入 CFD</string>
+    <string name="broker_desc_fixed_floating">固定与浮动点差</string>
+    <string name="broker_desc_multi_asset">多资产 MT5 交易台</string>
+    <string name="broker_desc_forex_commodities">外汇与商品 CFD</string>
+    <string name="broker_desc_crypto_spot_derivatives">加密现货与衍生品</string>
+    <string name="broker_desc_crypto_spot_futures">加密现货与期货</string>
+    <string name="broker_desc_proprietary">自营交易台 / Webhook</string>
+
+
+    <!-- Deuxième vague (zh). -->
+    <string name="signal_ta_summary" formatted="false">技术分析: %1$s</string>
+    <string name="signal_sentiment" formatted="false">情绪: %1$s</string>
+    <string name="status_closed">已平仓</string>
+    <string name="action_strong_buy">强力买入</string>
+    <string name="action_neutral_hold">持有观望</string>
+    <string name="action_strong_sell">强力卖出</string>
+    <string name="conviction_high">高</string>
+    <string name="conviction_medium">中</string>
+    <string name="conviction_low">低</string>
+    <string name="portfolio_vs_baseline" formatted="false">对比 $%1$s</string>
+    <string name="portfolio_filter_1w">1周</string>
+    <string name="portfolio_filter_1m">1月</string>
+    <string name="price_history_pair_title" formatted="false">%1$s/USD %2$s</string>
+    <string name="quant_memory_stats" formatted="false">%1$s 笔交易 | 胜率: %2$s%% | 盈亏: %3$s$%4$s</string>
+    <string name="health_memory_mb" formatted="false">%1$s MB</string>
+    <string name="broker_account_id_of" formatted="false">%1$s 账户 ID</string>
+    <string name="date_time_pattern_short">M月d日 HH:mm</string>
+    <string name="vip_price_monthly">$19.99</string>
+    <string name="vip_price_annual">$99.99</string>
+    <string name="vip_price_lifetime">$199.99</string>
+    <string name="vip_period_monthly">$19.99 / 月</string>
+    <string name="vip_period_annual">$99.99 / 年</string>
+
+
+    <!-- Troisième vague (zh). -->
+    <string name="learn_rule_rsi_overbought">规则 1：当 RSI 高于 68 时过滤超买买入。</string>
+    <string name="learn_rule_high_impact_news">规则 2：在高影响消息发布期间拦截订单。</string>
+    <string name="learn_feedback_active">自学习反馈回路已启用。</string>
+    <string name="log_self_learning_review" formatted="false">自学习复盘：交易重评估已完成。调整后权重：TA %1$s%%、宏观 %2$s%%、情绪 %3$s%%。置信度阈值：%4$s。</string>
+    <string name="log_backtest_summary" formatted="false">走步式回测（%1$s - %2$s）：收益率 %3$s%%，夏普比率 %4$s，VaR95 %5$s%%。</string>
+    <string name="log_backtest_synthetic">合成回测：数据在本地生成，不代表真实市场，仅供演示。</string>
+    <string name="insight_multi_agent_title" formatted="false">多智能体研究 [%1$s]：%2$s（%3$s%%）</string>
+    <string name="log_multi_agent_research" formatted="false">已为 %1$s 执行多智能体研究层：共识 = %2$s（置信度 %3$s%%）</string>
+    <string name="log_consensus_injected" formatted="false">多智能体研究共识已注入 %1$s 的实盘执行流程</string>
+    <string name="log_circuit_breaker_reset">全局熔断器已由用户手动重置。</string>
+    <string name="log_loop_paused">自动化循环已暂停。</string>
+    <string name="log_loop_started">AI 交易机器人已成功启动，实时多因子监控已启用。</string>
+    <string name="log_loop_queue_started">自动化多因子交易循环已启动（工作队列已激活）。</string>
+    <string name="log_portfolio_risk_breach" formatted="false">组合风险超限：%1$s</string>
+    <string name="log_bootstrap_signal" formatted="false">已为 %1$s 生成初始化信号（AI 引擎运行中）。</string>
+    <string name="log_cycle_scan" formatted="false">第 %1$s 轮：正在扫描 %2$s 个交易对。引擎监控中（最低置信度过滤：%3$s%%）。</string>
+    <string name="log_loop_error" formatted="false">自动循环出错：%1$s</string>
+    <string name="log_position_closed_sl" formatted="false">仓位已平（止损）：%1$s %2$s %3$s 在 %4$s 触及止损。盈亏：%5$s</string>
+    <string name="log_position_closed_tp" formatted="false">仓位已平（止盈）：%1$s %2$s %3$s 在 %4$s 触及止盈。盈亏：+%5$s</string>
+    <string name="log_tenant_breach" formatted="false">租户隔离被破坏：%1$s</string>
+    <string name="log_order_executed" formatted="false">订单已执行［模式：%1$s］：%2$s %3$s %4$s 于 %5$s。止损：%6$s，止盈：%7$s</string>
+    <string name="log_signal_blocked" formatted="false">%1$s 的信号已被拦截：%2$s</string>
+    <string name="log_risk_updated">风险参数已成功更新。</string>
+    <string name="log_watchlist_updated" formatted="false">自选列表已修改：%1$s</string>
+    <string name="log_language_updated" formatted="false">语言已更新：%1$s</string>
+    <string name="log_broker_saved" formatted="false">已保存 [%1$s] 的券商凭据（%2$s 模式）。</string>
+    <string name="mode_paper">模拟</string>
+    <string name="mode_live">实盘</string>
+    <string name="log_switched_live">警告：执行模式已切换为实盘真实券商交易！</string>
+    <string name="log_switched_paper">执行模式已切换为模拟／虚拟沙盒交易。</string>
+    <string name="log_demo_reset">模拟账户资金已重置为 100,000.00 $。</string>
+    <string name="log_demo_balance_set" formatted="false">模拟账户余额已设为 %1$s $</string>
+    <string name="insight_sentiment_api_title" formatted="false">%1$s 情绪（Gemini API）</string>
+    <string name="log_sentiment_api_done" formatted="false">已完成 %1$s 的 Gemini AI 情绪分析：评分 = %2$s</string>
+    <string name="error_parsing" formatted="false">解析错误：%1$s</string>
+    <string name="error_null_response">Gemini 服务器返回空响应</string>
+    <string name="direction_bullish">看涨</string>
+    <string name="direction_bearish">看跌</string>
+    <string name="direction_neutral">中性</string>
+    <string name="insight_simulated_reasoning" formatted="false">计算出的趋势偏向为 %1$s。市场新闻显示 %2$s 的成交量稳定且宏观动能强劲。关键技术支撑位表明市场正处于低抛压盘整阶段。</string>
+    <string name="insight_sentiment_simulator_title" formatted="false">%1$s 情绪（备用模拟器）</string>
+    <string name="log_sentiment_fallback_done" formatted="false">已完成 %1$s 的备用情绪分析：评分 = %2$s</string>
+    <string name="log_firebase_signed_in" formatted="false">Firebase 身份验证成功：已通过 Google 登录（%1$s）。</string>
+    <string name="log_firebase_signed_out">已退出 Google 账号和 Firebase Auth。</string>
+    <string name="error_firestore_unauthenticated">无法同步到 Firestore：用户未通过身份验证。</string>
+    <string name="log_firestore_synced" formatted="false">Firestore 同步成功，已备份 %1$s 条信号和终端日志。</string>
+    <string name="log_vip_activated">高级订阅已激活！Gemini Pro 深度思考、实时搜索、地图与图表扫描均已解锁。</string>
+    <string name="chat_analyzing_image">正在分析图表图片…</string>
+    <string name="chat_sim_fallback_header">[本地 AI 模拟器输出 - 请在 Secrets 中配置 Gemini 密钥以使用实时 AI]\n\n</string>
+    <string name="chat_sim_image_done">已完成对您图表截图的模拟扫描。\n</string>
+    <string name="chat_sim_image_analysis">技术分析：检测到突破结构。历史关键支撑依旧稳固。\n</string>
+    <string name="chat_sim_image_reco">建议：检测到看涨动能。可考虑在局部通道下方紧设止损。</string>
+    <string name="chat_sim_regarding" formatted="false">关于“%1$s”\n\n</string>
+    <string name="chat_sim_intro">在本次本地模拟中，以下是标准建议：\n</string>
+    <string name="chat_sim_bullet_volume">- 自选列表成交量显示强劲动能。请留意风控参数。\n</string>
+    <string name="chat_sim_bullet_modes">- 可切换实时搜索、深度思考或低延迟模式以体验更多功能。</string>
+
+
+    <string name="signal_reason_blocked_by_risk" formatted="false">已被风控拦截：%1$s</string>
+
+
+    <!-- 演示（zh）：初始分析与信号。 -->
+    <string name="demo_insight_cpi_title">CPI 通胀报告</string>
+    <string name="demo_insight_cpi_content" formatted="false">美国 CPI 录得 2.9%，略低于预期，推动了股市和加密货币市场的看涨情绪。</string>
+    <string name="demo_insight_geopolitical_title">中东地缘政治摩擦</string>
+    <string name="demo_insight_geopolitical_content">中东航道地缘政治摩擦升级，给全球供应链流量带来压力，并引发能源价格波动。</string>
+    <string name="demo_insight_fed_title">美联储降息概率</string>
+    <string name="demo_insight_fed_content">美联储会议纪要暗示 9 月会议可能降息 25 个基点，提振了投资者的风险偏好。</string>
+    <string name="demo_signal_btc_ema_ta">EMA20 &gt; EMA50 交叉</string>
+    <string name="demo_signal_btc_ema_geo">加密货币采用潮</string>
+    <string name="demo_signal_btc_ema_sentiment">看涨情绪 0.78</string>
+    <string name="demo_signal_btc_ema_reasoning">强劲的 ETF 流入推高价格并触及止盈。</string>
+    <string name="demo_signal_nvda_bull_flag_ta">牛市旗形突破</string>
+    <string name="demo_signal_nvda_bull_flag_geo">AI 基础设施需求</string>
+    <string name="demo_signal_nvda_bull_flag_sentiment">看涨情绪 0.85</string>
+    <string name="demo_signal_nvda_bull_flag_reasoning">收益超预期。</string>
+    <string name="demo_signal_aapl_rsi_ta">RSI 超买回调</string>
+    <string name="demo_signal_aapl_rsi_geo">供应链重组</string>
+    <string name="demo_signal_aapl_rsi_sentiment">中性 0.52</string>
+    <string name="demo_signal_aapl_rsi_reasoning">科技股上涨触发止损。</string>
+    <string name="demo_signal_eth_macd_ta">MACD 柱状图转向</string>
+    <string name="demo_signal_eth_macd_geo">Layer2 活跃度攀升</string>
+    <string name="demo_signal_eth_macd_sentiment">看涨情绪 0.72</string>
+    <string name="demo_signal_eth_macd_reasoning">网络升级后交易量放大触及止盈。</string>
+    <string name="demo_signal_tsla_support_ta">在 $210 支撑位反弹</string>
+    <string name="demo_signal_tsla_support_geo">新能源车补贴续期</string>
+    <string name="demo_signal_tsla_support_sentiment">看涨情绪 0.68</string>
+    <string name="demo_signal_tsla_support_reasoning">交付数据公布后触及止盈。</string>
+    <string name="demo_signal_googl_double_top_ta">双顶阻力回调</string>
+    <string name="demo_signal_googl_double_top_geo">反垄断听证会</string>
+    <string name="demo_signal_googl_double_top_sentiment">看跌 0.41</string>
+    <string name="demo_signal_googl_double_top_reasoning">全行业大涨导致止损被动触发。</string>
+    <string name="demo_signal_btc_golden_cross_ta">黄金交叉确认</string>
+    <string name="demo_signal_btc_golden_cross_geo">宏观流动性转变</string>
+    <string name="demo_signal_btc_golden_cross_sentiment">极度看涨 0.88</string>
+    <string name="demo_signal_btc_golden_cross_reasoning">仓位已执行并在盈利中。</string>
+    <string name="admin_open_button">数据库管理</string>
+    <string name="admin_screen_title">Supabase 探针</string>
+    <string name="admin_screen_intro">此界面调用后端探针。只读检查仅读取；往返测试会在你指定的表上写入、回读并删除。</string>
+    <string name="admin_close_button">关闭</string>
+    <string name="admin_config_title">后端连接</string>
+    <string name="admin_base_url_label">后端 URL</string>
+    <string name="admin_api_key_label">内部密钥</string>
+    <string name="admin_config_note">密钥以加密形式保存在本机，绝不会编译进应用。</string>
+    <string name="admin_save_endpoint">保存连接</string>
+    <string name="admin_check_title">只读检查</string>
+    <string name="admin_check_button">运行只读检查</string>
+    <string name="admin_not_configured">尚未保存后端：探针需要后端 URL 和内部密钥。两者都填写之前不会发送任何请求。</string>
+    <string name="admin_roundtrip_title">往返测试（会写入）</string>
+    <string name="admin_roundtrip_note">在你指定的表上写入、回读并删除探针行。未知的表名会在写入之前被拒绝。</string>
+    <string name="admin_roundtrip_tables_label">表或分组</string>
+    <string name="admin_roundtrip_button">运行往返测试</string>
+    <string name="admin_roundtrip_confirm_title">在这些表上写入？</string>
+    <string name="admin_roundtrip_confirm_body" formatted="false">往返测试将在以下目标写入、回读并删除：%1$s。残留在数据库中的行会出现在报告里。</string>
+    <string name="admin_roundtrip_confirm_write">写入</string>
+    <string name="admin_report_title">报告</string>
+    <string name="admin_report_passed">所有检查均已通过</string>
+    <string name="admin_report_failed">至少有一项检查失败</string>
+    <string name="admin_check_ok">通过</string>
+    <string name="admin_check_failed">失败</string>
+    <string name="admin_report_selection" formatted="false">目标表：%1$s</string>
+    <string name="admin_report_writes" formatted="false">已写入的表：%1$s</string>
+    <string name="admin_report_leftovers" formatted="false">数据库中残留的行：%1$s</string>
+    <string name="admin_report_none">无</string>
+    <string name="admin_report_command" formatted="false">等效命令：%1$s</string>
+    <string name="admin_error_title">探针没有响应</string>
+    <string name="admin_error_bad_url" formatted="false">后端 URL 不可用：%1$s</string>
+    <string name="admin_error_refused" formatted="false">后端拒绝了调用（%1$s）：%2$s</string>
+    <string name="admin_error_unreachable" formatted="false">无法连接后端：%1$s</string>
+</resources>

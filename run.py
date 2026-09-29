@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from main import main as run_bot
 from workers.auto_loop import run_forever
 from api.webhook import app as webhook_app
+from core.config_runtime import safe_preflight, enforce_secure_config
 
 api = FastAPI()
 
@@ -18,13 +19,23 @@ api.mount("/webhook", webhook_app)
 @api.get("/")
 @api.head("/")
 def root():
-    return {"status": "alive", "mode": "paper", "service": "trading-ai"}
+    preflight = safe_preflight()
+    return {
+        "status": "alive",
+        "mode": "paper",
+        "service": "trading-ai",
+        "ready": preflight.get("ok", False),
+    }
 
 
 @api.get("/health")
 @api.head("/health")
 def health():
-    return {"status": "ok"}
+    preflight = safe_preflight()
+    return {
+        "status": "ok" if preflight.get("ok") else "degraded",
+        "ready": bool(preflight.get("ok")),
+    }
 
 
 def start_api():
@@ -39,6 +50,10 @@ def start_auto_loop():
 
 
 if __name__ == "__main__":
+    # Fail-closed : on refuse de démarrer si les secrets de sécurité sont
+    # absents ou laissés aux valeurs par défaut.
+    enforce_secure_config()
+
     try:
         asyncio.get_event_loop()
     except RuntimeError:

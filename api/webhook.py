@@ -1,19 +1,39 @@
 from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
-import os
+from typing import Optional
 
-from database.supabase_client import supabase, create_pending_signal, get_recent_insights
-from notifications.notify import send_signal_to_user
+from api.security import constant_time_equals
+from database.supabase_client import supabase, create_pending_signal
 from workers.signal_guard import recently_sent
 from config import WEBHOOK_SECRET
-from ai.decision_engine import EmotionlessDecisionEngine
+from core.alert_engine import build_signal, EXTERNAL_SOURCE
+from core.config_runtime import safe_preflight
+from core.signal_quality import validate_signal
+from api.macro_router import router as macro_router
+from api.learning_router import router as learning_router
+from api.consensus_router import router as consensus_router
+from api.reports_router import router as reports_router
+from api.media_router import router as media_router
+from api.admin_router import router as admin_router
 
 app = FastAPI(title="Trading AI Webhook")
-_engine = EmotionlessDecisionEngine()
+app.include_router(macro_router)
+app.include_router(learning_router)
+app.include_router(consensus_router)
+app.include_router(reports_router)
+app.include_router(media_router)
+app.include_router(admin_router)
 
 
-class TVAlert(BaseModel):
+class Alert(BaseModel):
+    """Alerte technique entrante (scanner interne ou source externe gratuite).
+
+    Le schéma est volontairement agnostique du fournisseur : n'importe quelle
+    source capable de produire un signal BUY/SELL avec entrée + stop + objectif
+    peut pousser vers `/webhook/alert` (Pine Script d'un autre outil, n8n, un
+    script maison…). Le backend n'exige plus TradingView.
+    """
+
     secret: Optional[str] = None
     ticker: str
     action: str
@@ -23,64 +43,49 @@ class TVAlert(BaseModel):
     take_profit: Optional[float] = None
 
 
-def _build_signal(alert: TVAlert) -> Dict[str, Any]:
-    direction = "BUY" if alert.action.lower() in ("buy", "long") else "SELL"
-    asset = alert.ticker.upper()
-
-    try:
-        insights = get_recent_insights(limit=20)
-        llm_result = _engine._news_cache.get(asset, insights)
-        if llm_result:
-            geo_txt = f"Analyse IA : {llm_result['reasoning']}"
-            sent_txt = f"Biais IA : {llm_result['bias']} (score {llm_result['score']:.2f})"
-        else:
-            _, geo_txt = _engine._score_geo(insights)
-            _, sent_txt = _engine._score_sentiment(insights)
-            geo_txt += " [fallback: clé LLM absente ou erreur]"
-    except Exception:
-        geo_txt, sent_txt = "Indisponible", "Indisponible"
-
-    return {
-        "asset": alert.ticker.upper(),
-        "direction": direction,
-        "entry": alert.price or 0,
-        "stop_loss": alert.stop_loss,
-        "take_profit": alert.take_profit,
-        "confidence": 0.70,
-        "ta_summary": f"Alerte TradingView: {alert.message or alert.action}",
-        "geo_summary": geo_txt,
-        "sentiment_summary": sent_txt,
-        "reasoning": (
-            "Signal issu d'une alerte Pine Script TradingView (TA calculée côté "
-            "TradingView). Contexte géo/sentiment ajouté par le backend à titre "
-            "informatif. Validation humaine obligatoire avant exécution."
-        ),
-        "source": "tradingview_webhook",
-    }
-
-
 @app.get("/health")
 def health():
-    return {"status": "ok", "mode": "paper", "service": "trading-ai"}
+    # Réponse volontairement minimale : ne pas exposer publiquement quelles
+    # clés d'API sont configurées (voir /preflight, protégé).
+    preflight = safe_preflight()
+    return {
+        "status": "ok" if preflight.get("ok") else "degraded",
+        "ready": bool(preflight.get("ok")),
+        "mode": "paper",
+        "service": "trading-ai",
+    }
 
 
 @app.get("/")
 def root():
-    return {"status": "alive", "webhook": "/webhook/tradingview (monté depuis run.py)"}
+    return {"status": "alive", "alert": "/webhook/alert (monté depuis run.py)"}
 
 
-@app.post("/tradingview")
-async def tradingview_webhook(
-    alert: TVAlert,
+@app.post("/alert")
+async def alert_webhook(
+    alert: Alert,
     x_webhook_secret: Optional[str] = Header(None),
 ):
-    # Sécurité
+    """Ingestion HTTP d'une alerte (moteur interne ou source externe gratuite)."""
+    # Sécurité : comparaison à temps constant pour éviter une attaque par timing.
     secret = alert.secret or x_webhook_secret
-    if secret != WEBHOOK_SECRET:
+    if not constant_time_equals(secret, WEBHOOK_SECRET):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     asset = alert.ticker.upper()
-    signal = _build_signal(alert)
+    signal = build_signal(
+        ticker=alert.ticker,
+        action=alert.action,
+        price=alert.price,
+        stop_loss=alert.stop_loss,
+        take_profit=alert.take_profit,
+        message=alert.message,
+        source=EXTERNAL_SOURCE,
+    )
+
+    valid, notes, signal = validate_signal(signal, allow_demo=True)
+    if not valid:
+        return {"ok": False, "skipped": "invalid_signal", "asset": asset, "notes": notes}
 
     # Anti-spam
     if recently_sent(asset, signal["direction"]):
@@ -88,6 +93,22 @@ async def tradingview_webhook(
 
     # Envoie à TOUS les utilisateurs paper actifs
     users = supabase.table("users").select("id, telegram_chat_id").eq("paper_mode", True).execute()
+
+    # Import paresseux : ce module ne doit dépendre ni de `python-telegram-bot`
+    # ni d'un token de bot valide pour être importable (il est chargé par `run.py`
+    # au démarrage du serveur web). Une panne Telegram ne doit pas empêcher le
+    # web de démarrer ni faire tomber l'endpoint entier.
+    try:
+        from notifications.notify import send_signal_to_user
+    except Exception as e:
+        print(f"Webhook : notifications Telegram indisponibles ({e})")
+        return {
+            "ok": True,
+            "asset": asset,
+            "notifications_sent": 0,
+            "skipped": "notifications_unavailable",
+        }
+
     sent = 0
     for u in (users.data or []):
         if not u.get("telegram_chat_id"):

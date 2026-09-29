@@ -1,0 +1,333 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Workflows GitHub valides (un YAML cassé n'échoue nulle part)
+        # Un fichier de workflow illisible est **ignoré** par GitHub : tous ses
+        # jobs disparaissent d'un coup, et comme il n'y a plus rien à exécuter,
+        # il n'y a plus rien à échouer. Le fichier le plus dangereux est donc
+        # celui-ci — et cette étape n'est pas la seule garde : la même
+        # vérification est dans la suite de tests, qui tourne localement, parce
+        # qu'un `ci.yml` cassé empêcherait jusqu'à cette étape de se lancer.
+        #
+        # Placée avant l'installation des dépendances, exprès : elle ne tient
+        # qu'à la bibliothèque standard, comme les hooks du dépôt.
+        run: python scripts/check_github_workflows.py
+
+      - name: Fins de ligne (LF partout, comme `.editorconfig` le déclare)
+        # Le dépôt a été converti à l'envers une fois : 71 fichiers en CRLF, dont
+        # tout le Kotlin de l'interface et les dix `strings.xml`. Deux causes, et
+        # aucune ne se voit dans un diff : `core.autocrlf=true` au checkout, et un
+        # script qui lit/écrit en mode texte (il retraduit `\n` en `\r\n`). Ce
+        # contrôle lit les OCTETS et les règles de `.editorconfig` — pas une
+        # constante recopiée ici — et refuse aussi une fin de ligne finale absente.
+        #
+        # Placée avant l'installation des dépendances, exprès : le script ne tient
+        # qu'à la bibliothèque standard (le vocabulaire des fichiers texte vient de
+        # `core.secrets_audit`, lui-même sans dépendance). Un checkout GitHub étant
+        # en LF, cette étape est bien la première à pouvoir voir un `\r` commité.
+        # La même vérification est dans la suite de tests, qui tourne localement.
+        run: python scripts/check_line_endings.py
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Lint (ruff)
+        run: pip install ruff && ruff check .
+
+      - name: Valeurs de référence (goldens versionnés, gate bloquant)
+        # Les nombres du moteur d'alerte, le contrat de localisation Android et la
+        # surface HTTP sont figés dans `tests/goldens/*.json`, **versionnés**. Ce
+        # contrôle recalcule ces valeurs depuis le code et échoue à la moindre
+        # différence : accepter un changement exige de régénérer le fichier
+        # (`python scripts/goldens.py --update <jeu>`), donc de relire le diff et
+        # de le commiter avec le changement de code. Sans ce gate, on ajuste le
+        # chiffre attendu dans le même commit que la dérive et personne ne la voit.
+        # Placé avant les tests : le message de régénération arrive en tête, sans
+        # être noyé dans la sortie de la suite (qui vérifie le même invariant).
+        run: python scripts/goldens.py
+
+      - name: Tests (pytest)
+        run: pytest
+        env:
+          # Secrets factices : les tests ne doivent pas dépendre de vrais secrets.
+          WEBHOOK_SECRET: "test-webhook-secret"
+          INTERNAL_API_KEY: "test-internal-key"
+
+      - name: Audit des secrets (pre-deploy, fail-closed)
+        # `--no-scan-repo` : les secrets factices de la CI sont forcément écrits
+        # dans CE fichier de workflow, qui est lui-même suivi par le dépôt. Le
+        # scan anti-fuite les signalerait donc à raison. La détection de fuite
+        # est couverte par les tests unitaires (voir tests/test_secrets_audit.py),
+        # et reste active par défaut en production.
+        #
+        # Ce job audite les valeurs FACTICES ci-dessous : il valide le pipeline,
+        # pas la production, et n'a donc pas de `--require-remote` (l'exiger ici
+        # ferait échouer la CI dès qu'un `DEPLOYED_URL` serait déclaré, puisque
+        # les valeurs comparées ne sont pas les vraies). Le contrôle de la
+        # production se lance là où les vraies valeurs sont disponibles :
+        #   python scripts/verify_secrets.py --remote "$DEPLOYED_URL" --require-remote
+        # (voir docs/SECRETS.md, « Vérifier la production »). Le rapport de ce job
+        # dit de toute façon, en clair, que la production n'a pas été vérifiée.
+        run: |
+          python scripts/verify_secrets.py --record --ledger /tmp/secret_rotation.json
+          python scripts/verify_secrets.py --ledger /tmp/secret_rotation.json --max-age-days 90 --no-scan-repo
+        env:
+          # Seuils factices mais robustes, uniquement pour valider le pipeline.
+          WEBHOOK_SECRET: "ci-whsec-9f3a2c7b1d4e6f8a"
+          INTERNAL_API_KEY: "ci-intkey-5b8e2d1c9a7f4e3b"
+          ENCRYPTION_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+          SUPABASE_SERVICE_KEY: "ci-supabase-service-key-0123456789"
+          TELEGRAM_BOT_TOKEN: "123456789:AAF7c3d2e1b0a9f8e7d6c5b4a3f2e1d0"
+
+  migrations-postgres:
+    name: Migrations appliquées à un vrai Postgres (pgvector)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # `postgres:16` ne suffit pas : la migration 008 crée l'extension
+        # `vector` et la migration 009 s'en sert (`extensions.vector(768)`,
+        # index HNSW). L'image ci-dessous l'embarque. Une image sans pgvector
+        # ferait échouer la 008 — c'est-à-dire exactement ce que ce job existe
+        # pour attraper.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_trade_test
+        ports:
+          - 5432:5432
+        # Sans ces sondes, le premier step peut démarrer avant que Postgres
+        # accepte les connexions : le job échouerait alors sur un `connection
+        # refused` qui ne dit rien de la migration.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Appliquer les migrations (l'outil, vu de la ligne de commande)
+        # Les contrats de `tests/test_core_tables_migration.py` et
+        # `tests/test_engine_tables_migration.py` relisent les fichiers SQL. Ici
+        # on les EXÉCUTE : `do $$` refermé, `alter table` qui vise une colonne
+        # existante, contraintes acceptées par les types, `drop column if exists`
+        # qui ne casse rien — tout ce qu'un `psql` refuserait du premier coup.
+        #
+        # `--platform-stub` n'est pas une commodité : la migration 008 écrit dans
+        # `storage.buckets` et révoque des privilèges pour `anon` /
+        # `authenticated`, qui n'existent que parce que **Supabase** les crée. Le
+        # stub ne fournit que ce que la plateforme fournit d'habitude, et rien
+        # de plus : les migrations restent seules à créer leurs tables, index,
+        # triggers et leur RLS.
+        env:
+          MIGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_trade_test"
+        run: python scripts/apply_migrations.py --platform-stub
+
+      - name: Le `pg_dump` qui a produit le golden (même version majeure que le serveur)
+        # `pg_dump` refuse de dumper un serveur **plus récent** que lui, et le texte
+        # qu'il écrit dépend de sa version majeure. Le golden a été produit par un
+        # `pg_dump` 16 (la version est enregistrée à part dans le fichier, exprès) :
+        # on installe donc le client 16, pour comparer le même outil au même serveur.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-16
+
+      - name: Le schéma obtenu, comparé au golden `postgres_schema`
+        # Le jeu `postgres_schema` n'est recalculable que là où une base répond :
+        # c'est ici, et nulle part ailleurs, que le golden est **comparé** au schéma
+        # que les migrations produisent — corps compilés des fonctions, définition
+        # exacte des index (`using hnsw (embedding extensions.vector_cosine_ops)`,
+        # `desc`, `where`), types et défauts que `bigserial` produit. Dans le job
+        # `python`, il n'y a aucune base : le jeu y est annoncé **ignoré** (`[--]`),
+        # ce que la suite tolère (`Outcome.ok`). Sans cette étape, le golden serait
+        # versionné mais jamais relu — donc libre de dériver sans que rien ne le voie.
+        # L'instantané crée sa **propre** base jetable et la supprime : il ne lit pas
+        # `ai_trade_test` et n'y écrit rien.
+        env:
+          MIGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_trade_test"
+        run: python scripts/goldens.py
+
+      - name: Le schéma obtenu est celui du code, et se relance sans rien changer
+        # Ce test réapplique TOUTES les migrations (l'idempotence est ainsi
+        # mesurée, pas affirmée), puis interroge le schéma réel : tables créées,
+        # colonnes utilisées par le code présentes, RLS active partout et aucune
+        # policy, rôles publics sans privilège, trigger `updated_at` là où la
+        # colonne existe, clé étrangère `not valid`, `vector(768)` conservé.
+        # Sans `MIGRATION_DATABASE_URL` il est ignoré : le job `python` n'a donc
+        # besoin d'aucune base.
+        env:
+          MIGRATION_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ai_trade_test"
+        run: python -m unittest -v tests.test_migrations_apply_to_postgres
+
+  git-hooks-e2e:
+    name: Hooks git (commit refusé, push refusé — de bout en bout)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: De vrais `git commit` et `git push` dans des dépôts jetables
+        # Les tests construisent des dépôts git jetables, y copient les VRAIS
+        # wrappers `.githooks/`, le VRAI `scripts/` et `core/`, installent les
+        # hooks, puis lancent git pour de bon :
+        #   - pre-commit : un fichier indexé portant une valeur de secret →
+        #     commit REFUSÉ ; un fichier propre → commit accepté ;
+        #   - pre-push : secrets malsains → push REFUSÉ vers un dépôt nu ;
+        #     secrets robustes mais rotation non enregistrée → REFUSÉ ;
+        #     après `--record` → push ACCEPTÉ ; aucun secret configuré →
+        #     autorisé (annoncé comme non contrôlé) ; `SECRETS_HOOK_STRICT=1` →
+        #     gate même sans secret configuré.
+        # Le reste des tests ne lit que la FORME des hooks ; seule cette
+        # exécution attrape une régression du wrapper (REPO_ROOT, `exec`,
+        # interpréteur, chemin du script, drapeau oublié). Aucune dépendance du
+        # projet n'est installée : preuve que les hooks ne tiennent qu'à la
+        # bibliothèque standard.
+        #
+        # Ce qui décide de l'issue n'est pas le code de retour de git — `git
+        # commit` et `git push` écrasent à 1 le code de leur hook, un refus et un
+        # outillage mort rendent donc tous les deux 1 — mais la présence d'un
+        # VERDICT dans la sortie. Ces tests ne rejouent jamais un refus, et un
+        # hook qui meurt sans conclure est rejoué puis passé (voir
+        # `tests/hook_support.py`). Sur Linux, ce mode de défaillance n'existe
+        # pas : l'exécution y est celle qui porte la preuve.
+        #
+        # Le code distinct des wrappers (3 = outillage non démarré), lui, ne
+        # survit pas à git : `tests.test_hook_tooling_contract` l'éprouve en
+        # invoquant les hooks DIRECTEMENT, et tranche par le code — sans lire la
+        # sortie. Le contrat de `hook_support` est en plus vérifié sans git ni
+        # `sh`, donc déterministe partout.
+        run: >
+          python -m unittest -v
+          tests.test_hook_support
+          tests.test_hook_tooling_contract
+          tests.test_pre_commit_hook_e2e
+          tests.test_pre_push_hook
+
+  kotlin-lint:
+    name: Lint Kotlin (ktlint, gate bloquant)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Contrôles structurels et de mise en forme (sans JDK)
+        # Pré-vol volontairement bon marché : imports nommés inutilisés (comme
+        # `no-unused-imports` de ktlint), déclarations de premier niveau en
+        # double et accolades déséquilibrées — les deux défauts typiques d'un
+        # découpage de fichier —, plus la mise en forme que ktlint vérifiera
+        # plus bas (longueur de ligne et indentation, seuils lus dans
+        # `.editorconfig`). Le diagnostic arrive sans attendre le téléchargement
+        # de Gradle ni l'installation du SDK.
+        run: python scripts/kotlin_ui_check.py
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # Le moteur ktlint tourne sur une JVM ; on suit la cible du module
+          # (`compileOptions`/`kotlinOptions` de app/build.gradle.kts = Java 21).
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          # ktlint est appliqué à `:app` : configurer sa tâche exige l'AGP, donc
+          # le SDK Android. Paquets dérivés de la configuration du module
+          # (identiques au job `kotlin-build-and-test`) : la plateforme du
+          # `compileSdk` déclaré, et la build-tools réclamée par l'AGP 8.5.2.
+          packages: "platform-tools platforms;android-36 build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: ktlint — gate bloquant
+        # L'UNIQUE gate de lint. `:app:ktlintCheck` vérifie toutes les source sets
+        # du module (main, test) ET son script de build, avec le moteur épinglé
+        # dans `libs.versions.toml`. `ignoreFailures` est à `false`
+        # (app/build.gradle.kts) : la moindre violation fait échouer le job.
+        # Les sources ont été formatées une fois avec ce même moteur, donc le job
+        # part d'un état propre qu'il ne fait que défendre.
+        run: ./gradlew --no-daemon :app:ktlintCheck
+
+  kotlin-build-and-test:
+    name: Build Android + tests Kotlin (Compose + Robolectric, sans émulateur)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # `compileOptions` et `kotlinOptions` de app/build.gradle.kts visent
+          # Java 21 : compiler avec un JDK plus ancien échoue, plus récent est
+          # accepté mais non testé ici.
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v4
+        with:
+          # Les deux paquets sont **dérivés de la configuration du module**, pas
+          # choisis au hasard :
+          #   - `platforms;android-36` : c'est le `compileSdk` déclaré ;
+          #   - `build-tools;34.0.0` : c'est la version par défaut de l'AGP 8.5.2
+          #     (constante de `ToolsRevisionUtils` du plugin). L'AGP n'utilise pas
+          #     les build-tools les plus récents installés, il réclame celle-ci.
+          # Les licences SDK sont acceptées par l'action
+          # (`accept-android-sdk-licenses`, actif par défaut).
+          packages: "platform-tools platforms;android-36 build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+        # Met en cache la distribution Gradle 8.9 (téléchargée par le wrapper) et
+        # les dépendances, et valide le jar du wrapper contre les checksums
+        # publiés par Gradle — la validation automatique de cette action.
+
+      - name: Construire l'APK debug
+        # `assembleDebug` va jusqu'à l'empaquetage : c'est la seule partie que
+        # `testDebugUnitTest` ne fait pas (il compile le module mais n'assemble
+        # aucun APK). Build et tests partagent la même compilation Gradle, donc
+        # le passage suivant ne récompile pas ce que celui-ci a produit.
+        run: ./gradlew --no-daemon :app:assembleDebug
+
+      - name: Tests unitaires JVM (Robolectric + Compose)
+        # Aucun émulateur : les écrans sont composés **sur la JVM**, Robolectric
+        # fournissant les ressources et le cycle de vie Android. C'est la suite
+        # qui couvre les écrans (`RiskSettingsScreen`, `TerminalScreen`, …).
+        run: ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Publier l'APK debug
+        # `if: always()` : même si les tests échouent, l'APK construit reste
+        # utilisable pour reproduire le problème à la main.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+
+      - name: Publier le rapport de tests
+        # `if: always()` : un rapport est plus utile quand les tests échouent.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests-compose
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+          if-no-files-found: ignore

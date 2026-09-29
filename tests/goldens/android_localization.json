@@ -1,0 +1,764 @@
+{
+  "_comment": "Valeur de référence versionnée : ne pas éditer à la main. Régénérer avec `python scripts/goldens.py --update android_localization`.",
+  "dataset": "android_localization",
+  "description": "contrat de localisation : clés par langue, clés non traduisibles, arguments de format",
+  "values": {
+    "default_format_args": {
+      "admin_error_bad_url": [
+        "%1$s"
+      ],
+      "admin_error_refused": [
+        "%1$s",
+        "%2$s"
+      ],
+      "admin_error_unreachable": [
+        "%1$s"
+      ],
+      "admin_report_command": [
+        "%1$s"
+      ],
+      "admin_report_leftovers": [
+        "%1$s"
+      ],
+      "admin_report_selection": [
+        "%1$s"
+      ],
+      "admin_report_writes": [
+        "%1$s"
+      ],
+      "admin_roundtrip_confirm_body": [
+        "%1$s"
+      ],
+      "agent_confidence": [
+        "%1$s"
+      ],
+      "agent_entry": [
+        "%1$s"
+      ],
+      "agent_run_research": [
+        "%1$s"
+      ],
+      "agent_stop_loss": [
+        "%1$s"
+      ],
+      "agent_take_profit": [
+        "%1$s"
+      ],
+      "agent_target_asset": [
+        "%1$s"
+      ],
+      "backtest_trade_logs": [
+        "%1$s"
+      ],
+      "broker_account_id_of": [
+        "%1$s"
+      ],
+      "broker_api_key_of": [
+        "%1$s"
+      ],
+      "broker_api_secret_of": [
+        "%1$s"
+      ],
+      "chat_attached_pattern": [
+        "%1$s"
+      ],
+      "chat_locked_body": [
+        "%1$s"
+      ],
+      "chat_sim_regarding": [
+        "%1$s"
+      ],
+      "error_parsing": [
+        "%1$s"
+      ],
+      "exec_live_note": [
+        "%1$s"
+      ],
+      "firestore_sync_note": [
+        "%1$s"
+      ],
+      "gpay_total_charge": [
+        "%1$s"
+      ],
+      "gpay_upgrade_plan": [
+        "%1$s"
+      ],
+      "health_memory_mb": [
+        "%1$s"
+      ],
+      "insight_multi_agent_title": [
+        "%1$s",
+        "%2$s",
+        "%3$s"
+      ],
+      "insight_sentiment_api_title": [
+        "%1$s"
+      ],
+      "insight_sentiment_simulator_title": [
+        "%1$s"
+      ],
+      "insight_simulated_reasoning": [
+        "%1$s",
+        "%2$s"
+      ],
+      "insights_error_analysis": [
+        "%1$s"
+      ],
+      "learn_weight_macro": [
+        "%1$s"
+      ],
+      "learn_weight_sentiment": [
+        "%1$s"
+      ],
+      "learn_weight_ta": [
+        "%1$s"
+      ],
+      "log_backtest_summary": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s",
+        "%5$s"
+      ],
+      "log_bootstrap_signal": [
+        "%1$s"
+      ],
+      "log_broker_saved": [
+        "%1$s",
+        "%2$s"
+      ],
+      "log_consensus_injected": [
+        "%1$s"
+      ],
+      "log_cycle_scan": [
+        "%1$s",
+        "%2$s",
+        "%3$s"
+      ],
+      "log_demo_balance_set": [
+        "%1$s"
+      ],
+      "log_firebase_signed_in": [
+        "%1$s"
+      ],
+      "log_firestore_synced": [
+        "%1$s"
+      ],
+      "log_language_updated": [
+        "%1$s"
+      ],
+      "log_loop_error": [
+        "%1$s"
+      ],
+      "log_multi_agent_research": [
+        "%1$s",
+        "%2$s",
+        "%3$s"
+      ],
+      "log_order_executed": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s",
+        "%5$s",
+        "%6$s",
+        "%7$s"
+      ],
+      "log_portfolio_risk_breach": [
+        "%1$s"
+      ],
+      "log_position_closed_sl": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s",
+        "%5$s"
+      ],
+      "log_position_closed_tp": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s",
+        "%5$s"
+      ],
+      "log_self_learning_review": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s"
+      ],
+      "log_sentiment_api_done": [
+        "%1$s",
+        "%2$s"
+      ],
+      "log_sentiment_fallback_done": [
+        "%1$s",
+        "%2$s"
+      ],
+      "log_signal_blocked": [
+        "%1$s",
+        "%2$s"
+      ],
+      "log_tenant_breach": [
+        "%1$s"
+      ],
+      "log_watchlist_updated": [
+        "%1$s"
+      ],
+      "portfolio_pnl": [
+        "%1$s",
+        "%2$s"
+      ],
+      "portfolio_point": [
+        "%1$s"
+      ],
+      "portfolio_vs_baseline": [
+        "%1$s"
+      ],
+      "price_history_pair_title": [
+        "%1$s",
+        "%2$s"
+      ],
+      "quant_memory_stats": [
+        "%1$s",
+        "%2$s",
+        "%3$s",
+        "%4$s"
+      ],
+      "signal_reason_blocked_by_risk": [
+        "%1$s"
+      ],
+      "signal_sentiment": [
+        "%1$s"
+      ],
+      "signal_ta_summary": [
+        "%1$s"
+      ],
+      "trade_log_entry": [
+        "%1$s"
+      ],
+      "vip_save_annual": [
+        "%1$d"
+      ]
+    },
+    "default_keys": [
+      "action_neutral_hold",
+      "action_strong_buy",
+      "action_strong_sell",
+      "activate_vip_sub",
+      "active_broker",
+      "active_label",
+      "admin_api_key_label",
+      "admin_base_url_label",
+      "admin_check_button",
+      "admin_check_failed",
+      "admin_check_ok",
+      "admin_check_title",
+      "admin_close_button",
+      "admin_config_note",
+      "admin_config_title",
+      "admin_error_bad_url",
+      "admin_error_refused",
+      "admin_error_title",
+      "admin_error_unreachable",
+      "admin_not_configured",
+      "admin_open_button",
+      "admin_report_command",
+      "admin_report_failed",
+      "admin_report_leftovers",
+      "admin_report_none",
+      "admin_report_passed",
+      "admin_report_selection",
+      "admin_report_title",
+      "admin_report_writes",
+      "admin_roundtrip_button",
+      "admin_roundtrip_confirm_body",
+      "admin_roundtrip_confirm_title",
+      "admin_roundtrip_confirm_write",
+      "admin_roundtrip_note",
+      "admin_roundtrip_tables_label",
+      "admin_roundtrip_title",
+      "admin_save_endpoint",
+      "admin_screen_intro",
+      "admin_screen_title",
+      "agent_cio_synthesis",
+      "agent_confidence",
+      "agent_consensus",
+      "agent_coordinating",
+      "agent_desk_subtitle",
+      "agent_desk_title",
+      "agent_entry",
+      "agent_inject_signal",
+      "agent_run_research",
+      "agent_stop_loss",
+      "agent_take_profit",
+      "agent_target_asset",
+      "ai_accuracy",
+      "ai_chat_subtitle",
+      "ai_chat_title",
+      "annual_vip",
+      "app_name",
+      "app_title",
+      "backtest_alpha",
+      "backtest_beta",
+      "backtest_btc_benchmark",
+      "backtest_calmar",
+      "backtest_max_dd",
+      "backtest_monte_carlo_stress",
+      "backtest_sharpe",
+      "backtest_sortino",
+      "backtest_strategy_mode",
+      "backtest_trade_logs",
+      "badge_live_account",
+      "badge_paper_sim",
+      "badge_real_demo",
+      "bearish_label",
+      "benchmark_return",
+      "best_regime",
+      "best_value",
+      "bias_impact_label",
+      "broker_account_id_of",
+      "broker_activate_demo_btn",
+      "broker_api_key_of",
+      "broker_api_secret_of",
+      "broker_demo_available_body",
+      "broker_demo_available_title",
+      "broker_desc_crypto_spot_derivatives",
+      "broker_desc_crypto_spot_futures",
+      "broker_desc_dma",
+      "broker_desc_ecn",
+      "broker_desc_fixed_floating",
+      "broker_desc_forex_commodities",
+      "broker_desc_global_equities",
+      "broker_desc_leverage",
+      "broker_desc_micro",
+      "broker_desc_multi_asset",
+      "broker_desc_prop_firm",
+      "broker_desc_proprietary",
+      "broker_desc_raw_spreads",
+      "broker_desc_stocks_crypto",
+      "broker_desc_stp",
+      "broker_executes_simulated",
+      "broker_name_admirals",
+      "broker_name_alpaca",
+      "broker_name_avatrade",
+      "broker_name_binance",
+      "broker_name_coinbase",
+      "broker_name_custom",
+      "broker_name_custom_short",
+      "broker_name_exness",
+      "broker_name_fpmarkets",
+      "broker_name_ftmo",
+      "broker_name_ibkr",
+      "broker_name_icmarkets",
+      "broker_name_kraken",
+      "broker_name_metatrader",
+      "broker_name_oanda",
+      "broker_name_pepperstone",
+      "broker_name_roboforex",
+      "broker_name_xm",
+      "broker_password_secret",
+      "broker_quick_connect",
+      "broker_state",
+      "broker_webhook_token",
+      "bullish_label",
+      "buy",
+      "cancel_btn",
+      "chart_pattern_double_bottom",
+      "chart_pattern_head_shoulders",
+      "chart_pattern_hs",
+      "chart_pattern_rsi_divergence",
+      "chart_scanner_select",
+      "chart_scanner_title",
+      "chart_title",
+      "chat_analyzing_image",
+      "chat_attached_pattern",
+      "chat_clear",
+      "chat_high_thinking_mode",
+      "chat_input_placeholder",
+      "chat_locked_body",
+      "chat_maps_grounding_full",
+      "chat_placeholder",
+      "chat_search_grounding_full",
+      "chat_send",
+      "chat_sender_gemini",
+      "chat_sender_user",
+      "chat_sim_bullet_modes",
+      "chat_sim_bullet_volume",
+      "chat_sim_fallback_header",
+      "chat_sim_image_analysis",
+      "chat_sim_image_done",
+      "chat_sim_image_reco",
+      "chat_sim_intro",
+      "chat_sim_regarding",
+      "chat_welcome_message",
+      "clear_logs_btn",
+      "confidence_label",
+      "configuring_broker",
+      "connected_status_label",
+      "conviction_high",
+      "conviction_low",
+      "conviction_medium",
+      "current_drawdown_label",
+      "current_equity_label",
+      "danger_zone",
+      "date_time_pattern_short",
+      "deep_reasoning_label",
+      "demo_account",
+      "demo_balance",
+      "demo_insight_cpi_content",
+      "demo_insight_cpi_title",
+      "demo_insight_fed_content",
+      "demo_insight_fed_title",
+      "demo_insight_geopolitical_content",
+      "demo_insight_geopolitical_title",
+      "demo_signal_aapl_rsi_geo",
+      "demo_signal_aapl_rsi_reasoning",
+      "demo_signal_aapl_rsi_sentiment",
+      "demo_signal_aapl_rsi_ta",
+      "demo_signal_btc_ema_geo",
+      "demo_signal_btc_ema_reasoning",
+      "demo_signal_btc_ema_sentiment",
+      "demo_signal_btc_ema_ta",
+      "demo_signal_btc_golden_cross_geo",
+      "demo_signal_btc_golden_cross_reasoning",
+      "demo_signal_btc_golden_cross_sentiment",
+      "demo_signal_btc_golden_cross_ta",
+      "demo_signal_eth_macd_geo",
+      "demo_signal_eth_macd_reasoning",
+      "demo_signal_eth_macd_sentiment",
+      "demo_signal_eth_macd_ta",
+      "demo_signal_googl_double_top_geo",
+      "demo_signal_googl_double_top_reasoning",
+      "demo_signal_googl_double_top_sentiment",
+      "demo_signal_googl_double_top_ta",
+      "demo_signal_nvda_bull_flag_geo",
+      "demo_signal_nvda_bull_flag_reasoning",
+      "demo_signal_nvda_bull_flag_sentiment",
+      "demo_signal_nvda_bull_flag_ta",
+      "demo_signal_tsla_support_geo",
+      "demo_signal_tsla_support_reasoning",
+      "demo_signal_tsla_support_sentiment",
+      "demo_signal_tsla_support_ta",
+      "direction_bearish",
+      "direction_bullish",
+      "direction_neutral",
+      "disconnected_status_label",
+      "elite_vip_license_title",
+      "engine_active",
+      "engine_stopped",
+      "entry_label",
+      "error_firestore_unauthenticated",
+      "error_null_response",
+      "error_parsing",
+      "exec_live_note",
+      "exec_mode_live_title",
+      "exec_mode_paper_title",
+      "exec_paper_note",
+      "exec_switch_live",
+      "exec_switch_paper",
+      "firebase_auth_note",
+      "firebase_auth_title",
+      "firestore_connect_btn",
+      "firestore_db_sync_title",
+      "firestore_out_of_sync_label",
+      "firestore_sync_note",
+      "firestore_synced_label",
+      "flash_mode_label",
+      "free_label",
+      "gemini_bias",
+      "gemini_parameters_title",
+      "geopolitical_label",
+      "google_pay_sandbox",
+      "gpay_authorizing",
+      "gpay_credit_card",
+      "gpay_merchant_note",
+      "gpay_paypal_logo",
+      "gpay_title",
+      "gpay_total_charge",
+      "gpay_upgrade_plan",
+      "health_broker_alpaca_live",
+      "health_broker_alpaca_paper",
+      "health_broker_paper_sandbox",
+      "health_broker_unknown",
+      "health_memory_mb",
+      "insight_multi_agent_title",
+      "insight_sentiment_api_title",
+      "insight_sentiment_simulator_title",
+      "insight_simulated_reasoning",
+      "insights_error_analysis",
+      "insights_title",
+      "institutional_grade_title",
+      "jobs_processed",
+      "keys_configured_label",
+      "language_settings_subtitle",
+      "language_settings_title",
+      "learn_feedback_active",
+      "learn_post_mortem_lessons",
+      "learn_reevaluate",
+      "learn_rule_high_impact_news",
+      "learn_rule_rsi_overbought",
+      "learn_rules_generated",
+      "learn_subtitle",
+      "learn_title",
+      "learn_weight_macro",
+      "learn_weight_sentiment",
+      "learn_weight_ta",
+      "learn_weights_adjusted",
+      "legal_close",
+      "legal_privacy_body",
+      "legal_privacy_title",
+      "legal_section_title",
+      "legal_terms_body",
+      "legal_terms_title",
+      "legal_updated",
+      "lifetime_elite",
+      "live_broker_account",
+      "live_mode_warning",
+      "live_trading_label",
+      "log_backtest_summary",
+      "log_backtest_synthetic",
+      "log_bootstrap_signal",
+      "log_broker_saved",
+      "log_circuit_breaker_reset",
+      "log_consensus_injected",
+      "log_cycle_scan",
+      "log_demo_balance_set",
+      "log_demo_reset",
+      "log_firebase_signed_in",
+      "log_firebase_signed_out",
+      "log_firestore_synced",
+      "log_language_updated",
+      "log_loop_error",
+      "log_loop_paused",
+      "log_loop_queue_started",
+      "log_loop_started",
+      "log_multi_agent_research",
+      "log_order_executed",
+      "log_portfolio_risk_breach",
+      "log_position_closed_sl",
+      "log_position_closed_tp",
+      "log_risk_updated",
+      "log_self_learning_review",
+      "log_sentiment_api_done",
+      "log_sentiment_fallback_done",
+      "log_signal_blocked",
+      "log_switched_live",
+      "log_switched_paper",
+      "log_tenant_breach",
+      "log_terminal_title",
+      "log_vip_activated",
+      "log_watchlist_updated",
+      "manage_demo_account",
+      "maps_locator_label",
+      "max_daily_loss_label",
+      "max_drawdown",
+      "max_drawdown_label",
+      "max_drawdown_limit_label",
+      "max_open_trades_label",
+      "memory_usage",
+      "min_confidence_label",
+      "mode_live",
+      "mode_paper",
+      "monte_carlo_cvar",
+      "monte_carlo_median_equity",
+      "monte_carlo_title",
+      "monte_carlo_var95",
+      "monte_carlo_var99",
+      "monte_carlo_var_at95",
+      "monthly_vip",
+      "multi_broker_subtitle",
+      "multi_broker_title",
+      "neutral_label",
+      "no_insights_yet",
+      "no_logs_yet",
+      "no_signals_yet",
+      "ok_btn",
+      "out_of_sync_status_label",
+      "paper_balance",
+      "paper_sim_label",
+      "pay_pal_supported",
+      "pay_with_paypal",
+      "portfolio_current_equity",
+      "portfolio_filter_1m",
+      "portfolio_filter_1w",
+      "portfolio_filter_all",
+      "portfolio_filter_ytd",
+      "portfolio_performance_subtitle",
+      "portfolio_performance_title",
+      "portfolio_pnl",
+      "portfolio_point",
+      "portfolio_starting_capital",
+      "portfolio_vs_baseline",
+      "price_history_pair_title",
+      "price_label",
+      "profit_factor",
+      "quant_backtest_subtitle",
+      "quant_backtest_title",
+      "quant_memory_stats",
+      "quant_memory_subtitle",
+      "quant_memory_title",
+      "quick_connect_demo_label",
+      "quick_connect_demo_subtitle",
+      "realized_pnl",
+      "reset_circuit_breaker",
+      "reset_demo_capital",
+      "reset_entire_trading_data",
+      "risk_pct_label",
+      "risk_settings_title",
+      "run_gemini_analysis",
+      "save_broker_config",
+      "save_broker_configuration",
+      "save_risk_btn",
+      "save_risk_parameters",
+      "scan_news_btn",
+      "scanning_metrics",
+      "scanning_news",
+      "score_label",
+      "search_grounding_label",
+      "select_broker",
+      "sell",
+      "send_btn",
+      "sentiment_label",
+      "server_gateway_url_label",
+      "set_initial_capital",
+      "sharpe_ratio",
+      "sign_in_with_google",
+      "sign_out_from_firebase",
+      "signal_reason_blocked_by_risk",
+      "signal_sentiment",
+      "signal_ta_summary",
+      "signals_title",
+      "simulation_mode",
+      "simulator_notice",
+      "start_bot",
+      "status_blocked_risk",
+      "status_closed",
+      "status_executed",
+      "status_pending",
+      "stop_bot",
+      "stop_loss_label",
+      "strategy_return",
+      "sync_now_btn",
+      "sync_rates",
+      "synced_status_label",
+      "system_health_title",
+      "tab_chat",
+      "tab_cloud",
+      "tab_insights",
+      "tab_risk",
+      "tab_terminal",
+      "take_profit_label",
+      "total_equity",
+      "total_trades",
+      "trade_log_entry",
+      "trade_log_history",
+      "update_demo_capital_btn",
+      "vip_active_badge",
+      "vip_all_features_active",
+      "vip_cloud_subtitle",
+      "vip_cloud_title",
+      "vip_feature1",
+      "vip_feature2",
+      "vip_feature3",
+      "vip_feature4",
+      "vip_feature_locked_title",
+      "vip_institutional_unlocked",
+      "vip_license_active",
+      "vip_locked_text",
+      "vip_pay_once",
+      "vip_paypal_active",
+      "vip_period_annual",
+      "vip_period_monthly",
+      "vip_plan_annual",
+      "vip_plan_lifetime",
+      "vip_plan_monthly",
+      "vip_price_annual",
+      "vip_price_lifetime",
+      "vip_price_monthly",
+      "vip_pro_label",
+      "vip_save_annual",
+      "vip_standard_access",
+      "watchlist_title",
+      "win_rate",
+      "worker_queue_throughput"
+    ],
+    "locales": {
+      "values-ar": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-de": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-es": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-fr": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-hi": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-ja": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-pt": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-ru": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      },
+      "values-zh": {
+        "count": 414,
+        "extra": [],
+        "missing": []
+      }
+    },
+    "manifest_only_keys": [
+      "app_name"
+    ],
+    "non_translatable_keys": [
+      "broker_name_admirals",
+      "broker_name_alpaca",
+      "broker_name_avatrade",
+      "broker_name_binance",
+      "broker_name_coinbase",
+      "broker_name_custom",
+      "broker_name_custom_short",
+      "broker_name_exness",
+      "broker_name_fpmarkets",
+      "broker_name_ftmo",
+      "broker_name_ibkr",
+      "broker_name_icmarkets",
+      "broker_name_kraken",
+      "broker_name_metatrader",
+      "broker_name_oanda",
+      "broker_name_pepperstone",
+      "broker_name_roboforex",
+      "broker_name_xm",
+      "legal_close",
+      "legal_privacy_body",
+      "legal_privacy_title",
+      "legal_section_title",
+      "legal_terms_body",
+      "legal_terms_title",
+      "legal_updated"
+    ]
+  }
+}

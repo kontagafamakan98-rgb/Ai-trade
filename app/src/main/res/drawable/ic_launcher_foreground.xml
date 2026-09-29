@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center the graphic in the 66dp safe zone (approx. x:21 to 87, y:21 to 87) -->
+    <!-- Candlestick bodies -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M32,68 h5 v-20 h-5 z M46,68 h5 v-32 h-5 z M60,68 h5 v-44 h-5 z M74,68 h5 v-50 h-5 z" />
+    <!-- Trend line -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M26,64 L48,42 L62,50 L80,24 L85,29 L85,14 L70,14 L75,19 L62,38 L48,30 L26,52 Z" />
+</vector>

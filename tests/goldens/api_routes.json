@@ -1,0 +1,34 @@
+{
+  "_comment": "Valeur de référence versionnée : ne pas éditer à la main. Régénérer avec `python scripts/goldens.py --update api_routes`.",
+  "dataset": "api_routes",
+  "description": "surface HTTP publique (méthode + chemin) de api.webhook.app",
+  "values": {
+    "routes": [
+      "GET /",
+      "GET /admin/media/missing",
+      "GET /admin/media/orphans",
+      "GET /admin/supabase/check",
+      "GET /consensus/report/{asset}",
+      "GET /health",
+      "GET /learning/parameters/{asset}",
+      "GET /learning/summary",
+      "GET /macro/bias/{symbol}",
+      "GET /macro/calendar",
+      "GET /macro/news-risk/{symbol}",
+      "GET /media",
+      "GET /media/{media_id}/text",
+      "GET /preflight",
+      "GET /reports/summary",
+      "GET /reports/summary/{user_id}",
+      "GET /secrets/fingerprints",
+      "POST /admin/media/missing/repair",
+      "POST /admin/supabase/roundtrip",
+      "POST /alert",
+      "POST /consensus/inject",
+      "POST /learning/feedback",
+      "POST /learning/recalibrate",
+      "POST /macro/refresh",
+      "POST /reports/export"
+    ]
+  }
+}

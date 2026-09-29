@@ -6,11 +6,25 @@ python-dotenv==1.0.1
 cryptography==43.0.1
 pydantic==2.9.1
 httpx==0.27.2
-numpy==1.26.4
-pandas==2.2.2
-yfinance==0.2.40
 feedparser==6.0.11
 alpaca-py==0.33.1
 beautifulsoup4==4.12.3
 lxml==5.3.0
 groq==0.13.1
+pypdf==5.1.0
+
+# Repli de transcription **hors ligne** (`ai/media_extractor.py`), volontairement
+# non installé : il ne sert que si `GROQ_API_KEY` est absente — ou si la machine
+# est coupée du réseau — et il pèse des centaines de Mo (`ctranslate2`, `av`,
+# puis les poids du modèle) pour un chemin que la production n'emprunte jamais.
+# Pour l'activer : `pip install faster-whisper`, puis épingler ici la version
+# installée (et récupérer les poids du modèle une fois, en ligne).
+# faster-whisper
+
+# Migrations : appliquer `database/migrations/*.sql` à une vraie instance
+# PostgreSQL (`scripts/apply_migrations.py`, job CI `migrations-postgres`).
+# L'application n'en a pas besoin — elle parle à Supabase par HTTP.
+psycopg[binary]==3.3.6
+
+# Tests
+pytest==8.3.3

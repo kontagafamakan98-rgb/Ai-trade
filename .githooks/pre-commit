@@ -1,0 +1,103 @@
+#!/bin/sh
+# Hook pre-commit : refuse un commit qui introduit la valeur d'un secret connu.
+#
+# Installation (une fois par clone) :
+#     python scripts/pre_commit_secrets.py --install
+# qui exécute simplement :
+#     git config core.hooksPath .githooks
+#
+# Un hook versionné dans le dépôt ne s'active pas tout seul : c'est le prix à
+# payer pour ne pas dépendre du framework `pre-commit` (aucune dépendance, aucun
+# accès réseau).
+#
+# CONTRAT DE SORTIE — les trois codes de `scripts/pre_commit_secrets.py`, plus UN
+# code que l'outil n'émet jamais :
+#
+#     0  l'outillage a tourné et a conclu : rien à refuser
+#     1  l'outillage a tourné et a conclu : COMMIT REFUSÉ
+#     2  invocation invalide
+#     3  l'outillage n'a PAS pu démarrer : RIEN n'a été contrôlé
+#
+# 3 existe pour qu'un incident d'OS (fork MSYS2 saturé, interpréteur
+# introuvable, script absent) ne puisse plus se lire comme un refus. Limite à
+# connaître : `git commit` ÉCRASE le code de ses hooks à 1, quel qu'il soit — la
+# distinction ne survit donc que si le wrapper est invoqué directement (c'est
+# ainsi que les tests la vérifient). Pour ne jamais la perdre à travers git, le
+# wrapper écrit toujours, sur sa sortie d'erreur, laquelle des quatre issues a
+# eu lieu.
+
+set -u
+
+#: Aucune décision n'a été prise. À ne confondre ni avec 0 (laisser passer) ni
+#: avec 1 (refus) : le contrat des deux outils s'arrête à 2.
+EXIT_TOOLING=3
+
+# `dirname`, `cd` : les seuls moments où ce hook dépend d'autre chose que du
+# shell. Un échec ici est un incident d'OS, pas un refus — et surtout pas un
+# « je laisse passer ».
+HOOK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || {
+    echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — dossier du hook introuvable, RIEN n'a été contrôlé." >&2
+    exit "$EXIT_TOOLING"
+}
+REPO_ROOT=$(CDPATH= cd -- "$HOOK_DIR/.." && pwd) || {
+    echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — racine du dépôt introuvable depuis $HOOK_DIR, RIEN n'a été contrôlé." >&2
+    exit "$EXIT_TOOLING"
+}
+
+SCRIPT="$REPO_ROOT/scripts/pre_commit_secrets.py"
+
+# `python3` d'abord : sur certaines distributions, `python` n'existe pas (ou
+# pointe encore vers Python 2). Le script lui-même est compatible 3.9+.
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON=python3
+elif command -v python >/dev/null 2>&1; then
+    PYTHON=python
+else
+    echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — interpréteur Python introuvable, RIEN n'a été contrôlé." >&2
+    echo "            Installez Python, ou assumez explicitement le contournement : git commit --no-verify." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+if [ ! -r "$SCRIPT" ]; then
+    echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — $SCRIPT illisible, RIEN n'a été contrôlé." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+# Bannière de démarrage, sur la sortie d'erreur (que git relaie toujours, y
+# compris quand le hook réussit) : elle est la preuve que le hook a tourné,
+# puisque git avale la sortie d'un hook qui passe. Les tests s'en servent pour
+# ne jamais rejouer un commit déjà réussi au motif qu'une trace de fork
+# l'accompagnait.
+echo "pre-commit : scan anti-fuite du contenu indexé…" >&2
+
+# Le scan est lancé SANS `exec` : c'est le seul moyen de lire son code et de
+# décider à sa place quand il n'a rien décidé. Sa sortie est capturée pour
+# distinguer « l'outil a conclu » de « l'outil est mort sans rien dire » — les
+# deux outils écrivent toujours quand ils tournent, donc un code non nul AVEC
+# une sortie vide n'est jamais une décision (c'est la signature exacte de la
+# saturation de fork sous MSYS2). Le coût est une fourche de plus ; si c'est
+# elle qui échoue, la capture revient vide et l'issue reste la bonne : 3.
+if REPORT=$("$PYTHON" "$SCRIPT" --root "$REPO_ROOT" "$@" 2>&1); then
+    STATUS=0
+else
+    STATUS=$?
+fi
+
+# Le rapport ne sort plus par le flux standard : on le rend sur la sortie
+# d'erreur, que git relaie toujours (y compris quand le hook réussit).
+[ -n "$REPORT" ] && printf '%s\n' "$REPORT" >&2
+
+if [ "$STATUS" -ne 0 ] && [ -z "$REPORT" ]; then
+    echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — le scan est mort sans conclure (code $STATUS, aucune sortie), RIEN n'a été contrôlé." >&2
+    exit "$EXIT_TOOLING"
+fi
+
+case "$STATUS" in
+    0 | 1 | 2)
+        exit "$STATUS"
+        ;;
+    *)
+        echo "pre-commit: ⚠️ outillage NON DÉMARRÉ (code $EXIT_TOOLING) — le scan a rendu $STATUS, hors de son contrat 0/1/2 : il n'a rien décidé." >&2
+        exit "$EXIT_TOOLING"
+        ;;
+esac

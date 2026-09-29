@@ -1,7 +1,38 @@
+# Secrets
 .env
+*.env
+# `.env.local`, `.env.tmp…` : le script de génération écrit d'abord à côté puis
+# remplace — aucune variante ne doit pouvoir être indexée par accident.
+.env.*
+!.env.example
+
+# Registre de rotation (local à chaque environnement)
+security/secret_rotation.json
+
+# Python
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Reports / artifacts
+artifacts/
 *.log
+
+# PostgreSQL jetable de vérification locale (binaires téléchargés, jamais livrés)
+.pgtest/
+
+# IDE
 .idea/
 .vscode/
+
+# Gradle / Android
+.gradle/
+build/
+local.properties
+*.keystore
+**/build/

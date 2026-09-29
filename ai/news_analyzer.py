@@ -17,6 +17,10 @@ Mécanisme de consensus (quand 2 réponses Groq sont disponibles) :
 GESTION DU QUOTA GRATUIT :
 - Un seul appel "batch" couvre TOUTE la watchlist en une fois (au lieu
   d'un appel par actif) → ~12x moins d'appels et de tokens consommés.
+- Ce prompt batch inclut aussi un bloc de MÉDIAS par actif (transcriptions de
+  notes vocales, lectures de graphiques) sous budget global borné : sans cela,
+  le cache pré-rempli par `warm_batch` court-circuiterait le contexte média du
+  chemin "par actif" pour toute la watchlist.
 - Le cache dure 1h par défaut (au lieu de 10 min).
 
 ⚠️ Aucun de ces mécanismes ne garantit une précision absolue — un marché
@@ -26,11 +30,19 @@ import json
 import time
 from typing import Dict, Any, List, Optional
 
-import httpx
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
-from config import GROQ_API_KEY, GEMINI_API_KEY
-from utils.retry import retry_call
-from database.knowledge_base import get_knowledge_context
+from config import (
+    GROQ_API_KEY,
+    GEMINI_API_KEY,
+    GROQ_PRIMARY_MODEL,
+    GROQ_SECONDARY_MODEL,
+    GEMINI_MODEL,
+)
+from database.knowledge_base import get_knowledge_context, get_media_context
 
 try:
     from groq import Groq
@@ -38,9 +50,9 @@ try:
 except Exception:
     _client = None
 
-PRIMARY_MODEL = "openai/gpt-oss-120b"
-SECONDARY_MODEL = "qwen/qwen3.6-27b"
-GEMINI_MODEL = "gemini-3-flash-preview"
+# IDs centralisés dans config.py (surchargeables par variables d'env).
+PRIMARY_MODEL = GROQ_PRIMARY_MODEL
+SECONDARY_MODEL = GROQ_SECONDARY_MODEL
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 # --- Coupe-circuit --------------------------------------------------------
@@ -50,6 +62,38 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 # secondes). Passé le cooldown, on retente automatiquement.
 COOLDOWN_SECONDS = 600  # 10 min
 _cooldown_until = {"groq": 0.0, "gemini": 0.0}
+
+# --- Budget du contexte MÉDIA dans le prompt BATCH ------------------------
+# Le prompt "batch" couvre toute la watchlist en UN seul appel LLM : les extraits
+# média de chaque actif doivent donc tenir dans un budget global, sinon le prompt
+# grossit avec la taille de la watchlist — et le quota Groq avec lui. Chaque
+# actif reçoit une part calculée du total, pour ne pas servir les premiers et
+# oublier les suivants.
+BATCH_MEDIA_PER_ASSET_CHARS = 400
+MAX_BATCH_MEDIA_CHARS = 2400
+
+#: Marge réservée à la marque de troncature que `get_media_context` peut ajouter
+#: au-delà de son plafond ("[...tronqué]"). Sans elle, la somme des parts
+#: dépasserait le budget global de quelques caractères par actif, et le dernier
+#: actif serait écarté par la sécurité de fin de boucle — exactement l'injustice
+#: que la répartition par actif existe pour éviter.
+MEDIA_TRUNCATION_SLACK = len("\n[...tronqué]")
+
+#: En-tête fixe du bloc média du batch. Il ne dépend **pas** du nombre d'actifs :
+#: c'est pourquoi il est hors du budget réparti — le compter dedans réduirait la
+#: part de chaque actif d'un montant qui n'a rien à voir avec son contenu.
+BATCH_MEDIA_HEADER = (
+    "\nMédias indexés par actif (lectures de graphiques et transcriptions "
+    "Telegram — OBSERVATIONS DATÉES, PAS des règles permanentes ni des "
+    "actualités ; ne les généralise pas) :\n"
+)
+
+# --- Budget du contexte CHOISI PAR L'UTILISATEUR (boucle RAG) --------------
+# Ces extraits viennent d'une sélection manuelle dans les résultats de `/search`
+# (voir `core/rag_loop.py`) : ils s'ajoutent au contexte automatique, donc ils
+# doivent rester bornés eux aussi. Le plafond est appliqué ici, au dernier
+# moment : c'est le seul endroit qui connaît le budget réel du prompt.
+MAX_RAG_CONTEXT_CHARS = 1500
 
 
 def _available(provider: str) -> bool:
@@ -111,7 +155,7 @@ def _parse_single(data: dict) -> Dict[str, Any]:
 # Groq — appels bruts (bas niveau)
 # ---------------------------------------------------------------------------
 
-def _groq_call_raw(model_id: str, prompt: str, max_tokens: int) -> dict:
+def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
     resp = _client.chat.completions.create(
         model=model_id,
         max_tokens=max_tokens,
@@ -125,16 +169,6 @@ def _groq_call_raw(model_id: str, prompt: str, max_tokens: int) -> dict:
     text = resp.choices[0].message.content.strip()
     text = text.replace("```json", "").replace("```", "").strip()
     return json.loads(text)
-
-
-def _groq_call(model_id: str, prompt: str, max_tokens: int) -> dict:
-    # Retry sûr : c'est une simple lecture/analyse, aucun effet de bord,
-    # donc rien à risquer à retenter (contrairement à un ordre broker).
-    # Un JSON mal formé une fois n'implique pas qu'il le sera à nouveau.
-    return retry_call(
-        _groq_call_raw, model_id, prompt, max_tokens,
-        retries=2, base_delay=0.8, label=f"groq:{model_id}",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -180,18 +214,124 @@ def _gemini_call(prompt: str, max_tokens: int) -> dict:
 # Analyse PAR LOT (toute la watchlist en 1 seul appel par modèle)
 # ---------------------------------------------------------------------------
 
-def _knowledge_block() -> str:
+def _knowledge_block(
+    asset: Optional[str] = None,
+    regime: Optional[str] = None,
+    extra_context: Optional[str] = None,
+) -> str:
+    """Contextes à injecter dans le prompt : règles permanentes + médias + RAG.
+
+    Trois sections **distinctes**, parce que leur nature diffère :
+
+    * les **règles/principes permanents** (notes de la base de connaissances,
+      `get_knowledge_context`), filtrés par actif et régime ;
+    * les **observations datées** que sont les médias indexés (lectures de
+      graphiques via vision, transcriptions audio/vidéo via Whisper,
+      `get_media_context`), rattachées à l'actif et sous leur propre plafond ;
+    * les **extraits choisis par l'utilisateur** (`extra_context`, boucle RAG) :
+      il a lu les résultats de `/search` et validé ces passages-là. C'est un
+      contexte ponctuel et assumé — pas une règle générale, pas une actualité — et
+      le prompt le dit au modèle dans ces termes, sinon il généraliserait un
+      extrait qui ne parle que d'un cas.
+
+    Les en-têtes disent explicitement au modèle ce qu'il lit : une lecture de
+    graphique ponctuelle n'a pas le statut d'une règle de trading permanente et
+    ne doit pas être généralisée. Chaque section est best-effort : l'échec de
+    l'une n'empêche pas l'autre, et aucune exception ne remonte.
+    """
     try:
-        kb = get_knowledge_context()
+        kb = get_knowledge_context(asset=asset, regime=regime)
     except Exception as e:
-        print(f"   ❌ knowledge_base read error: {type(e).__name__}: {e}")
+        print(f"   [knowledge_base] erreur de lecture : {type(e).__name__}: {e}")
+        kb = ""
+
+    parts: List[str] = []
+    if kb.strip():
+        parts.append(
+            f"\nConnaissances de référence (extraites de ta base de connaissances "
+            f"personnelle — règles/principes permanents, PAS des actualités) :\n{kb}\n"
+        )
+
+    # Sans actif connu (chemin « batch » de la watchlist), pas de recherche
+    # média : une lecture de graphique n'a de sens que rattachée à un actif.
+    if asset:
+        try:
+            media = get_media_context(asset=asset, regime=regime)
+        except Exception as e:
+            print(f"   [knowledge_base] erreur médias : {type(e).__name__}: {e}")
+            media = ""
+        if media.strip():
+            parts.append(
+                f"\nMédias indexés pertinents pour {asset} (lectures de graphiques et "
+                f"transcriptions Telegram — OBSERVATIONS DATÉES, PAS des règles "
+                f"permanentes ni des actualités ; ne les généralise pas) :\n{media}\n"
+            )
+
+    selected = (extra_context or "").strip()
+    if selected:
+        # Tronqué ici (et non chez l'appelant) : c'est le dernier endroit qui
+        # connaît le budget du prompt.
+        parts.append(
+            f"\nExtraits SÉLECTIONNÉS ET VALIDÉS PAR L'UTILISATEUR pour "
+            f"{asset or 'les actifs évalués'} (retenus à la main dans sa base de "
+            f"connaissances après lecture des résultats de recherche — contexte "
+            f"ponctuel : ce ne sont ni des actualités, ni des règles générales, ne "
+            f"les généralise pas au-delà de ce qu'ils disent) :\n"
+            f"{selected[:MAX_RAG_CONTEXT_CHARS]}\n"
+        )
+
+    return "".join(parts)
+
+
+def _batch_media_block(assets: List[str]) -> str:
+    """Extraits de MÉDIAS (transcriptions, lectures de graphiques) par actif.
+
+    Le prompt batch couvre tous les actifs en un seul appel : on alloue donc à
+    chacun une part du budget média total — plafonnée à
+    `BATCH_MEDIA_PER_ASSET_CHARS`, et réduite de la place des en-têtes et de la
+    marque de troncature (`MEDIA_TRUNCATION_SLACK`) — au lieu de servir les
+    premiers et d'oublier les suivants. La somme des parts tient ainsi dans
+    `MAX_BATCH_MEDIA_CHARS` par construction : chaque actif a droit à son extrait,
+    l'en-tête `### <actif>` compris. Un actif sans extrait assez proche — la
+    similarité minimale s'applique déjà dans `get_media_context` — n'occupe
+    aucune place, laissée aux suivants.
+
+    Les extraits sont des observations datées : l'en-tête le dit explicitement,
+    pour que le modèle ne les transforme pas en règles permanentes.
+    """
+    if not assets:
         return ""
-    if not kb.strip():
+
+    # La part de chaque actif est calculée **en-têtes compris** : un bloc coûte
+    # aussi son titre `### <actif>`, et l'imputer après coup faisait sortir la
+    # somme des parts du budget total dès six actifs — le dernier perdait alors
+    # silencieusement ses extraits au profit des premiers.
+    header = max(len(str(asset)) for asset in assets) + len("### \n")
+    share = MAX_BATCH_MEDIA_CHARS // max(1, len(assets)) - header - MEDIA_TRUNCATION_SLACK
+    per_asset = max(1, min(BATCH_MEDIA_PER_ASSET_CHARS, share))
+
+    sections: List[str] = []
+    used = 0
+    for asset in assets:
+        try:
+            media = get_media_context(asset=asset, max_chars=per_asset)
+        except Exception as exc:  # une recherche ratée ne prive pas les autres
+            print(f"   [medias] contexte indisponible pour {asset} : {type(exc).__name__}: {exc}")
+            continue
+        if not media.strip():
+            continue
+        block = f"### {asset}\n{media.strip()}\n"
+        # Sécurité, jamais atteinte par construction : la part de chaque actif est
+        # déjà bornée en-têtes compris. Elle protège le budget si un bloc revient
+        # plus long que demandé (plafond de `get_media_context` non respecté).
+        if used + len(block) > MAX_BATCH_MEDIA_CHARS:
+            break
+        sections.append(block)
+        used += len(block)
+
+    if not sections:
         return ""
-    return (
-        f"\nConnaissances de référence (extrait de ta base de connaissances "
-        f"personnelle — règles/principes permanents, PAS des actualités) :\n{kb}\n"
-    )
+    return BATCH_MEDIA_HEADER + "\n".join(sections)
 
 
 def _build_batch_prompt(assets: List[str], insights: List[dict]) -> Optional[str]:
@@ -200,9 +340,13 @@ def _build_batch_prompt(assets: List[str], insights: List[dict]) -> Optional[str
         return None
     asset_list = ", ".join(assets)
     knowledge = _knowledge_block()
+    # Les médias sont rattachés à leur actif : le prompt batch ne peut pas se
+    # contenter d'un bloc global, contrairement aux règles permanentes.
+    media = _batch_media_block(assets)
     return (
         f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n"
         f"{knowledge}\n"
+        f"{media}\n"
         f"Actifs à évaluer : {asset_list}\n\n"
         f"Pour CHAQUE actif de cette liste, réponds avec un JSON de cette forme exacte "
         f"(une clé par actif, respecte EXACTEMENT l'orthographe des tickers donnés) :\n"
@@ -257,11 +401,16 @@ def analyze_news_batch(assets: List[str], insights: List[dict]) -> Dict[str, Dic
 # Analyse PAR ACTIF UNIQUE — fallback pour un actif hors watchlist
 # ---------------------------------------------------------------------------
 
-def _build_single_prompt(asset: str, insights: List[dict]) -> Optional[str]:
+def _build_single_prompt(
+    asset: str,
+    insights: List[dict],
+    regime: Optional[str] = None,
+    extra_context: Optional[str] = None,
+) -> Optional[str]:
     news_block = _news_block(insights)
     if not news_block.strip():
         return None
-    knowledge = _knowledge_block()
+    knowledge = _knowledge_block(asset=asset, regime=regime, extra_context=extra_context)
     return (
         f"Actualités récentes (les plus récentes en premier) :\n{news_block}\n"
         f"{knowledge}\n"
@@ -272,10 +421,15 @@ def _build_single_prompt(asset: str, insights: List[dict]) -> Optional[str]:
     )
 
 
-def analyze_news_for_asset(asset: str, insights: List[dict]) -> Dict[str, Any]:
+def analyze_news_for_asset(
+    asset: str,
+    insights: List[dict],
+    regime: Optional[str] = None,
+    extra_context: Optional[str] = None,
+) -> Dict[str, Any]:
     if not insights:
         return {}
-    prompt = _build_single_prompt(asset, insights)
+    prompt = _build_single_prompt(asset, insights, regime=regime, extra_context=extra_context)
     if not prompt:
         return {}
 
@@ -318,14 +472,33 @@ class NewsAnalysisCache:
         self.ttl = ttl_seconds
         self._store: Dict[str, tuple] = {}  # asset -> (timestamp, result)
 
-    def get(self, asset: str, insights: List[dict]) -> Dict[str, Any]:
-        now = time.time()
-        cached = self._store.get(asset)
-        if cached and (now - cached[0]) < self.ttl:
-            return cached[1]
+    def get(
+        self,
+        asset: str,
+        insights: List[dict],
+        regime: Optional[str] = None,
+        extra_context: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Analyse de l'actif, avec ou sans contexte choisi par l'utilisateur.
 
-        result = analyze_news_for_asset(asset, insights)
-        self._store[asset] = (now, result)
+        Quand `extra_context` est fourni (boucle RAG), le cache est **ni lu ni
+        écrit** : les deux sens seraient faux. Servir une réponse mise en cache
+        sans les extraits validerait une analyse qui ne les contient pas, et
+        stocker une analyse portée par la sélection d'un utilisateur la
+        servirait ensuite au cycle automatique — dont le contexte est justement
+        celui que la recherche vectorielle a retenu, pas ce choix-là.
+        """
+        now = time.time()
+        if not (extra_context or "").strip():
+            cached = self._store.get(asset)
+            if cached and (now - cached[0]) < self.ttl:
+                return cached[1]
+
+        result = analyze_news_for_asset(
+            asset, insights, regime=regime, extra_context=extra_context
+        )
+        if not (extra_context or "").strip():
+            self._store[asset] = (now, result)
         return result
 
     def warm_batch(self, assets: List[str], insights: List[dict]) -> None:

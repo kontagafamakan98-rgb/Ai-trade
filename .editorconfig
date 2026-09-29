@@ -1,0 +1,54 @@
+# Configuration partagée par les éditeurs et par ktlint (qui lit .editorconfig).
+#
+# ktlint est l'UNIQUE gate de lint : la tâche `:app:ktlintCheck` est bloquante
+# (voir `ignoreFailures` dans `app/build.gradle.kts`). Les sources ont été
+# formatées une fois avec le moteur épinglé ci-dessous, et le gate part donc
+# d'un état propre qu'il ne fait que défendre.
+#
+# Deux règles méritent d'être écrites ici explicitement :
+#
+#   - `no-unused-imports` : elle est active par défaut dans le ruleset
+#     `standard`, mais on l'écrit quand même pour que l'intention soit visible
+#     et qu'un futur changement de défaut amont ne puisse pas la désactiver en
+#     silence.
+#
+#   - `no-wildcard-imports` : DÉSACTIVÉE volontairement. Ce projet conserve des
+#     imports étoile (`androidx.compose.*`, `com.aitrade.engine.*`,
+#     `com.aitrade.ui.theme.*`). Le rôle du gate est de tenir la mise en forme et
+#     les imports inutilisés, pas d'imposer des imports explicites partout.
+#
+#     Elle ne peut PAS être désactivée via `ktlint { disabledRules.set(...) }`
+#     dans `app/build.gradle.kts` : cette option n'est plus supportée par
+#     ktlint-gradle depuis le moteur ktlint 0.48. `.editorconfig` est donc le
+#     seul endroit correct.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+# La seule exception à `end_of_line = lf`, et elle est déclarée ici plutôt que
+# laissée implicite : `cmd.exe` lit mal un script de commande dont les lignes
+# finissent en LF (étiquettes de `goto`, blocs `if`), et `gradlew.bat` en compte
+# six. `scripts/check_line_endings.py` lit cette section comme les autres : ce
+# fichier est donc jugé selon SA règle, et reste conforme en CRLF.
+[*.{bat,cmd}]
+end_of_line = crlf
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+ktlint_standard_no-unused-imports = enabled
+ktlint_standard_no-wildcard-imports = disabled
+
+# Compose nomme ses fonctions `@Composable` en PascalCase (`VipPaywallCard`,
+# `AiTradeTheme`, …) : c'est la convention documentée par le framework, et
+# `function-naming` les signalerait toutes. On lui dit donc d'ignorer les
+# fonctions annotées, sans renoncer à la règle pour le reste du code.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+max_line_length = 140

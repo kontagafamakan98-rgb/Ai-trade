@@ -1,0 +1,22 @@
+# Fins de ligne : la règle de `.editorconfig` (`end_of_line = lf`) vaut aussi
+# pour git, et c'est ici qu'elle est tenue.
+#
+# Sans ce fichier, `core.autocrlf=true` — le défaut de Git for Windows — réécrit
+# les fichiers texte en CRLF **au checkout**. C'est la cause des 71 fichiers en
+# dérive que `scripts/check_line_endings.py` a corrigés : ils ne contenaient pas
+# de `\r` parce que quelqu'un les avait écrits ainsi, mais parce que git les
+# avait restitués ainsi. Un contrôle qui se contente de signaler le CRLF laisse
+# donc revenir la dérive au clone suivant ; `eol=lf` la supprime à la source.
+#
+# `eol=lf` prime sur `autocrlf` pour les fichiers texte : le contenu de l'index
+# reste normalisé en LF, et la copie de travail aussi, quel que soit le réglage
+# local de chacun. Rien à installer, rien à configurer : le fichier est versionné.
+* text=auto eol=lf
+
+# Les scripts de commande Windows sont la SEULE exception, et elle est la même
+# que celle déclarée dans `.editorconfig` (`[*.{bat,cmd}] end_of_line = crlf`) :
+# `cmd.exe` lit mal un fichier dont les lignes finissent en LF. Les deux règles
+# disent la même chose, et `gradlew.bat` porte six `goto` — c'est le seul `.bat`
+# du dépôt, et il n'est exécuté que par Windows.
+*.bat text eol=crlf
+*.cmd text eol=crlf

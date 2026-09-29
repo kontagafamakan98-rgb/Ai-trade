@@ -1,0 +1,30 @@
+[project]
+name = "ai-trade"
+version = "0.1.0"
+description = "Bot de trading IA (paper) + moteur d'alerte interne (EMA/ATR) + tableau de bord Android"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+# La racine du dépôt doit être importable : les tests font `from core import …`,
+# `from tests.hook_support import …`, etc. Le script console `pytest` n'ajoute
+# PAS le répertoire courant à `sys.path` (contrairement à `python -m pytest`),
+# donc sans cette ligne la collecte échoue par `ModuleNotFoundError: core`.
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# `.pgtest/` est le PostgreSQL jetable des vérifications locales (gitignoré) :
+# il embarque les ~5 000 `.py` de la distribution PostgreSQL, qui ne sont pas
+# du code du projet. Ruff ne respecte `.gitignore` que dans un dépôt git —
+# l'exclusion doit donc être écrite ici pour tenir aussi sans `.git`.
+extend-exclude = [".freebuff", ".gradle", ".pgtest", "build", "artifacts"]
+
+[tool.ruff.lint]
+# On démarre sur les erreurs réellement bloquantes (syntaxe + erreurs fatales
+# pyflakes), pour que la CI soit verte immédiatement. Objectif : resserrer
+# progressivement (F, I, B) une fois le code legacy nettoyé.
+select = ["E9", "F63", "F7", "F82"]

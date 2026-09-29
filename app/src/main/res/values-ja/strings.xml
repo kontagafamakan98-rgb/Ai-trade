@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">AI トレード ターミナル</string>
+    <string name="paper_balance">デモ口座残高</string>
+    <string name="tab_terminal">ターミナル</string>
+    <string name="tab_insights">AI 分析</string>
+    <string name="tab_risk">リスク管理</string>
+    <string name="tab_chat">AI チャット＆スキャン</string>
+    <string name="tab_cloud">クラウド同期＆VIP</string>
+    <string name="engine_active">エンジン稼働中</string>
+    <string name="engine_stopped">エンジン停止中</string>
+    <string name="start_bot">AI ボット起動</string>
+    <string name="stop_bot">AI ボット停止</string>
+    <string name="watchlist_title">ウォッチリスト (選択してチャート表示)</string>
+    <string name="sync_rates">リアルタイムレート同期</string>
+    <string name="chart_title">リアルタイム K 線チャート</string>
+    <string name="signals_title">検出されたシグナル</string>
+    <string name="no_signals_yet">まだシグナルは生成されていません。</string>
+    <string name="buy">買い</string>
+    <string name="sell">売り</string>
+    <string name="status_executed">約定済み</string>
+    <string name="status_pending">待機中</string>
+    <string name="status_blocked_risk">リスクブロック</string>
+    <string name="insights_title">地政学＆AI 感情分析研報</string>
+    <string name="scan_news_btn">AI ニューススキャン実行</string>
+    <string name="scanning_news">Gemini がニュース分析中...</string>
+    <string name="multi_broker_title">マルチブローカー設定</string>
+    <string name="multi_broker_subtitle">自動売買を行うブローカーを接続します。</string>
+    <string name="active_broker">アクティブなブローカー</string>
+    <string name="select_broker">対象ブローカーを選択:</string>
+    <string name="save_broker_config">ブローカー設定を保存</string>
+    <string name="simulation_mode">シミュレーションモード (Paper Only)</string>
+    <string name="live_mode_warning">注意: ブローカーで実注文が実行されます</string>
+    <string name="language_settings_title">アプリの言語設定</string>
+    <string name="language_settings_subtitle">使用する言語を選択してください。</string>
+    <string name="risk_settings_title">リスク管理設定</string>
+    <string name="risk_pct_label" formatted="false">1取引あたりのリスク (%)</string>
+    <string name="min_confidence_label">最小 AI 信頼度 (0.0 - 1.0)</string>
+    <string name="max_daily_loss_label" formatted="false">許容最大日次損失 (%)</string>
+    <string name="max_drawdown_label" formatted="false">許容最大ドローダウン (%)</string>
+    <string name="max_open_trades_label">最大同時保有ポジション数</string>
+    <string name="save_risk_btn">リスク設定を保存</string>
+    <string name="log_terminal_title">エンジン実行ログ</string>
+    <string name="clear_logs_btn">ログを消去</string>
+    <string name="ai_chat_title">AI 戦略＆市場アシスタント</string>
+    <string name="ai_chat_subtitle">トレンドやニュースについて質問できます。</string>
+    <string name="chat_placeholder">BTC、AAPL、金利について質問...</string>
+    <string name="send_btn">送信</string>
+    <string name="vip_cloud_title">クラウド同期＆VIP アクセス</string>
+    <string name="vip_cloud_subtitle">Supabase クラウドに戦略をバックアップ。</string>
+    <string name="sync_now_btn">今すぐクラウド同期</string>
+    <string name="portfolio_performance_title">ポートフォリオ実績＆資産曲線</string>
+    <string name="portfolio_performance_subtitle">取引履歴に基づくリアルタイム資産追跡。</string>
+    <string name="total_equity">総資産</string>
+    <string name="realized_pnl">実現損益</string>
+    <string name="win_rate">勝率</string>
+    <string name="total_trades">総取引数</string>
+    <string name="entry_label">エントリー</string>
+    <string name="stop_loss_label">ストップロス</string>
+    <string name="take_profit_label">テイクプロフィット</string>
+    <string name="confidence_label">信頼度</string>
+    <string name="price_label">価格</string>
+    <string name="no_logs_yet">ログはまだありません。ボットを起動してください。</string>
+    <string name="run_gemini_analysis">GEMINI ニュース分析を実行</string>
+    <string name="no_insights_yet">まだ分析結果はありません。</string>
+    <string name="current_equity_label">現在の資産</string>
+    <string name="max_drawdown_limit_label">最大ドローダウン上限</string>
+    <string name="current_drawdown_label">現在のドローダウン</string>
+    <string name="save_risk_parameters">リスク設定を保存</string>
+    <string name="configuring_broker">設定中:</string>
+    <string name="server_gateway_url_label">サーバーゲートウェイ URL</string>
+    <string name="save_broker_configuration">ブローカー設定を保存</string>
+    <string name="reset_entire_trading_data">全トレードデータをリセット</string>
+    <string name="vip_feature_locked_title">VIP 機能ロック中</string>
+    <string name="search_grounding_label">リアルタイム Web 検索</string>
+    <string name="maps_locator_label">Maps 金融ハブ検索</string>
+    <string name="deep_reasoning_label">深層推論 High-Thinking</string>
+    <string name="flash_mode_label">低遅延フラッシュモード</string>
+    <string name="chat_input_placeholder">株式、暗号資産、チャートについて質問...</string>
+    <string name="quant_backtest_title">クオンツバックテスト＆Walk-Forward</string>
+    <string name="quant_backtest_subtitle">アウトオブサンプル検証＆Buy &amp; Hold 比較</string>
+    <string name="strategy_return">戦略リターン</string>
+    <string name="benchmark_return">ベンチマーク (Buy &amp; Hold)</string>
+    <string name="sharpe_ratio">シャープレシオ</string>
+    <string name="profit_factor">プロフィットファクター</string>
+    <string name="max_drawdown">最大ドローダウン</string>
+    <string name="system_health_title">システム可観測性＆Worker インフラ</string>
+    <string name="reset_circuit_breaker">サーキットブレーカーリセット</string>
+    <string name="worker_queue_throughput">Worker キュー処理量</string>
+    <string name="jobs_processed">件のジョブ処理完了</string>
+    <string name="memory_usage">メモリ使用量</string>
+    <string name="broker_state">ブローカー接続状態</string>
+    <string name="quant_memory_title">分析メモリ＆学習ループ</string>
+    <string name="quant_memory_subtitle">相場環境ごとのパフォーマンス帰属登録簿</string>
+    <string name="best_regime">最良の相場環境</string>
+    <string name="ai_accuracy">高信頼度 AI 精度</string>
+    <string name="pay_with_paypal">PayPal で支払う</string>
+    <string name="google_pay_sandbox">Google Pay ＆ サンドボックスカード</string>
+    <string name="cancel_btn">キャンセル</string>
+    <string name="firebase_auth_title">Firebase 認証</string>
+    <string name="sign_in_with_google">Google でサインイン</string>
+    <string name="sign_out_from_firebase">Firebase からサインアウト</string>
+    <string name="firestore_db_sync_title">Firestore DB 同期</string>
+    <string name="elite_vip_license_title">エリート VIP ライセンス</string>
+    <string name="activate_vip_sub">ELITE VIP サブスクリプション有効化</string>
+    <string name="demo_account">デモ口座</string>
+    <string name="demo_balance">デモ口座残高</string>
+    <string name="reset_demo_capital">デモ資金をリセット</string>
+    <string name="set_initial_capital">新しいデモ資金 ($)</string>
+    <string name="update_demo_capital_btn">デモ残高を更新</string>
+    <string name="manage_demo_account">デモ口座管理</string>
+    <string name="live_broker_account">リアルブローカー口座</string>
+    <string name="gemini_parameters_title">Gemini AI パラメータ</string>
+    <string name="vip_locked_text">この機能は VIP Pro メンバー専用です。アップグレードしてリアルタイム検索、深層推理モード、画像解析を解放します。</string>
+    <string name="institutional_grade_title">機関投資家レベルの AI トレード機能を獲得。低遅延シグナルで市場の優位性を手に入れましょう。</string>
+    <string name="monthly_vip">月額 VIP</string>
+    <string name="annual_vip">年額 VIP</string>
+    <string name="lifetime_elite">永久エリート</string>
+    <string name="best_value">最もお得</string>
+    <string name="pay_pal_supported">加盟店アカウント: makemoney0598@gmail.com (PayPal対応)</string>
+    <string name="vip_active_badge">VIP メンバー有効</string>
+    <string name="danger_zone">デンジャーゾーン</string>
+    <string name="keys_configured_label">キー</string>
+    <string name="connected_status_label">接続済み</string>
+    <string name="disconnected_status_label">切断</string>
+    <string name="synced_status_label">同期済み</string>
+    <string name="out_of_sync_status_label">未同期</string>
+    <string name="paper_sim_label">デモ口座</string>
+    <string name="live_trading_label">リアル取引</string>
+    <string name="ok_btn">OK</string>
+    <string name="active_label">アクティブ</string>
+    <string name="vip_pro_label">VIP PRO</string>
+    <string name="free_label">無料</string>
+    <string name="gemini_bias">Gemini バイアス</string>
+    <string name="bullish_label">強気</string>
+    <string name="bearish_label">弱気</string>
+    <string name="neutral_label">中立</string>
+    <string name="score_label">スコア</string>
+    <string name="geopolitical_label">地政学</string>
+    <string name="sentiment_label">センチメント</string>
+    <string name="bias_impact_label">バイアス影響</string>
+    <string name="scanning_metrics">Gemini が市場の指標をスキャンしています...</string>
+    <string name="vip_feature1">高度な Gemini Pro ディープシンキング推論モード</string>
+    <string name="vip_feature2">ゼロ遅延 ライブウェブ検索グラウンディングプロトコル</string>
+    <string name="vip_feature3">テクニカルチャートスキャナースクリーンショットノード</string>
+    <string name="vip_feature4">Google マップ GPS 金融ハブ＆トレーディングデスクファインダー</string>
+
+    <string name="badge_live_account">ライブ口座</string>
+    <string name="badge_real_demo">リアルデモ</string>
+    <string name="badge_paper_sim">シミュレーション</string>
+    <string name="simulator_notice">ローカルシミュレーター：価格・ニュース・バックテストは生成データです。実際の注文は執行されません。</string>
+    <string name="broker_demo_available_title">リアルデモ口座が利用可能です</string>
+    <string name="broker_demo_available_body">現在ローカルシミュレーターを使用しています。リアルタイム価格フィードを有効にするには、リアルデモ（Alpaca Paper / MetaTrader）を有効にしてください。</string>
+    <string name="broker_activate_demo_btn">1クリックでリアルデモを有効化</string>
+    <string name="quick_connect_demo_label">リアルデモ口座を接続</string>
+    <string name="quick_connect_demo_subtitle">Alpaca Paper APIを使用して、リアルタイム市場データと模擬注文執行を有効にします。</string>
+    <string name="chat_welcome_message">AI Trade Terminalへようこそ！市場や戦略、Geminiモードについてお気軽にお尋ねください。</string>
+
+    <!-- Traductions (ja) des écrans. -->
+    <string name="chat_send">送信</string>
+    <string name="chat_clear">クリア</string>
+    <string name="chat_sender_user">あなた</string>
+    <string name="chat_sender_gemini">GEMINI AI アシスタント</string>
+    <string name="chat_locked_body" formatted="false">%1$s プロトコルは VIP Trade プレミアム会員専用です。アップグレードすると、ライブ検索・深い推論モード・画像のテクニカル解析が利用できます。</string>
+    <string name="chat_attached_pattern" formatted="false">添付：%1$s チャートパターン（マルチモーダルモード有効）</string>
+    <string name="chat_search_grounding_full">Google ライブ検索</string>
+    <string name="chat_maps_grounding_full">Google マップ連携</string>
+    <string name="chat_high_thinking_mode">深い推論モード</string>
+    <string name="insights_error_analysis" formatted="false">市場環境の解析エラー：%1$s</string>
+    <string name="backtest_strategy_mode">バックテスト戦略モード：</string>
+    <string name="backtest_monte_carlo_stress">モンテカルロ・ストレステスト</string>
+    <string name="backtest_trade_logs" formatted="false">取引ログ（%1$s）</string>
+    <string name="backtest_btc_benchmark">BTC ベンチマーク</string>
+    <string name="backtest_alpha">アルファ（超過収益）</string>
+    <string name="backtest_beta">ベータ（ボラティリティ）</string>
+    <string name="backtest_sharpe">シャープ</string>
+    <string name="backtest_sortino">ソルティノ</string>
+    <string name="backtest_calmar">カルマー</string>
+    <string name="backtest_max_dd">最大ドローダウン</string>
+    <string name="monte_carlo_title">モンテカルロ・リスク分位（500 回試行）</string>
+    <string name="monte_carlo_var95" formatted="false">VaR 95%</string>
+    <string name="monte_carlo_var99" formatted="false">VaR 99%</string>
+    <string name="monte_carlo_var_at95" formatted="false">VaR（95% 水準）</string>
+    <string name="monte_carlo_cvar">CVaR（期待損失）</string>
+    <string name="monte_carlo_median_equity">資金中央値</string>
+    <string name="chart_scanner_title">テクニカルチャートスキャナー</string>
+    <string name="chart_scanner_select">解析するチャートのスクリーンショットを選択：</string>
+    <string name="chart_pattern_double_bottom">ダブルボトム</string>
+    <string name="chart_pattern_head_shoulders">ヘッド・アンド・ショルダー</string>
+    <string name="chart_pattern_hs">H&amp;S パターン</string>
+    <string name="chart_pattern_rsi_divergence">RSI ダイバージェンス</string>
+    <string name="agent_desk_title">マルチエージェント調査デスク</string>
+    <string name="agent_desk_subtitle">マクロ + クオンツ + センチメント + リスクの合意エンジン</string>
+    <string name="agent_consensus">AI コンセンサス</string>
+    <string name="agent_coordinating">4 つの AI 調査エージェントを調整中...</string>
+    <string name="agent_run_research" formatted="false">マルチエージェント調査を実行 [%1$s]</string>
+    <string name="agent_target_asset" formatted="false">対象資産：%1$s</string>
+    <string name="agent_confidence" formatted="false">信頼度：%1$s%%</string>
+    <string name="agent_entry" formatted="false">エントリー：%1$s $</string>
+    <string name="agent_stop_loss" formatted="false">ストップロス：%1$s $</string>
+    <string name="agent_take_profit" formatted="false">利確：%1$s $</string>
+    <string name="agent_cio_synthesis">CIO（最高投資責任者）の総括：</string>
+    <string name="agent_inject_signal">コンセンサスシグナルを実運用パイプラインに注入</string>
+    <string name="portfolio_starting_capital">初期資金の基準</string>
+    <string name="portfolio_current_equity">現在のポートフォリオ純資産</string>
+    <string name="portfolio_point" formatted="false">ポイント #%1$s</string>
+    <string name="portfolio_pnl" formatted="false">損益：%1$s %2$s $</string>
+    <string name="portfolio_filter_all">すべて</string>
+    <string name="portfolio_filter_ytd">年初来</string>
+    <string name="trade_log_history">ウォークフォワード取引ログ履歴：</string>
+    <string name="trade_log_entry" formatted="false">エントリー：%1$s $</string>
+    <string name="vip_paypal_active">PayPal 有効</string>
+    <string name="vip_plan_monthly">VIP 月額スターター</string>
+    <string name="vip_plan_annual">年間インスティテューショナルプラン</string>
+    <string name="vip_plan_lifetime">Elite 永久ライセンス</string>
+    <string name="vip_standard_access">スタンダードアクセス</string>
+    <string name="vip_save_annual" formatted="false">年間 %1$d%% お得</string>
+    <string name="vip_pay_once">一度のお支払いで永久利用</string>
+    <string name="vip_institutional_unlocked">インスティテューショナル VIP が解放されました</string>
+    <string name="vip_license_active">ライセンス：Premium 有効（年間マルチノードコア）</string>
+    <string name="vip_all_features_active">すべての深い推論パス、マルチモーダルなスクリーンショットスキャン、リアルタイム Web クローラー、地図ジオロケーターが完全に稼働しています。</string>
+    <string name="gpay_title">安全な購入ゲートウェイ</string>
+    <string name="gpay_upgrade_plan" formatted="false">アップグレード対象プラン：%1$s</string>
+    <string name="gpay_total_charge" formatted="false">お支払い総額：%1$s</string>
+    <string name="gpay_merchant_note">サブスクリプションは端末のマーチャントアカウント makemoney0598@gmail.com に安全に送金されます。以下からお支払い方法をお選びください。</string>
+    <string name="gpay_authorizing">安全なゲートウェイ取引を承認中...</string>
+    <string name="gpay_credit_card">クレジットカード</string>
+    <string name="gpay_paypal_logo">PayPal ロゴ</string>
+    <string name="firebase_auth_note">Google Auth で安全に認証すると、シグナル・ログ・設定を端末間で同期できます。</string>
+    <string name="firestore_connect_btn">FIRESTORE に接続</string>
+    <string name="firestore_sync_note" formatted="false">%1$s 件の取引シグナル、ログ、ポートフォリオのリスク設定を Firestore クラウドノードとリアルタイムに同期します。</string>
+    <string name="firestore_synced_label">同期済み</string>
+    <string name="firestore_out_of_sync_label">未同期</string>
+    <string name="learn_title">AI 学習と自己修正</string>
+    <string name="learn_subtitle">エラーの事後分析と動的な調整</string>
+    <string name="learn_reevaluate">再評価</string>
+    <string name="learn_weights_adjusted">マルチファクターの重みを再調整しました：</string>
+    <string name="learn_weight_ta" formatted="false">テクニカル分析：%1$s%%</string>
+    <string name="learn_weight_macro" formatted="false">マクロバイアス：%1$s%%</string>
+    <string name="learn_weight_sentiment" formatted="false">AI センチメント：%1$s%%</string>
+    <string name="learn_rules_generated">生成された自己修正ルール：</string>
+    <string name="learn_post_mortem_lessons">最新の事後分析の教訓：</string>
+    <string name="exec_mode_live_title">執行モード：ライブ（実資金）</string>
+    <string name="exec_mode_paper_title">執行モード：仮想サンドボックス（ペーパー）</string>
+    <string name="exec_live_note" formatted="false">注文はブローカーの実サーバーに送信されます（%1$s）</string>
+    <string name="exec_paper_note">仮想約定と実価格フィードを使ったサンドボックスシミュレーション</string>
+    <string name="exec_switch_paper">サンドボックスに切り替え</string>
+    <string name="exec_switch_live">ライブに切り替え</string>
+    <string name="health_broker_paper_sandbox">仮想サンドボックス（キー不要）</string>
+    <string name="health_broker_alpaca_paper">Alpaca デモ口座 接続済み</string>
+    <string name="health_broker_alpaca_live">Alpaca 本番口座 稼働中</string>
+    <string name="health_broker_unknown">仮想サンドボックス</string>
+    <string name="broker_quick_connect">クイック接続</string>
+    <string name="broker_executes_simulated">リスクのない模擬注文を執行します</string>
+    <string name="broker_webhook_token">Webhook 認証トークン / API キー</string>
+    <string name="broker_password_secret">口座パスワード / API シークレット</string>
+    <string name="broker_api_key_of" formatted="false">%1$s の API キー</string>
+    <string name="broker_api_secret_of" formatted="false">%1$s の API シークレット</string>
+    <string name="broker_desc_stocks_crypto">株式と暗号資産</string>
+    <string name="broker_desc_global_equities">世界の株式とオプション</string>
+    <string name="broker_desc_prop_firm">プロップファームの資金提供とチャレンジ</string>
+    <string name="broker_desc_raw_spreads">FX と CFD の生スプレッド</string>
+    <string name="broker_desc_stp">STP の FX と株式</string>
+    <string name="broker_desc_ecn">ECN 約定と FX</string>
+    <string name="broker_desc_micro">マイクロ口座とスタンダード口座</string>
+    <string name="broker_desc_leverage">無制限レバレッジの FX CFD</string>
+    <string name="broker_desc_dma">ダイレクトマーケットアクセス CFD</string>
+    <string name="broker_desc_fixed_floating">固定スプレッドと変動スプレッド</string>
+    <string name="broker_desc_multi_asset">マルチアセット MT5 デスク</string>
+    <string name="broker_desc_forex_commodities">FX と商品 CFD</string>
+    <string name="broker_desc_crypto_spot_derivatives">暗号資産スポットとデリバティブ</string>
+    <string name="broker_desc_crypto_spot_futures">暗号資産スポットと先物</string>
+    <string name="broker_desc_proprietary">自社デスク / Webhook</string>
+
+
+    <!-- Deuxième vague (ja). -->
+    <string name="signal_ta_summary" formatted="false">テクニカル分析: %1$s</string>
+    <string name="signal_sentiment" formatted="false">センチメント: %1$s</string>
+    <string name="status_closed">クローズ済み</string>
+    <string name="action_strong_buy">強い買い</string>
+    <string name="action_neutral_hold">様子見</string>
+    <string name="action_strong_sell">強い売り</string>
+    <string name="conviction_high">高</string>
+    <string name="conviction_medium">中</string>
+    <string name="conviction_low">低</string>
+    <string name="portfolio_vs_baseline" formatted="false">対 $%1$s</string>
+    <string name="portfolio_filter_1w">1週</string>
+    <string name="portfolio_filter_1m">1ヶ月</string>
+    <string name="price_history_pair_title" formatted="false">%1$s/USD %2$s</string>
+    <string name="quant_memory_stats" formatted="false">%1$s 取引 | 勝率: %2$s%% | 損益: %3$s$%4$s</string>
+    <string name="health_memory_mb" formatted="false">%1$s MB</string>
+    <string name="broker_account_id_of" formatted="false">%1$s 口座ID</string>
+    <string name="date_time_pattern_short">M月d日 HH:mm</string>
+    <string name="vip_price_monthly">$19.99</string>
+    <string name="vip_price_annual">$99.99</string>
+    <string name="vip_price_lifetime">$199.99</string>
+    <string name="vip_period_monthly">$19.99 / 月</string>
+    <string name="vip_period_annual">$99.99 / 年</string>
+
+
+    <!-- Troisième vague (ja). -->
+    <string name="learn_rule_rsi_overbought">ルール1: RSI が 68 を超える買われ過ぎ局面では買いを絞り込む。</string>
+    <string name="learn_rule_high_impact_news">ルール2: 高インパクトのニュース発表中は注文を停止する。</string>
+    <string name="learn_feedback_active">自己学習フィードバックループが有効です。</string>
+    <string name="log_self_learning_review" formatted="false">自己学習レビュー: 取引の再評価が完了しました。調整後の重み: TA %1$s%%、マクロ %2$s%%、センチメント %3$s%%。信頼度しきい値: %4$s。</string>
+    <string name="log_backtest_summary" formatted="false">ウォークフォワード検証 (%1$s - %2$s): リターン %3$s%%、シャープ %4$s、VaR95 %5$s%%。</string>
+    <string name="log_backtest_synthetic">合成バックテスト: ローカル生成の系列であり実際の市場を表しません。デモ目的のみです。</string>
+    <string name="insight_multi_agent_title" formatted="false">マルチエージェント調査 [%1$s]: %2$s (%3$s%%)</string>
+    <string name="log_multi_agent_research" formatted="false">%1$s のマルチエージェント調査層を実行しました: コンセンサス = %2$s (信頼度 %3$s%%)</string>
+    <string name="log_consensus_injected" formatted="false">マルチエージェント調査のコンセンサスを %1$s の実弾執行パイプラインに注入しました</string>
+    <string name="log_circuit_breaker_reset">グローバルサーキットブレーカーをユーザーが手動でリセットしました。</string>
+    <string name="log_loop_paused">自動ループを一時停止しました。</string>
+    <string name="log_loop_started">AI トレーディングボットを起動しました。リアルタイムのマルチファクター監視が有効です。</string>
+    <string name="log_loop_queue_started">自動マルチファクター取引ループを開始しました (ワーカーキュー有効)。</string>
+    <string name="log_portfolio_risk_breach" formatted="false">ポートフォリオのリスク違反: %1$s</string>
+    <string name="log_bootstrap_signal" formatted="false">%1$s の初期化シグナルを生成しました (AI エンジン稼働中)。</string>
+    <string name="log_cycle_scan" formatted="false">サイクル #%1$s: %2$s ペアをスキャン中。エンジン監視中 (最低信頼度フィルター: %3$s%%)。</string>
+    <string name="log_loop_error" formatted="false">自動ループのサイクルでエラー: %1$s</string>
+    <string name="log_position_closed_sl" formatted="false">ポジション決済 (損切り): %1$s %2$s %3$s が %4$s $ で SL に到達。損益: %5$s $</string>
+    <string name="log_position_closed_tp" formatted="false">ポジション決済 (利確): %1$s %2$s %3$s が %4$s $ で TP に到達。損益: +%5$s $</string>
+    <string name="log_tenant_breach" formatted="false">テナント分離違反: %1$s</string>
+    <string name="log_order_executed" formatted="false">注文を執行しました [モード: %1$s]: %2$s %3$s %4$s を %5$s $ で。SL: %6$s $、TP: %7$s $</string>
+    <string name="log_signal_blocked" formatted="false">%1$s のシグナルをブロックしました: %2$s</string>
+    <string name="log_risk_updated">リスクパラメータを更新しました。</string>
+    <string name="log_watchlist_updated" formatted="false">ウォッチリストを変更しました: %1$s</string>
+    <string name="log_language_updated" formatted="false">言語を更新しました: %1$s</string>
+    <string name="log_broker_saved" formatted="false">[%1$s] のブローカー認証情報を保存しました (%2$s モード)。</string>
+    <string name="mode_paper">デモ</string>
+    <string name="mode_live">実弾</string>
+    <string name="log_switched_live">注意: 執行モードを実弾の実ブローカー取引に切り替えました!</string>
+    <string name="log_switched_paper">執行モードをペーパー / 仮想サンドボックス取引に切り替えました。</string>
+    <string name="log_demo_reset">デモ口座の資金を 100,000.00 $ にリセットしました。</string>
+    <string name="log_demo_balance_set" formatted="false">デモ口座の残高を %1$s $ に設定しました</string>
+    <string name="insight_sentiment_api_title" formatted="false">%1$s のセンチメント (Gemini API)</string>
+    <string name="log_sentiment_api_done" formatted="false">%1$s の Gemini AI センチメント分析が完了しました: スコア = %2$s</string>
+    <string name="error_parsing" formatted="false">解析エラー: %1$s</string>
+    <string name="error_null_response">Gemini サーバーからの応答が空です</string>
+    <string name="direction_bullish">強気</string>
+    <string name="direction_bearish">弱気</string>
+    <string name="direction_neutral">中立</string>
+    <string name="insight_simulated_reasoning" formatted="false">計算されたトレンドバイアスは %1$s です。市場ニュースは %2$s の安定した出来高と強いマクロ勢いを示しています。主要なテクニカルサポートは売り圧力の低い保ち合いを示唆しています。</string>
+    <string name="insight_sentiment_simulator_title" formatted="false">%1$s のセンチメント (代替シミュレーター)</string>
+    <string name="log_sentiment_fallback_done" formatted="false">%1$s の代替センチメント分析が完了しました: スコア = %2$s</string>
+    <string name="log_firebase_signed_in" formatted="false">Firebase 認証に成功しました: Google でサインイン済み (%1$s)。</string>
+    <string name="log_firebase_signed_out">Google アカウントと Firebase Auth からサインアウトしました。</string>
+    <string name="error_firestore_unauthenticated">Firestore に同期できません: ユーザーが認証されていません。</string>
+    <string name="log_firestore_synced" formatted="false">Firestore の同期に成功しました。%1$s 件のシグナルとログをバックアップしました。</string>
+    <string name="log_vip_activated">プレミアム購読が有効です! Gemini Pro の深思考モード、ライブ検索、地図、チャートスキャナーが利用可能です。</string>
+    <string name="chat_analyzing_image">チャート画像を解析中…</string>
+    <string name="chat_sim_fallback_header">[ローカル AI シミュレーター - Secrets で Gemini キーを設定するとライブ AI を利用できます]\n\n</string>
+    <string name="chat_sim_image_done">チャートのスクリーンショットの模擬スキャンが完了しました。\n</string>
+    <string name="chat_sim_image_analysis">テクニカル分析: ブレイクアウト構造を検出しました。過去の水準の主要サポートは依然として堅固です。\n</string>
+    <string name="chat_sim_image_reco">推奨: 強気のモメンタムを検出しました。ローカルチャネルの直下に損切りを置くことを検討してください。</string>
+    <string name="chat_sim_regarding" formatted="false">「%1$s」について\n\n</string>
+    <string name="chat_sim_intro">このローカルシミュレーションでは、標準的な推奨事項は次のとおりです:\n</string>
+    <string name="chat_sim_bullet_volume">- ウォッチリストの出来高は強いモメンタムを示しています。リスク管理のパラメータにご注意ください。\n</string>
+    <string name="chat_sim_bullet_modes">- ライブ検索、深思考、低遅延の各モードを切り替えて機能をお試しください。</string>
+
+
+    <string name="signal_reason_blocked_by_risk" formatted="false">リスクガードによりブロック: %1$s</string>
+
+
+    <!-- デモ（ja）：初期の分析とシグナル。 -->
+    <string name="demo_insight_cpi_title">CPI インフレ報告</string>
+    <string name="demo_insight_cpi_content" formatted="false">米国のCPIは予想をわずかに下回る2.9%となり、株式と暗号資産全体で強気のセンチメントを牽引しています。</string>
+    <string name="demo_insight_geopolitical_title">中東の地政学的摩擦</string>
+    <string name="demo_insight_geopolitical_content">中東の航路における地政学的摩擦の激化が、グローバルなサプライチェーンの流れに圧力をかけ、エネルギーのボラティリティを引き起こしています。</string>
+    <string name="demo_insight_fed_title">FRB 利下げ確率</string>
+    <string name="demo_insight_fed_content">連邦公開市場委員会（FOMC）の議事要旨は、9月の会合で25ベーシスポイントの利下げが行われる可能性を示唆しており、投資家のリスクオン姿勢を後押ししています。</string>
+    <string name="demo_signal_btc_ema_ta">EMA20 &gt; EMA50 のクロス</string>
+    <string name="demo_signal_btc_ema_geo">暗号資産採用の波</string>
+    <string name="demo_signal_btc_ema_sentiment">強気センチメント 0.78</string>
+    <string name="demo_signal_btc_ema_reasoning">ETFへの強い資金流入で目標達成。</string>
+    <string name="demo_signal_nvda_bull_flag_ta">ブルフラッグのブレイクアウト</string>
+    <string name="demo_signal_nvda_bull_flag_geo">AIインフラ需要</string>
+    <string name="demo_signal_nvda_bull_flag_sentiment">強気センチメント 0.85</string>
+    <string name="demo_signal_nvda_bull_flag_reasoning">決算が予想を上回る。</string>
+    <string name="demo_signal_aapl_rsi_ta">RSI買われすぎからの反落</string>
+    <string name="demo_signal_aapl_rsi_geo">サプライチェーンの再編</string>
+    <string name="demo_signal_aapl_rsi_sentiment">中立 0.52</string>
+    <string name="demo_signal_aapl_rsi_reasoning">ハイテク株の上昇でストップロスに抵触。</string>
+    <string name="demo_signal_eth_macd_ta">MACDヒストグラムの反転</string>
+    <string name="demo_signal_eth_macd_geo">Layer2の活動急増</string>
+    <string name="demo_signal_eth_macd_sentiment">強気センチメント 0.72</string>
+    <string name="demo_signal_eth_macd_reasoning">ネットワーク更新後の出来高増で目標達成。</string>
+    <string name="demo_signal_tsla_support_ta">$210のサポートで反発</string>
+    <string name="demo_signal_tsla_support_geo">EV補助金の延長</string>
+    <string name="demo_signal_tsla_support_sentiment">強気センチメント 0.68</string>
+    <string name="demo_signal_tsla_support_reasoning">納車台数の発表を受けて利益確定に到達。</string>
+    <string name="demo_signal_googl_double_top_ta">ダブルトップからの反落</string>
+    <string name="demo_signal_googl_double_top_geo">独占禁止法の公聴会</string>
+    <string name="demo_signal_googl_double_top_sentiment">弱気 0.41</string>
+    <string name="demo_signal_googl_double_top_reasoning">市場全体の上昇でストップロスに抵触。</string>
+    <string name="demo_signal_btc_golden_cross_ta">ゴールデンクロスの確認</string>
+    <string name="demo_signal_btc_golden_cross_geo">マクロ流動性のシフト</string>
+    <string name="demo_signal_btc_golden_cross_sentiment">非常に強気 0.88</string>
+    <string name="demo_signal_btc_golden_cross_reasoning">ポジションは約定済みで含み益。</string>
+    <string name="admin_open_button">データベース管理</string>
+    <string name="admin_screen_title">Supabase プローブ</string>
+    <string name="admin_screen_intro">この画面はバックエンドのプローブを実行します。読み取り検査は読むだけです。往復テストは指定したテーブルに書き込み、読み戻し、削除します。</string>
+    <string name="admin_close_button">閉じる</string>
+    <string name="admin_config_title">バックエンド接続</string>
+    <string name="admin_base_url_label">バックエンド URL</string>
+    <string name="admin_api_key_label">内部キー</string>
+    <string name="admin_config_note">キーはこの端末に暗号化して保存され、アプリに組み込まれることはありません。</string>
+    <string name="admin_save_endpoint">接続を保存</string>
+    <string name="admin_check_title">読み取り専用の検査</string>
+    <string name="admin_check_button">検査を実行</string>
+    <string name="admin_not_configured">バックエンドが未保存です。プローブには URL と内部キーが必要です。両方が入力されるまで何も送信されません。</string>
+    <string name="admin_roundtrip_title">往復テスト（書き込みます）</string>
+    <string name="admin_roundtrip_note">指定したテーブルに書き込み、読み戻し、プローブ行を削除します。未知の名前は書き込みの前に拒否されます。</string>
+    <string name="admin_roundtrip_tables_label">テーブルまたはグループ</string>
+    <string name="admin_roundtrip_button">往復テストを実行</string>
+    <string name="admin_roundtrip_confirm_title">このテーブルに書き込みますか？</string>
+    <string name="admin_roundtrip_confirm_body" formatted="false">往復テストは次に書き込み、読み戻し、削除します: %1$s。残った行はレポートに表示されます。</string>
+    <string name="admin_roundtrip_confirm_write">書き込む</string>
+    <string name="admin_report_title">レポート</string>
+    <string name="admin_report_passed">すべての検査に合格</string>
+    <string name="admin_report_failed">少なくとも1つの検査が失敗</string>
+    <string name="admin_check_ok">合格</string>
+    <string name="admin_check_failed">失敗</string>
+    <string name="admin_report_selection" formatted="false">対象テーブル: %1$s</string>
+    <string name="admin_report_writes" formatted="false">書き込みしたテーブル: %1$s</string>
+    <string name="admin_report_leftovers" formatted="false">データベースに残った行: %1$s</string>
+    <string name="admin_report_none">なし</string>
+    <string name="admin_report_command" formatted="false">同等のコマンド: %1$s</string>
+    <string name="admin_error_title">プローブが応答しませんでした</string>
+    <string name="admin_error_bad_url" formatted="false">バックエンド URL が使用できません: %1$s</string>
+    <string name="admin_error_refused" formatted="false">バックエンドが呼び出しを拒否しました（%1$s）: %2$s</string>
+    <string name="admin_error_unreachable" formatted="false">バックエンドに接続できません: %1$s</string>
+</resources>

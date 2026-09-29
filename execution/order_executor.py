@@ -6,12 +6,16 @@ from config import (
     PAPER_TRADING,
     DEFAULT_RISK_PCT,
     DEFAULT_PAPER_EQUITY,
+    MAX_POSITION_QTY,
 )
+from core.signal_quality import validate_signal
 from database.supabase_client import supabase
 from database.preferences import get_preferences
-from database.broker_credentials import get_broker_credentials
+from database.broker_credentials import (
+    BrokerCredentialsUnreadable,
+    get_broker_credentials,
+)
 from execution.risk_guard import can_trade as risk_can_trade
-from utils.retry import retry_call
 
 try:
     from alpaca.trading.client import TradingClient
@@ -70,7 +74,7 @@ def compute_qty(signal: dict, equity: float, risk_pct: float) -> float:
         stop_distance = entry * 0.01
 
     qty = risk_amount / stop_distance
-    qty = max(0.001, min(qty, 1000))
+    qty = max(0.001, min(qty, MAX_POSITION_QTY))
 
     asset = str(signal.get("asset", ""))
     if not asset.endswith("-USD") and "BTC" not in asset and "ETH" not in asset:
@@ -91,6 +95,11 @@ def get_alpaca_client(user_id: Optional[str] = None):
 
     Le paramètre `paper` vient TOUJOURS du choix explicite de l'utilisateur
     (ou True par défaut pour la clé partagée) — jamais deviné.
+
+    Lève `BrokerCredentialsUnreadable` — et ne se rabat **pas** sur la clé
+    partagée — quand le compte personnel existe mais que l'anneau de clés ne le
+    rouvre pas : exécuter l'ordre d'un client sur le compte du propriétaire n'est
+    pas un repli, c'est un autre trade, et rien ne le dirait.
     """
     creds = get_broker_credentials(str(user_id)) if user_id else None
     if creds:
@@ -133,14 +142,13 @@ async def execute_validated_order(
     if not PAPER_TRADING:
         return {"error": "Live trading désactivé. PAPER only."}
 
-    from database.system_state import is_paused
-    if is_paused():
+    valid_signal, notes, signal = validate_signal(signal, allow_demo=True)
+    if not valid_signal:
         return {
-            "asset": signal.get("asset"),
-            "direction": signal.get("direction"),
-            "status": "blocked_admin_pause",
-            "method": "blocked",
-            "note": "🔴 Bot en pause d'urgence (kill-switch admin actif). Aucun ordre exécuté.",
+            "status": "rejected_invalid_signal",
+            "method": "validator",
+            "error": "; ".join(notes),
+            "signal": signal,
         }
 
     risk_pct = get_user_risk_pct(user_id)
@@ -159,6 +167,8 @@ async def execute_validated_order(
         "stop_loss": signal.get("stop_loss"),
         "take_profit": signal.get("take_profit"),
         "user_id": str(user_id),
+        "risk_reward_ratio": signal.get("risk_reward_ratio"),
+        "quality_warnings": signal.get("quality_warnings") or [],
     }
 
     # DEMO / entry=0 → simulation pure, PAS d'appel Alpaca
@@ -170,7 +180,19 @@ async def execute_validated_order(
             "note": "Signal DEMO ou entry invalide → pas d'envoi broker. Risk user quand même appliqué.",
         }
 
-    has_personal = get_broker_credentials(str(user_id)) is not None
+    try:
+        has_personal = get_broker_credentials(str(user_id)) is not None
+    except BrokerCredentialsUnreadable as exc:
+        return {
+            **base,
+            "status": "blocked_broker_credentials",
+            "method": "blocked",
+            "note": (
+                "🛑 Ordre refusé : tes identifiants broker sont chiffrés avec une clé "
+                "qui ne les rouvre pas — le compte partagé n'est PAS utilisé à la place."
+            ),
+            "error": str(exc),
+        }
     if not has_personal and (not ALPACA_OK or not ALPACA_API_KEY or not ALPACA_SECRET_KEY):
         return {
             **base,
@@ -191,12 +213,12 @@ async def execute_validated_order(
     real_balance = equity
     try:
         client_probe, _ = get_alpaca_client(str(user_id))
-        acct = retry_call(client_probe.get_account, retries=2, base_delay=1.0, label="alpaca.get_account")
+        acct = client_probe.get_account()
         real_balance = float(acct.equity)
     except Exception:
         pass  # repli silencieux sur `equity` déjà calculée plus haut
 
-    allowed, reason = risk_can_trade(str(user_id), real_balance, asset=str(signal.get("asset", "")))
+    allowed, reason = risk_can_trade(str(user_id), real_balance)
     if not allowed:
         return {
             **base,

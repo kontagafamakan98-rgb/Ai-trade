@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from database.supabase_client import supabase
 from utils.market_data import get_last_price
 from execution.self_review import update_lessons
-from execution.trailing_stop import apply_trailing_stop
-from execution.partial_take_profit import apply_partial_take_profit
+from reports.performance_report import export_run_card
+from core.adaptive_learning import record_trade_settlement_and_learn
 
 
 async def check_open_signals_performance():
@@ -23,27 +23,9 @@ async def check_open_signals_performance():
 
     for item in open_signals:
         sig_id = item["id"]
-
-        # Trailing stop : resserre le SL si la position est favorable,
-        # AVANT de vérifier si TP/SL est touché (donc avec le SL à jour).
-        try:
-            updated_signal = apply_trailing_stop(item)
-            if updated_signal:
-                item["signal"] = updated_signal
-        except Exception as e:
-            print(f"   ❌ Erreur trailing stop : {e}")
-
-        try:
-            updated_signal = apply_partial_take_profit(item, item.get("user_id"))
-            if updated_signal:
-                item["signal"] = updated_signal
-        except Exception as e:
-            print(f"   ❌ Erreur take-profit partiel : {e}")
-
         signal = item.get("signal") or {}
         asset = signal.get("asset")
         direction = signal.get("direction")
-        entry = float(signal.get("entry") or 0)
         tp = float(signal.get("take_profit") or 0)
         sl = float(signal.get("stop_loss") or 0)
 
@@ -59,14 +41,12 @@ async def check_open_signals_performance():
             if current_price >= tp:
                 outcome = "won"
             elif current_price <= sl:
-                # Trailing stop actif = SL déjà remonté au-dessus de l'entrée
-                # -> sortie protégée, pas une vraie perte.
-                outcome = "won" if sl >= entry else "lost"
+                outcome = "lost"
         elif direction == "SELL":
             if current_price <= tp:
                 outcome = "won"
             elif current_price >= sl:
-                outcome = "won" if sl <= entry else "lost"
+                outcome = "lost"
 
         if outcome:
             print(
@@ -84,13 +64,37 @@ async def check_open_signals_performance():
                     "status": outcome,
                     "execution_result": exec_res
                 }).eq("id", sig_id).execute()
+
+                # Trigger AI Self-Learning post-mortem and weight recalibration.
+                #
+                # `id` est la clé **du signal réglé** (`pending_signals.id`) : le
+                # payload `signal` ne la porte pas (c'est le moteur qui l'a produit,
+                # pas la base qui l'a rangé). Sans elle, le post-mortem s'enregistre
+                # sous le repli `sig_0`, donc le trade n'est plus reconnaissable — et
+                # `record_trade_settlement_and_learn` ne peut plus le tenir hors de
+                # son propre entraînement (voir `core/adaptive_learning.py`).
+                learning_res = record_trade_settlement_and_learn(
+                    signal_data={**signal, "id": sig_id},
+                    outcome=outcome,
+                    exit_price=current_price
+                )
+                lesson = learning_res.get("post_mortem", {}).get("lesson")
+                if learning_res.get("status") == "already_settled":
+                    #: Le trade **est** réglé, mais rien n'a été appris ici : le
+                    #: règlement est idempotent par identité, et un rattrapage ne doit
+                    #: pas se lire comme un nouvel apprentissage.
+                    print(f"   🧠 Déjà appris (rejeu ignoré) : {lesson}")
+                else:
+                    print(f"   🧠 Apprentissage IA appliqué: {lesson}")
+
                 any_settled = True
             except Exception as e:
-                print(f"   ❌ Erreur update résultat : {e}")
+                print(f"   ❌ Erreur update résultat / apprentissage : {e}")
 
     if any_settled:
         try:
             update_lessons()
-            print("   → bilan de performance (leçons) mis à jour")
+            export_run_card()
+            print("   → bilan de performance (leçons + run card) mis à jour")
         except Exception as e:
             print(f"   ❌ Erreur mise à jour du bilan : {e}")

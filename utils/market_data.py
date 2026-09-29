@@ -3,7 +3,10 @@ import io
 import time
 from typing import Optional, List, Dict, Any
 
-import httpx
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
 try:
     from config import FINNHUB_API_KEY
@@ -78,6 +81,43 @@ def get_closes(asset: str, limit: int = 80, interval: str = "1d") -> List[float]
     closes = _closes_stooq(asset)
     if len(closes) >= 30:
         return closes[-limit:]
+
+    return []
+
+
+def get_candles(asset: str, limit: int = 80, interval: str = "1h") -> List[Dict[str, float]]:
+    """Chandelles OHLC minimales (`high`, `low`, `close`) pour le moteur d'alerte.
+
+    Mêmes sources gratuites que `get_closes` (Finnhub/Yahoo/Binance/CoinGecko/
+    Stooq) : aucun compte ni abonnement n'est requis. Les fournisseurs qui ne
+    publient pas de plus-haut/plus-bas (CoinGecko) produisent des chandelles
+    dégénérées `high = low = close` : l'ATR retombe alors proprement sur
+    l'amplitude close-à-close, qui reste un minorant exploitable.
+    """
+    asset = asset.upper().strip()
+
+    if interval == "1d" and not _is_crypto(asset) and FINNHUB_API_KEY:
+        candles = _candles_finnhub(asset, limit=max(limit, 60))
+        if len(candles) >= 30:
+            return candles[-limit:]
+
+    yahoo_range = "60d" if interval != "1d" else "6mo"
+    candles = _candles_yahoo(asset, limit=max(limit, 60), interval=interval, range_=yahoo_range)
+    if len(candles) >= 30:
+        return candles[-limit:]
+
+    if _is_crypto(asset):
+        candles = _candles_binance(asset, limit=limit, interval=interval)
+        if len(candles) >= 30:
+            return candles
+        candles = _candles_coingecko(asset, limit=limit)
+        if len(candles) >= 30:
+            return candles
+        return []
+
+    candles = _candles_stooq(asset)
+    if len(candles) >= 30:
+        return candles[-limit:]
 
     return []
 
@@ -377,4 +417,158 @@ def _closes_binance(asset: str, limit: int = 80) -> List[float]:
             return [float(x[4]) for x in data]
     except Exception as e:
         print(f"   binance closes fail {asset}: {type(e).__name__}")
+        return []
+
+
+# --------------------------------------------------------------------------- #
+# Chandelles OHLC (moteur d'alerte interne)
+# --------------------------------------------------------------------------- #
+
+
+def _safe_float(value: Any) -> Optional[float]:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return None
+    return out
+
+
+def _candles_finnhub(asset: str, limit: int = 80) -> List[Dict[str, float]]:
+    """Chandelles daily Finnhub (gratuit) — tableaux `h`, `l`, `c` alignés."""
+    try:
+        import time as _t
+        sym = _finnhub_symbol(asset)
+        now = int(_t.time())
+        fr = now - 120 * 24 * 3600
+        url = "https://finnhub.io/api/v1/stock/candle"
+        with httpx.Client(timeout=20, headers=HEADERS) as client:
+            r = client.get(
+                url,
+                params={
+                    "symbol": sym,
+                    "resolution": "D",
+                    "from": fr,
+                    "to": now,
+                    "token": FINNHUB_API_KEY,
+                },
+            )
+            if r.status_code != 200:
+                print(f"   finnhub candles fail {asset}: HTTP {r.status_code}")
+                return []
+            data = r.json()
+            if data.get("s") != "ok":
+                return []
+            closes = data.get("c") or []
+            highs = data.get("h") or []
+            lows = data.get("l") or []
+            out: List[Dict[str, float]] = []
+            for c, h, l in zip(closes, highs, lows):
+                cf, hf, lf = _safe_float(c), _safe_float(h), _safe_float(l)
+                if cf is None or hf is None or lf is None:
+                    continue
+                out.append({"close": cf, "high": hf, "low": lf})
+            return out[-limit:]
+    except Exception as e:
+        print(f"   finnhub candles fail {asset}: {type(e).__name__}")
+        return []
+
+
+def _candles_yahoo(
+    asset: str, limit: int = 80, interval: str = "1h", range_: str = "60d"
+) -> List[Dict[str, float]]:
+    try:
+        time.sleep(0.3)
+        result = _yahoo_chart(asset, interval=interval, range_=range_)
+        if not result:
+            return []
+        quote = (result.get("indicators") or {}).get("quote") or []
+        if not quote:
+            return []
+        q = quote[0]
+        closes = q.get("close") or []
+        highs = q.get("high") or []
+        lows = q.get("low") or []
+        out: List[Dict[str, float]] = []
+        for i, c in enumerate(closes):
+            cf = _safe_float(c)
+            if cf is None:
+                continue
+            hf = _safe_float(highs[i]) if i < len(highs) else None
+            lf = _safe_float(lows[i]) if i < len(lows) else None
+            out.append({
+                "close": cf,
+                "high": hf if hf is not None else cf,
+                "low": lf if lf is not None else cf,
+            })
+        return out[-limit:]
+    except Exception as e:
+        print(f"   yahoo candles fail {asset}: {type(e).__name__}")
+        return []
+
+
+def _candles_stooq(asset: str) -> List[Dict[str, float]]:
+    """Stooq expose High/Low dans son CSV quotidien — OHLC réel."""
+    try:
+        sym = _stooq_symbol(asset)
+        urls = [
+            f"https://stooq.pl/q/d/l/?s={sym}&i=d",
+            f"https://stooq.com/q/d/l/?s={sym}&i=d",
+        ]
+        with httpx.Client(timeout=20, follow_redirects=True, headers=HEADERS) as client:
+            text = ""
+            for url in urls:
+                r = client.get(url)
+                if r.status_code == 200:
+                    text = r.text.strip()
+                    break
+            if not text or text.lower().startswith("<!"):
+                return []
+            reader = csv.DictReader(io.StringIO(text))
+            out: List[Dict[str, float]] = []
+            for row in reader:
+                close = _safe_float(row.get("Close") or row.get("close"))
+                if close is None:
+                    continue
+                high = _safe_float(row.get("High"))
+                low = _safe_float(row.get("Low"))
+                out.append({
+                    "close": close,
+                    "high": high if high is not None else close,
+                    "low": low if low is not None else close,
+                })
+            return out
+    except Exception as e:
+        print(f"   stooq candles fail {asset}: {type(e).__name__}")
+        return []
+
+
+def _candles_coingecko(asset: str, limit: int = 80) -> List[Dict[str, float]]:
+    """Fallback crypto : CoinGecko ne publie que des prix de clôture."""
+    closes = _closes_coingecko(asset, limit=limit)
+    return [{"close": c, "high": c, "low": c} for c in closes]
+
+
+def _candles_binance(asset: str, limit: int = 80, interval: str = "1h") -> List[Dict[str, float]]:
+    try:
+        sym = _binance_symbol(asset)
+        if not sym:
+            return []
+        url = "https://api.binance.com/api/v3/klines"
+        with httpx.Client(timeout=20, headers=HEADERS) as client:
+            r = client.get(url, params={"symbol": sym, "interval": interval, "limit": limit})
+            r.raise_for_status()
+            data = r.json()
+            out: List[Dict[str, float]] = []
+            for x in data:
+                high, low, close = _safe_float(x[2]), _safe_float(x[3]), _safe_float(x[4])
+                if close is None:
+                    continue
+                out.append({
+                    "close": close,
+                    "high": high if high is not None else close,
+                    "low": low if low is not None else close,
+                })
+            return out
+    except Exception as e:
+        print(f"   binance candles fail {asset}: {type(e).__name__}")
         return []
