@@ -32,6 +32,39 @@ def strong_values() -> dict:
     }
 
 
+#: Tous les noms que l'audit lit — y compris ceux que ces tests ne posent pas.
+SECRET_NAMES = tuple(spec.name for spec in sa.DEFAULT_SPECS)
+
+
+def _fixture_environment(values: dict) -> dict:
+    """Pose `values` dans l'environnement et **retire** les autres secrets connus.
+
+    `--no-env-file` empêche l'audit de *lire* `.env` ; il ne peut pas défaire
+    `config.py`, qui l'a déjà chargé dans `os.environ` à son import. Sous
+    `unittest discover`, l'anneau du `.env` réel (`ENCRYPTION_KEYS_PREVIOUS`) est
+    donc présent, et la clé de ce module est elle aussi en v1 : l'audit refuse
+    alors « deux clés pour une version », pour une raison qui ne parle pas du code
+    mais de la machine — qui a pourtant tourné sa clé comme il faut.
+
+    Rend la sauvegarde complète, à passer à `_restore_environment`.
+    """
+    names = set(SECRET_NAMES) | set(values)
+    saved = {name: os.environ.get(name) for name in names}
+    for name in names:
+        os.environ.pop(name, None)
+    os.environ.update(values)
+    return saved
+
+
+def _restore_environment(saved: dict) -> None:
+    """Remet l'environnement exactement comme `_fixture_environment` l'a trouvé."""
+    for name, previous in saved.items():
+        if previous is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = previous
+
+
 def _fresh_ledger(values: dict, now: datetime = NOW) -> dict:
     return {"version": sa.LEDGER_VERSION, "secrets": sa.build_ledger_entries(values, now=now)}
 
@@ -238,8 +271,7 @@ class TestCli(unittest.TestCase):
     def test_cli_records_then_passes(self):
         cli = self._load_cli()
         values = strong_values()
-        saved = {k: os.environ.get(k) for k in values}
-        os.environ.update(values)
+        saved = _fixture_environment(values)
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 ledger = str(Path(tmp) / "ledger.json")
@@ -256,11 +288,37 @@ class TestCli(unittest.TestCase):
                     0,
                 )
         finally:
-            for k, v in saved.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
+            _restore_environment(saved)
+
+    def test_a_rotated_machine_does_not_leak_its_ring_into_the_audit(self):
+        """L'anneau du `.env` réel ne doit pas décider du verdict de ces tests.
+
+        `config.py` charge `.env` dans `os.environ` à son import : c'est vérifié ici
+        en posant l'anneau **avant** les fixtures, comme le ferait un `unittest
+        discover` sur une machine qui a déjà tourné sa clé. Sans la neutralisation,
+        l'anneau et la clé de test portent tous deux la v1, et l'audit refuse pour
+        une raison étrangère au code.
+        """
+        cli = self._load_cli()
+        os.environ["ENCRYPTION_KEYS_PREVIOUS"] = f"v1:{_key(7)}"
+        saved = _fixture_environment(strong_values())
+        self.assertNotIn(
+            "ENCRYPTION_KEYS_PREVIOUS",
+            os.environ,
+            "l'anneau laissé par la machine doit être retiré, jamais hérité",
+        )
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ledger = str(Path(tmp) / "ledger.json")
+                self.assertEqual(cli.main(["--no-env-file", "--ledger", ledger, "--record"]), 0)
+                self.assertEqual(
+                    cli.main(
+                        ["--no-env-file", "--ledger", ledger, "--quiet", "--no-scan-repo"]
+                    ),
+                    0,
+                )
+        finally:
+            _restore_environment(saved)
 
     def test_cli_bad_env_file_returns_usage_error(self):
         cli = self._load_cli()
@@ -389,8 +447,7 @@ class TestRepoLeakScan(unittest.TestCase):
     def test_cli_fails_when_repo_contains_a_secret(self):
         cli = self._load_cli()
         values = strong_values()
-        saved = {k: os.environ.get(k) for k in values}
-        os.environ.update(values)
+        saved = _fixture_environment(values)
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 Path(tmp, "planted.txt").write_text(
@@ -418,11 +475,7 @@ class TestRepoLeakScan(unittest.TestCase):
                     0,
                 )
         finally:
-            for k, v in saved.items():
-                if v is None:
-                    os.environ.pop(k, None)
-                else:
-                    os.environ[k] = v
+            _restore_environment(saved)
 
     def _load_cli(self):
         spec = importlib.util.spec_from_file_location(
