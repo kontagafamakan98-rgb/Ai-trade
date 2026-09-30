@@ -26,6 +26,17 @@ except Exception:
     ALPACA_OK = False
 
 
+class AlpacaSDKUnavailable(RuntimeError):
+    """Le SDK Alpaca manque : aucun client ne peut être construit, pour personne.
+
+    Sans cette exception, l'absence du paquet se manifestait par un `NameError`
+    sur `TradingClient`, avalé plus loin en `status: "error"` avec un conseil qui
+    parlait de clés, de symbole et de marché — trois pistes pour une dépendance
+    manquante. Une panne d'environnement ne doit pas se déguiser en panne
+    d'identifiants : les deux se réparent à des endroits différents.
+    """
+
+
 def get_user_risk_pct(user_id: str) -> float:
     try:
         prefs = get_preferences(str(user_id))
@@ -100,8 +111,21 @@ def get_alpaca_client(user_id: Optional[str] = None):
     partagée — quand le compte personnel existe mais que l'anneau de clés ne le
     rouvre pas : exécuter l'ordre d'un client sur le compte du propriétaire n'est
     pas un repli, c'est un autre trade, et rien ne le dirait.
+
+    Lève `AlpacaSDKUnavailable` quand `alpaca-py` n'est pas installé : la
+    dépendance se nomme, au lieu de ressortir en `NameError` sur `TradingClient`.
     """
     creds = get_broker_credentials(str(user_id)) if user_id else None
+    # L'ordre des deux refus compte : la ligne de **cet** utilisateur d'abord (son
+    # verdict la nomme), l'environnement ensuite. Les deux bloquent l'ordre, mais
+    # un seul dit quoi réparer ; inverser ferait disparaître la ligne illisible
+    # derrière « le SDK manque », ce que `ReadTest` refuse déjà côté lecture.
+    if not ALPACA_OK:
+        raise AlpacaSDKUnavailable(
+            "le SDK Alpaca est absent (`alpaca-py`) : installe les dépendances "
+            "(`pip install -r requirements.txt`). Sans lui, aucun client ne peut "
+            "être construit — ni le compte personnel, ni la clé partagée."
+        )
     if creds:
         # garde-fou de sécurité : si le kill-switch global PAPER_TRADING
         # est actif, on refuse d'utiliser un compte marqué "live" même si
@@ -193,30 +217,55 @@ async def execute_validated_order(
             ),
             "error": str(exc),
         }
-    if not has_personal and (not ALPACA_OK or not ALPACA_API_KEY or not ALPACA_SECRET_KEY):
-        return {
-            **base,
-            "status": "simulated_paper",
-            "method": "simulated",
-            "note": "Aucun compte connecté (ni personnel, ni clé partagée) → simulation pure (risk user appliqué)",
-        }
     if not has_personal and not ALPACA_OK:
         return {
             **base,
             "status": "simulated_paper",
             "method": "simulated",
-            "note": "SDK Alpaca indisponible → simulation pure (risk user appliqué)",
+            "note": (
+                "SDK Alpaca non installé → simulation pure (risk user appliqué). "
+                "`pip install -r requirements.txt` pour envoyer de vrais ordres paper."
+            ),
+        }
+    if not has_personal and (not ALPACA_API_KEY or not ALPACA_SECRET_KEY):
+        return {
+            **base,
+            "status": "simulated_paper",
+            "method": "simulated",
+            "note": "Aucun compte connecté et aucune clé partagée → simulation pure (risk user appliqué)",
         }
 
-    # Solde réel si compte personnel connecté (le plus fiable), sinon
-    # repli sur l'equity paper configurée (approximation statique).
-    real_balance = equity
+    # Le solde **réel** est une entrée du garde-fou de risque, donc il ne se
+    # remplace pas : un repli silencieux sur `equity` (préférence utilisateur, ou
+    # défaut) ferait valider l'ordre sur un chiffre statique **en le présentant
+    # comme le solde du compte**. C'est ainsi qu'une clé morte, un compte révoqué
+    # ou une panne réseau ressemblaient à un solde connu.
     try:
         client_probe, _ = get_alpaca_client(str(user_id))
-        acct = client_probe.get_account()
-        real_balance = float(acct.equity)
-    except Exception:
-        pass  # repli silencieux sur `equity` déjà calculée plus haut
+        real_balance = float(client_probe.get_account().equity)
+    except AlpacaSDKUnavailable as exc:
+        return {
+            **base,
+            "status": "blocked_broker_sdk_missing",
+            "method": "blocked",
+            "note": (
+                "🛑 Ordre refusé : le SDK Alpaca n'est pas installé, donc aucun solde "
+                "ne peut être lu — le compte partagé ne prend pas le relais pour autant."
+            ),
+            "error": str(exc),
+        }
+    except Exception as exc:
+        return {
+            **base,
+            "status": "blocked_equity_unknown",
+            "method": "blocked",
+            "note": (
+                "🛑 Ordre refusé : le solde du compte n'a pas pu être lu, donc le "
+                "garde-fou de risque n'a pas de solde sur quoi décider (le chiffre "
+                "statique n'est pas utilisé à sa place)."
+            ),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
     allowed, reason = risk_can_trade(str(user_id), real_balance)
     if not allowed:
@@ -254,6 +303,16 @@ async def execute_validated_order(
             "qty": str(getattr(order, "qty", order_qty)),
             "method": "alpaca_paper",
             "account": source,  # "personal" ou "shared"
+        }
+    except AlpacaSDKUnavailable as exc:
+        # Le SDK ne peut pas disparaître entre la sonde et l'envoi dans le même
+        # processus : si on est ici, c'est que la ligne broker a changé sous nos
+        # pieds. Le nom reste le même — celui de la cause, pas un « error » vague.
+        return {
+            **base,
+            "status": "blocked_broker_sdk_missing",
+            "method": "blocked",
+            "error": str(exc),
         }
     except Exception as e:
         return {

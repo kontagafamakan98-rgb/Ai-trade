@@ -1,6 +1,6 @@
 """La rotation, vue depuis les identifiants broker et depuis le routage des ordres.
 
-Deux défauts sont éprouvés ici, et le premier est le plus grave :
+Trois défauts sont éprouvés ici, dans l'ordre de leur gravité :
 
 * un chiffré qu'on ne sait **pas** rouvrir rendait `None`, exactement comme
   « aucun compte connecté ». L'appelant se rabattait alors sur le compte partagé —
@@ -8,7 +8,11 @@ Deux défauts sont éprouvés ici, et le premier est le plus grave :
   désormais une exception, et un ordre **refusé** ;
 * poser une clé neuve laissait les anciennes lignes illisibles pour toujours faute
   de pouvoir les recenser : `reencrypt_all` les compte (sans rien écrire) puis les
-  réécrit avec la clé active, ce qui **termine** la rotation.
+  réécrit avec la clé active, ce qui **termine** la rotation ;
+* la sonde de solde, elle, se **taisait** : une clé révoquée ou une panne réseau
+  faisait valider l'ordre par le garde-fou de risque sur l'equity statique des
+  préférences — un chiffre présenté comme le solde du compte. `EquityProbeTest`
+  exige maintenant que la sonde parle : le solde inconnu refuse l'ordre.
 
 La base est la doublure partagée (`tests/supabase_double.py`) : les écritures y
 persistent et les lectures y sont filtrées comme PostgREST les filtre, donc un
@@ -300,6 +304,155 @@ class OrderRoutingTest(RingTestBase):
         self.assertIn("u1", result["error"])
         personal.assert_not_called()
         risk.assert_not_called()
+
+
+class EquityProbeTest(RingTestBase):
+    """La sonde de solde : elle nourrit le garde-fou de risque, donc elle ne se tait pas.
+
+    Deux déguisements y étaient possibles, et aucun ne se voyait à l'œil nu :
+
+    * un SDK absent ressortait en `NameError` sur `TradingClient`, avalé plus loin
+      en `status: "error"` — avec un conseil parlant de clés, de symbole et de
+      marché ouverts. Une dépendance manquante se répare ailleurs, et se dit
+      autrement ;
+    * une sonde qui échouait laissait le garde-fou évaluer l'ordre sur l'equity
+      **statique** des préférences : une clé révoquée ressemblait alors à un solde
+      connu, et l'ordre partait quand même.
+
+    Le paquet `alpaca-py` n'est pas installé ici (`ALPACA_OK` est faux), donc les
+    quatre noms importés n'existent même pas dans le module : la doublure les pose
+    avec `create=True`. C'est ce qui rend le chemin d'envoi éprouvable sans
+    dépendre du paquet — et sans qu'un `NameError` fasse passer un test pour une
+    réussite.
+    """
+
+    SIGNAL = {
+        "asset": "AAPL",
+        "direction": "BUY",
+        "entry": 100.0,
+        "stop_loss": 98.0,
+        "take_profit": 104.0,
+        "confidence": 0.7,
+    }
+
+    def _sdk(self, *, equity="1234.5", account_error=None):
+        """(fabrique de client, client) — le SDK absent, remplacé par des doublures."""
+        client = mock.Mock()
+        if account_error is not None:
+            client.get_account.side_effect = account_error
+        else:
+            client.get_account.return_value = mock.Mock(equity=equity)
+        client.submit_order.return_value = mock.Mock(id="o-1", symbol="AAPL")
+        factory = mock.Mock(return_value=client)
+        for name, value in (
+            ("ALPACA_OK", True),
+            ("TradingClient", factory),
+            ("MarketOrderRequest", lambda **kw: mock.Mock(**kw)),
+            ("OrderSide", mock.Mock(BUY="buy", SELL="sell")),
+            ("TimeInForce", mock.Mock(DAY="day")),
+        ):
+            patcher = mock.patch.object(oe, name, value, create=True)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        return factory, client
+
+    def _execute(self, *, user_id="u1", signal=None):
+        return asyncio.run(oe.execute_validated_order(user_id, dict(signal or self.SIGNAL)))
+
+    def test_the_probed_balance_is_what_the_risk_guard_sees(self):
+        """Le solde du compte, pas celui des préférences — et le compte est le sien."""
+        self.seed("u1")
+        factory, _client = self._sdk(equity="1234.5")
+
+        with mock.patch.object(oe, "risk_can_trade", return_value=(True, "")) as risk:
+            result = self._execute()
+
+        self.assertEqual(result["status"], "submitted_paper")
+        self.assertEqual(result["account"], "personal")
+        self.assertEqual(result["method"], "alpaca_paper")
+        risk.assert_called_once_with("u1", 1234.5)
+        self.assertEqual(
+            factory.call_args.kwargs["api_key"],
+            "cle-api",
+            "le client doit être bâti depuis la ligne déchiffrée de cet utilisateur",
+        )
+
+    def test_a_failed_probe_blocks_instead_of_sizing_on_a_static_figure(self):
+        """Une clé révoquée ne doit pas ressembler à un solde connu."""
+        self.seed("u1")
+        self._sdk(account_error=RuntimeError("clé révoquée"))
+
+        with mock.patch.object(oe, "risk_can_trade") as risk:
+            result = self._execute()
+
+        self.assertEqual(result["status"], "blocked_equity_unknown")
+        self.assertEqual(result["method"], "blocked")
+        risk.assert_not_called()
+        self.assertNotIn("account", result, "aucun compte n'a été choisi")
+        self.assertIn("RuntimeError", result["error"], "la cause d'origine est nommée")
+        self.assertIn("statique", result["note"], "le refus dit ce qui n'a PAS été fait")
+
+    def test_a_missing_sdk_is_named_rather_than_a_vague_broker_error(self):
+        self.seed("u1")
+
+        with mock.patch.object(oe, "ALPACA_OK", False), mock.patch.object(
+            oe, "TradingClient", create=True
+        ) as trading_client, mock.patch.object(oe, "risk_can_trade") as risk:
+            result = self._execute()
+
+        self.assertEqual(result["status"], "blocked_broker_sdk_missing")
+        self.assertEqual(result["method"], "blocked")
+        trading_client.assert_not_called()
+        risk.assert_not_called()
+        self.assertIn("alpaca-py", result["error"])
+        self.assertNotIn("symbole", result["note"], "pas de conseil de marché ici")
+
+    def test_the_shared_path_names_the_missing_sdk_too(self):
+        """Sans compte personnel, l'absence du SDK reste la cause à réparer."""
+        with mock.patch.object(oe, "ALPACA_OK", False), mock.patch.object(
+            oe, "TradingClient", create=True
+        ) as trading_client:
+            with self.assertRaises(oe.AlpacaSDKUnavailable) as caught:
+                oe.get_alpaca_client("u1")
+
+        trading_client.assert_not_called()
+        self.assertIn("alpaca-py", str(caught.exception))
+
+    def test_the_shared_key_still_builds_a_client_when_no_account_is_connected(self):
+        """Le repli partagé reste un chemin légitime : le durcissement ne le ferme pas."""
+        factory, _client = self._sdk()
+
+        with mock.patch.object(oe, "ALPACA_API_KEY", "cle-partagee"), mock.patch.object(
+            oe, "ALPACA_SECRET_KEY", "secret-partage"
+        ):
+            _client_built, source = oe.get_alpaca_client("u1")
+
+        self.assertEqual(source, "shared")
+        self.assertEqual(
+            factory.call_args.kwargs,
+            {"api_key": "cle-partagee", "secret_key": "secret-partage", "paper": True},
+        )
+
+    def test_the_two_reasons_to_simulate_are_named_separately(self):
+        """« Aucun compte connecté » ne doit pas servir aussi à dire « SDK absent ».
+
+        La seconde branche était **inatteignable** : la première avalait déjà le cas
+        du SDK manquant et le présentait comme une absence de compte, donc comme un
+        défaut de configuration à corriger ailleurs.
+        """
+        with mock.patch.object(oe, "ALPACA_OK", False):
+            without_sdk = self._execute()
+
+        with mock.patch.object(oe, "ALPACA_OK", True), mock.patch.object(
+            oe, "ALPACA_API_KEY", ""
+        ), mock.patch.object(oe, "ALPACA_SECRET_KEY", ""):
+            without_keys = self._execute()
+
+        self.assertEqual(without_sdk["status"], "simulated_paper")
+        self.assertEqual(without_keys["status"], "simulated_paper")
+        self.assertNotEqual(without_sdk["note"], without_keys["note"])
+        self.assertIn("SDK", without_sdk["note"])
+        self.assertIn("Aucun compte connecté", without_keys["note"])
 
 
 if __name__ == "__main__":

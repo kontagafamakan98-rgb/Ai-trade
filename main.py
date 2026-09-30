@@ -24,7 +24,12 @@ from database.supabase_client import (
 )
 from ai.decision_engine import EmotionlessDecisionEngine
 from scrapers.news_geo import fetch_and_push_geopolitical, fetch_fear_greed
-from execution.order_executor import execute_validated_order, get_alpaca_client, get_user_equity
+from execution.order_executor import (
+    AlpacaSDKUnavailable,
+    execute_validated_order,
+    get_alpaca_client,
+    get_user_equity,
+)
 from utils.market_data import get_last_price
 from database.preferences import get_preferences, set_risk as set_user_risk, set_watchlist as set_user_watchlist
 from database.knowledge_base import (
@@ -636,6 +641,12 @@ async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # papier ferait croire à une absence de compte.
             balance = equity
             balance_note = "(⚠️ identifiants broker illisibles — anneau de clés incomplet)"
+        except AlpacaSDKUnavailable:
+            # Ici le repli est légitime (on **affiche** un solde, on ne décide pas
+            # d'un ordre) — mais la note doit dire la vraie cause : « pas de compte
+            # réel » enverrait chercher un compte là où il manque un paquet.
+            balance = equity
+            balance_note = "(⚠️ SDK Alpaca absent — solde paper configuré, aucun compte interrogé)"
         except Exception:
             balance = equity
             balance_note = "(equity paper configurée, pas de compte réel)"
