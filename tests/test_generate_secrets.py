@@ -30,6 +30,7 @@ import tempfile
 import unittest
 
 from core import secrets_audit as sa
+from utils import encryption as enc
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -608,7 +609,11 @@ class FernetRotationTest(RotationCliTest):
 
         self.assertEqual(code, 0)
         after = sa.parse_env_file(self.env_file)
-        self.assertFalse(after["ENCRYPTION_KEY"].startswith("v"))
+        # Pas de préfixe de version, et non « ne commence pas par v » : une clé
+        # Fernet peut légitimement commencer par « v » (~1,5 % d'entre elles),
+        # donc ce n'est pas un signe de version. Le seul signe, c'est le « : ».
+        self.assertIsNone(enc.token_version(after["ENCRYPTION_KEY"]))
+        self.assertNotIn(":", after["ENCRYPTION_KEY"])
         self.assertTrue(sa.is_valid_fernet_key(after["ENCRYPTION_KEY"]))
         self.assertNotIn("ENCRYPTION_KEYS_PREVIOUS", after, "un anneau vide ne se fabrique pas")
         self.assertIn("mise en place", out)
@@ -737,9 +742,16 @@ class RecordOnlyTest(RotationCliTest):
             },
         )
         before = self.env_file.read_bytes()
+        # La date que le script va écrire est celle de **son** horloge, prise pendant
+        # l'appel. La lire une seule fois avant (ou après) rendrait le test faux si
+        # minuit tombe entre les deux — une fois par jour et par machine, ce qui est
+        # plus fréquent qu'un échec réel. On encadre donc l'appel, comme le fait
+        # `tests/test_pre_push_hook.py` avec la marge « aujourd'hui ou hier ».
+        stamp_before = _today()
 
         code, out, err = self._run("--record-only", "SUPABASE_SERVICE_KEY")
 
+        stamp_after = _today()
         self.assertEqual(code, 0)
         self.assertEqual(self.env_file.read_bytes(), before, "la valeur ne bouge pas")
         entries = sa.load_ledger(self.ledger)["secrets"]
@@ -752,7 +764,12 @@ class RecordOnlyTest(RotationCliTest):
             entries["SUPABASE_SERVICE_KEY"]["fingerprint"],
             sa.secret_fingerprint("SUPABASE_SERVICE_KEY", values["SUPABASE_SERVICE_KEY"]),
         )
-        self.assertEqual(entries["SUPABASE_SERVICE_KEY"]["rotated_at"], _today())
+        self.assertIn(
+            entries["SUPABASE_SERVICE_KEY"]["rotated_at"],
+            {stamp_before, stamp_after},
+            "horodaté le jour où le script a tourné — le second n'est admis que si "
+            "minuit est passé pendant l'appel, jamais une date quelconque",
+        )
         self.assertIn("inchangée", out)
         self.assertNotIn(values["SUPABASE_SERVICE_KEY"], out + err)
 
