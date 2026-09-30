@@ -361,6 +361,61 @@ l'annonce et sort en `3` — et sous git, cela bloque le commit comme le push.
 La distinction ne survit donc que si le wrapper est appelé directement, ce que
 vérifie `tests/test_hook_tooling_contract.py` — par le code, sans lire la sortie.
 
+### Publier l'arbre local sur la branche (`scripts/publish_tree.py`)
+
+L'arbre de travail n'est pas un dépôt git : il vit à côté d'un clone qui, lui, est
+versionné, et il en dérive à chaque session. Le publier se faisait à la main, et
+deux accidents ont montré ce que valait la méthode : un fichier `git` **vide de
+0 octet**, né d'une redirection malheureuse, s'est retrouvé publié sans que
+personne ne le voie ; dix modules hérités que l'arbre local avait remplacés sont
+restés sur la branche, faute d'élagage.
+
+```bash
+python scripts/publish_tree.py --dry-run    # ce qui partirait, sans rien écrire
+python scripts/publish_tree.py --url https://github.com/<compte>/<dépôt>.git
+```
+
+Le geste, en un appel : **export** de l'arbre local dans un clone de travail — le
+`.gitignore` **du poste** fait foi, donc une règle ajoutée là-bas protège dès la
+première publication, celle où le secret partirait sinon une fois de trop —,
+**élagage** de ce que le poste n'a plus, **commit** unique, **push** par refspec
+explicite (`branche:branche`, `push.default` ne décide pas à notre place, et les
+hooks du dépôt restent actifs : `--no-verify` n'est jamais passé), puis
+**vérification** : le distant est relu, et **chaque** fichier de la branche est
+comparé au fichier du poste par son identité de contenu — l'objet `blob` de git,
+recalculé ici sur les octets d'ici. La seule exception est **nommée** : les fins de
+ligne que `.gitattributes` normalise (`gradlew.bat`).
+
+La récupération du distant **nomme sa branche**
+(`+refs/heads/<branche>:refs/remotes/<distant>/<branche>`) et son échec arrête le
+geste. Un `git fetch <distant>` nu n'obéit qu'à `remote.<distant>.fetch` : sur un
+clone qui ne suit qu'une autre branche (`--single-branch`, `git remote
+set-branches`), la référence de suivi de la branche publiée ne bouge pas, la
+bascule de branche fait **reculer** le clone, et le push est refusé en
+non-fast-forward — après qu'un commit a été écrit par-dessus un état ancien. Les
+deux chemins vers cette référence périmée ont été trouvés en publiant ce module,
+le second par l'épreuve de bout en bout.
+
+Ce qui est écarté est nommé, pas tu : `.env` et le registre de rotation
+apparaissent dans « hors périmètre », à côté des dossiers d'outillage et des
+artefacts. Un fichier **nouveau** à la racine qui a la forme d'un débris — vide,
+nom d'essai `_…`, sauvegarde d'éditeur — est refusé et listé ; `--include-strays`
+l'assume explicitement. Hors racine, ces mêmes noms sont des conventions
+(`py.typed` est vide, `_compat.py` est un nom courant) : la règle ne s'y applique
+pas.
+
+Un détail qui n'en est pas un, trouvé par l'épreuve de bout en bout : le module
+**ne recopie pas la date** des fichiers. Un contenu modifié à taille constante,
+réécrit dans le même fichier avec la même date, est pris par le cache de `git`
+pour un fichier inchangé — sous Windows la date de création ne bouge pas non plus
+— et le commit partirait avec l'**ancien** contenu. La vérification le dirait,
+mais autant ne pas le provoquer.
+
+Codes de sortie : `0` publié et vérifié ; `1` refus, défaillance ou dérive
+constatée entre la branche et le poste ; `2` mauvaise utilisation. Le geste
+complet est éprouvé sur un dépôt nu jetable (`tests/test_tree_publish.py`), et ses
+garanties sont cassées une à une par `.pgtest/mutate_tree_publish.py`.
+
 ## Apprentissage adaptatif
 
 Les poids `TA / sentiment / macro` du moteur de décision peuvent être appris par
