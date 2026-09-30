@@ -319,8 +319,9 @@ class UnmeasurableReferenceTest(GuardTestBase):
     de drawdown — et rien ne le disait. Refuser est la seule réponse qui ne fabrique
     ni un feu vert, ni un chiffre faux : « 5 % de 0 » n'existe pas.
 
-    Le refus est **réparable** et le dit : corriger la référence, ou supprimer la
-    ligne pour qu'elle reparte du prochain solde lu.
+    Le refus est **réparable** et le dit : `REPAIR_COMMAND` écrit une référence
+    positive. Supprimer la ligne n'est pas une réparation — elle repartirait du
+    prochain solde lu, donc effacerait la perte déjà subie.
     """
 
     def test_a_zero_reference_is_refused_and_named(self):
@@ -348,6 +349,23 @@ class UnmeasurableReferenceTest(GuardTestBase):
         self.assertFalse(allowed)
         self.assertIn("starting_balance", reason)
         self.assertNotIn("daily_start_balance", reason)
+
+    def test_the_refusal_points_at_the_repair_tool_not_a_deletion(self):
+        """Un compte bloqué doit savoir **comment** se réparer — et surtout pas s'effacer.
+
+        Le refus renvoyait vers deux gestes dont un seul est sûr : « corriger la
+        valeur, ou supprimer la ligne ». Supprimer la ligne la fait renaître au
+        prochain solde lu, ce qui efface la perte déjà subie — l'inverse exact de la
+        réparation. Le refus cite donc l'outil, et dit ce que la suppression coûte.
+        """
+        self._preferences()
+        self._state(starting_balance=0.0, daily_start_balance=0.0)
+
+        allowed, reason = self._trade(5000.0)
+
+        self.assertFalse(allowed)
+        self.assertIn(rg.REPAIR_COMMAND, reason, "le refus doit nommer l'outil de réparation")
+        self.assertIn("effacerait la perte", reason, "et dire ce qu'une suppression coûte")
 
     def test_a_negative_reference_is_refused_too(self):
         """Un solde négatif (appel de marge) n'est pas davantage un point de départ."""
@@ -584,6 +602,11 @@ class ReferenceUnusableVisibilityTest(GuardTestBase):
         self.assertIn(rg.REFERENCE_UNUSABLE_LOG, line)
         self.assertIn(USER, line)
         self.assertIn(rg.STARTING_FIELD, line)
+        self.assertIn(
+            rg.REPAIR_COMMAND,
+            line,
+            "le journal doit nommer l'outil qui répare, pas seulement le défaut",
+        )
 
     def test_a_repeated_refusal_counts_without_warning_again(self):
         """Un compte bloqué qui retente ne doit pas remplir le journal à lui seul."""

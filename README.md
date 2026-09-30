@@ -918,16 +918,22 @@ le fichier serait en violation chez tout le monde **au premier checkout** : le
 gate et `.gitattributes` doivent dire la même chose, et un test vérifie qu'ils le
 disent (`tests/test_line_endings.py`, `GitAttributesTest`).
 
-### Les `except` muets (`tests/test_silent_handlers.py`)
+### Les `except` muets (`scripts/check_silent_handlers.py`)
 
 Un `except` qui avale une panne sans rien en dire transforme une erreur en succès
 apparent : c'est le mode de panne le plus cher du projet, parce que rien, plus
-tard, ne le signale. Le corpus `tests/test_silent_handlers.py` lit **tout** le
-code versionné — application *et* tests — et refuse tout handler qui n'émet
-**aucun** signal. Est un signal, au sens de ce corpus, de quoi être vu par
-quelqu'un d'autre que la ligne fautive : un `raise`, un `return`, un `yield`, un
-`await`, un `assert`, ou un **appel** (imprimer, journaliser, avertir, noter un
-motif…).
+tard, ne le signale. Ce contrôle lit **tout** le code versionné — application
+*et* tests — et refuse tout handler qui n'émet **aucun** signal. Est un signal,
+au sens de ce contrôle, de quoi être vu par quelqu'un d'autre que la ligne
+fautive : un `raise`, un `return`, un `yield`, un `await`, un `assert`, ou un
+**appel** (imprimer, journaliser, avertir, noter un motif…).
+
+```bash
+python scripts/check_silent_handlers.py            # vérifie (code 1 si refus)
+python scripts/check_silent_handlers.py --update   # enregistre les replis déclarés
+python scripts/check_silent_handlers.py --list     # montre l'inventaire enregistré
+python scripts/check_silent_handlers.py --json     # sortie exploitable par un script
+```
 
 Deux échappatoires, et deux seulement :
 
@@ -935,19 +941,44 @@ Deux échappatoires, et deux seulement :
   (`as exc`) et **s'en sert** garde la cause, il n'est donc pas muet même s'il
   n'imprime rien. Le capturer sans l'utiliser ne suffit pas : `except E as exc:
   result = None` reste muet ;
-* **porter une justification déclarée** — un commentaire `# sans signal : <raison>`
-  sur la ligne du `except` ou dans son corps. La raison doit être **écrite** : un
-  marqueur vide, ou plus court que dix caractères, ne vaut pas mieux qu'un
-  silence. Les gardes d'import (`httpx`, `feedparser`, `dotenv`…) et les replis
-  d'affichage en portent un, chacun pour sa raison, au lieu d'être dispensés par
-  un oubli.
+* **déclarer le repli, et l'enregistrer** — un commentaire
+  `# sans signal : <raison>` sur la ligne du `except` ou dans son corps nomme la
+  raison, et `--update` la recopie dans l'**inventaire versionné**
+  `tests/silent_exceptions.json`. La raison doit être **écrite** : un marqueur
+  vide, ou plus court que dix caractères, ne vaut pas mieux qu'un silence.
 
-Le corpus lit l'arbre **réel** (`.venv`, `.pgtest` et les caches exclus, comme le
-scan anti-fuite) et refuse d'être vide : un parcours cassé ferait passer le test
-sans rien lire, donc un plancher de lecture et la présence de `main.py` sont
-vérifiés à part. Le détecteur, lui, est éprouvé sur des sources **fabriquées** :
-`pass`, `continue`, sentinelle seule, `as exc` utilisé ou non, marqueur vide, trop
-court ou hors du handler, et `except*`.
+Le contrôle **ne croit pas le seul commentaire**. Une exemption n'existe que si
+elle figure dans l'inventaire, et l'inventaire doit correspondre **exactement** au
+code : un fichier, un symbole (`<module>`, la fonction ou la classe qui porte le
+`except`) et une clause (`except (TypeError, ValueError)`) y nomment chaque repli
+avec sa raison. Déclarer un repli devient donc un acte explicite et **relu** —
+ajouter `# sans signal : …`, puis `--update`, produit un diff de JSON où un
+relecteur voit l'exemption nouvelle — au lieu d'un commentaire glissé dans un gros
+diff sans que personne ne le remarque. Et une exemption dont le handler a disparu
+(ou a cessé d'être muet) est une **dérive** : l'inventaire ne peut pas pourrir en
+silence. Un inventaire absent, illisible, ou qui ne colle plus au code, est refusé.
+
+Le **triage** de ces exemptions — pourquoi chacune est légitime, et où passe la
+frontière entre un repli accepté et une **mesure fabriquée** (rendre `0` pour un
+compte qu'on n'a pas interrogé) — est consigné dans
+[`docs/EXCEPTIONS.md`](docs/EXCEPTIONS.md), et un test refuse qu'il dérive de
+l'inventaire : une exemption non triée, ou une ligne de triage sans exemption, fait
+échouer `tests/test_silent_handlers.py`.
+
+Le contrôle lit l'arbre **réel** (`.venv`, `.pgtest` et les caches exclus, comme
+le scan anti-fuite) et refuse d'être vide : un parcours cassé ferait passer le
+contrôle sans rien lire, donc un plancher de lecture (`--min-handlers`) est
+vérifié, et un fichier illisible ou qui ne se lit pas est un **refus**, jamais un
+fichier approuvé à l'aveugle. Il ne tient qu'à la **bibliothèque standard**, donc
+le job CI `python` l'exécute **avant** `pip install`.
+
+Trois gardes, parce qu'un contrôle qui ne tourne nulle part ne contrôle rien :
+
+| Garde | Ce qu'elle fait |
+|---|---|
+| CI, job `python` | `python scripts/check_silent_handlers.py`, **avant** l'installation des dépendances |
+| `tests/test_silent_handlers.py` | éprouve le détecteur et l'inventaire sur des sources fabriquées, le contrôle sur des arbres jetables (silencieux refusé, repli non enregistré, dérive, inventaire absent ou illisible, corpus trop pauvre), et le **câblage** : l'étape CI existe et tourne avant `pip`, l'outil est documenté, l'inventaire est versionné |
+| `tests/silent_exceptions.json` | l'inventaire **versionné** des exemptions : c'est lui, et lui seul, qui absout un repli ; chaque entrée porte fichier, symbole, clause et raison |
 
 ### Vérifier le projet Supabase (`scripts/check_supabase.py`)
 
@@ -1229,6 +1260,15 @@ et journalise chaque refus de référence inutilisable sous un préfixe unique
 premier refus d'un utilisateur, et tout changement de champ, sortent en
 **WARNING** ; les répétitions descendent en `INFO` — un compte bloqué qui retente
 ne remplit pas le journal à lui seul, mais le compteur continue de monter.
+
+La raison **et** la ligne de journal nomment l'outil qui répare
+(`python scripts/repair_risk_state.py`) et disent ce qu'une suppression coûterait.
+Le refus renvoyait auparavant vers deux gestes dont un seul est sûr (« corriger la
+référence, ou supprimer la ligne ») : supprimer la ligne la fait renaître au
+prochain solde lu, donc efface la perte déjà subie — exactement ce que la
+réparation existe pour empêcher. Le chemin de réparation est donc nommé **une
+seule fois** (`risk_guard.REPAIR_COMMAND`), et un test l'exige dans les deux
+textes.
 
 ```bash
 curl -H "X-API-Key: $INTERNAL_API_KEY" \

@@ -40,6 +40,21 @@ jobs:
         # La même vérification est dans la suite de tests, qui tourne localement.
         run: python scripts/check_line_endings.py
 
+      - name: Aucun `except` silencieux non déclaré (`scripts/check_silent_handlers.py`)
+        # Un `except` qui avale une panne sans rien en dire transforme une erreur
+        # en succès apparent, et rien ne le signale ensuite. Ce contrôle lit tout
+        # le code versionné et refuse tout handler muet — sauf ceux qui déclarent
+        # leur raison (`# sans signal : <raison>`) **et** la font enregistrer dans
+        # l'inventaire versionné `tests/silent_exceptions.json`. Le commentaire seul
+        # ne suffit pas : l'exemption doit apparaître dans le diff du JSON, où un
+        # relecteur la voit. Un inventaire qui ne correspond plus au code est une
+        # dérive, refusée comme le silence lui-même.
+        #
+        # Placée avant l'installation des dépendances, exprès : le contrôle ne
+        # tient qu'à la bibliothèque standard, comme les hooks du dépôt. La même
+        # vérification est dans la suite de tests, qui tourne localement.
+        run: python scripts/check_silent_handlers.py
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

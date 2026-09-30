@@ -17,9 +17,10 @@ Pour un compte personnel connecté, le vrai solde Alpaca est utilisé.
 lisible (0, absent, négatif), **aucun** plafond en pourcentage n'est mesurable —
 « 5 % de 0 » n'est pas 5 %, c'est un pourcentage d'un chiffre qu'on n'a pas. Le
 garde refuse alors le trade en le disant, au lieu de sauter ses deux contrôles en
-silence (`if daily_start_balance > 0`). Le refus est réparable : corriger la
-référence dans `user_risk_state`, ou supprimer la ligne pour qu'elle soit
-réinitialisée au prochain solde lu.
+silence (`if daily_start_balance > 0`). Le refus est réparable, et d'une seule
+façon : `scripts/repair_risk_state.py` écrit une référence **positive**. Supprimer la
+ligne n'en est pas une — la supprimer la ferait réinitialiser au prochain solde lu,
+c'est-à-dire effacerait la perte déjà subie en silence.
 
 Ce refus ne reste pas muet pour l'exploitant : il incrémente un **compteur
 dédié** (`reference_unusable_snapshot`, exposé par la route d'administration) et
@@ -62,6 +63,10 @@ NO_BALANCE_REASON = (
     "mesuré, et un compte dont le solde n'est pas lu n'est pas un compte autorisé. "
     "Trade bloqué par précaution."
 )
+
+#: Le chemin de réparation, nommé une fois : le refus le cite, et le test le lit. Une
+#: phrase recopiée dans un test finirait par diverger de celle du garde.
+REPAIR_COMMAND = "python scripts/repair_risk_state.py"
 
 def _reference_balance(state: dict, field: str, current_balance: float) -> float:
     """La référence d'un garde en pourcentage, ou le solde courant si elle est absente.
@@ -156,8 +161,9 @@ def _observe_reference_unusable(user_id: str, decision: "RiskDecision") -> None:
 
     message = (
         f"{REFERENCE_UNUSABLE_LOG} utilisateur={user_id} champs={','.join(fields)} "
-        f"occurrences={occurrences} total={total} — état de risque à réparer "
-        "(valeur positive, ou ligne supprimée pour réinitialisation)"
+        f"occurrences={occurrences} total={total} — état de risque à réparer par "
+        f"`{REPAIR_COMMAND}` (une valeur positive ; ne pas supprimer la ligne, qui "
+        "repartirait du prochain solde lu)"
     )
     if first or changed:
         logger.warning(message)
@@ -178,9 +184,9 @@ def _unusable_references_reason(starting_balance: float, daily_start_balance: fl
         return ""
     return (
         f"Référence de solde inutilisable ({', '.join(broken)} ≤ 0) : les plafonds en "
-        "pourcentage ne peuvent pas être mesurés. Corrige l'état de risque de cet "
-        "utilisateur (une valeur positive), ou supprime la ligne — elle sera "
-        "réinitialisée au prochain solde lu. Trade bloqué par précaution."
+        "pourcentage ne peuvent pas être mesurés. Répare la ligne avec "
+        f"`{REPAIR_COMMAND}` (une valeur positive) — la supprimer effacerait la perte "
+        "déjà subie. Trade bloqué par précaution."
     )
 
 

@@ -1,0 +1,137 @@
+{
+  "_comment": "Inventaire versionné des `except` silencieux tolérés : ne pas éditer à la main. Régénérer avec `python scripts/check_silent_handlers.py --update`.",
+  "exemptions": [
+    {
+      "file": "ai/news_analyzer.py",
+      "handler": "except Exception",
+      "reason": "client Groq optionnel, l'absence est rapportée par l'appelant",
+      "symbol": "<module>"
+    },
+    {
+      "file": "ai/news_analyzer.py",
+      "handler": "except ImportError",
+      "reason": "httpx optionnel, l'appelant le voit à l'usage",
+      "symbol": "<module>"
+    },
+    {
+      "file": "config.py",
+      "handler": "except ImportError",
+      "reason": "`dotenv` optionnel, l'environnement suffit",
+      "symbol": "<module>"
+    },
+    {
+      "file": "core/rag_loop.py",
+      "handler": "except (TypeError, ValueError)",
+      "reason": "score illisible ramené à « n/a »",
+      "symbol": "_excerpt"
+    },
+    {
+      "file": "core/secrets_audit.py",
+      "handler": "except ValueError",
+      "reason": "pas de chemin relatif, on nomme par l'absolu",
+      "symbol": "iter_scan_files"
+    },
+    {
+      "file": "core/secrets_audit.py",
+      "handler": "except ValueError",
+      "reason": "plafond illisible, le défaut s'applique",
+      "symbol": "resolve_max_age_days"
+    },
+    {
+      "file": "core/tree_publish.py",
+      "handler": "except FileNotFoundError",
+      "reason": "il n'était déjà plus là — c'est le résultat voulu, et",
+      "symbol": "apply_plan"
+    },
+    {
+      "file": "core/tree_publish.py",
+      "handler": "except OSError",
+      "reason": "disparu entre le parcours et la lecture, il n'y a plus",
+      "symbol": "collect"
+    },
+    {
+      "file": "core/tree_publish.py",
+      "handler": "except OSError",
+      "reason": "illisible d'un côté ou de l'autre, donc on recopie — et",
+      "symbol": "plan"
+    },
+    {
+      "file": "database/settings.py",
+      "handler": "except Exception",
+      "reason": "client optionnel, `supabase_client` a déjà nommé la cause",
+      "symbol": "<module>"
+    },
+    {
+      "file": "execution/order_executor.py",
+      "handler": "except Exception",
+      "reason": "SDK absent ; `ALPACA_OK` le publie, `AlpacaSDKUnavailable` le nomme",
+      "symbol": "<module>"
+    },
+    {
+      "file": "main.py",
+      "handler": "except AlpacaSDKUnavailable",
+      "reason": "le repli est **affiché** par la note ci-dessous",
+      "symbol": "risk_status"
+    },
+    {
+      "file": "main.py",
+      "handler": "except BrokerCredentialsUnreadable",
+      "reason": "le repli est **affiché** par la note ci-dessous",
+      "symbol": "risk_status"
+    },
+    {
+      "file": "scrapers/forex_factory.py",
+      "handler": "except ImportError",
+      "reason": "feedparser optionnel, l'absence est annoncée",
+      "symbol": "<module>"
+    },
+    {
+      "file": "scrapers/forex_factory.py",
+      "handler": "except ImportError",
+      "reason": "httpx optionnel, l'appelant le voit à l'usage",
+      "symbol": "<module>"
+    },
+    {
+      "file": "scripts/generate_secrets.py",
+      "handler": "except OSError",
+      "reason": "permissions absentes sous Windows, ce n'est pas une erreur",
+      "symbol": "_write_env"
+    },
+    {
+      "file": "tests/test_android_identity.py",
+      "handler": "except (UnicodeDecodeError, OSError)",
+      "reason": "fichier non UTF-8 ou illisible, le suivant est analysé",
+      "symbol": "NoTraceInTheRepositoryTest.tracked_texts"
+    },
+    {
+      "file": "tests/test_kotlin_packages.py",
+      "handler": "except (UnicodeDecodeError, OSError)",
+      "reason": "fichier non UTF-8 ou illisible, le suivant est analysé",
+      "symbol": "repository_texts"
+    },
+    {
+      "file": "tests/test_telegram_filters.py",
+      "handler": "except Exception",
+      "reason": "PTB absent de l'environnement, les tests se sautent d'eux-mêmes",
+      "symbol": "<module>"
+    },
+    {
+      "file": "utils/encryption.py",
+      "handler": "except InvalidToken",
+      "reason": "cette clé ne rouvre pas le jeton, la suivante est essayée",
+      "symbol": "KeyRing.decrypt_with_version"
+    },
+    {
+      "file": "utils/market_data.py",
+      "handler": "except ImportError",
+      "reason": "httpx optionnel, les sondes réseau l'annoncent",
+      "symbol": "<module>"
+    },
+    {
+      "file": "utils/market_data.py",
+      "handler": "except Exception",
+      "reason": "ligne CSV illisible, les suivantes restent lues",
+      "symbol": "_closes_stooq"
+    }
+  ]
+}
