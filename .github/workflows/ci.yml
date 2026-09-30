@@ -92,6 +92,73 @@ jobs:
           SUPABASE_SERVICE_KEY: "ci-supabase-service-key-0123456789"
           TELEGRAM_BOT_TOKEN: "123456789:AAF7c3d2e1b0a9f8e7d6c5b4a3f2e1d0"
 
+  secrets-audit:
+    name: Audit anti-fuite sur la branche poussée (fail-closed)
+    runs-on: ubuntu-latest
+    # Uniquement sur `push` : une PR venue d'un fork n'a pas accès aux secrets du
+    # dépôt. Le job exigerait des valeurs qu'il ne peut pas recevoir, échouerait
+    # pour tout le monde — et un gate qu'on apprend à ignorer ne contrôle rien.
+    # Les PR d'une branche du dépôt sont couvertes par le `push` de cette branche.
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: L'arbre de la branche poussée, relu avec les vraies valeurs
+        # Le hook pre-commit ne cherche que ce qu'il **connaît** : sur un clone
+        # sans `.env`, il n'a aucune valeur de référence, il le dit — et laisse
+        # passer. C'est le seul trou du dispositif, et il est local par
+        # construction : refuser tout `git commit` sur une machine non configurée
+        # rendrait le hook inutilisable, donc contourné. Le trou se ferme **ici**,
+        # là où les valeurs existent : l'arbre entier de la branche poussée est
+        # relu, et `--require-scan-targets` transforme « le scan n'avait rien à
+        # chercher » — exactement le silence du clone sans `.env` — en refus.
+        #
+        # La différence avec l'étape d'audit du job `python` n'est pas cosmétique :
+        # celle-là audite des valeurs FACTICES pour valider le pipeline, avec
+        # `--no-scan-repo`. Ici les valeurs sont les vraies, et le scan est le
+        # sujet.
+        #
+        # `--allow-missing-rotation` : ce job juge l'arbre poussé, pas la
+        # fraîcheur des rotations — il n'a pas de registre (celui du dépôt est
+        # propre à la machine, et il est gitignoré). La rotation a son propre
+        # contrôle, local (hook pre-push) et documenté dans docs/SECRETS.md.
+        #
+        # Les valeurs viennent des **secrets du dépôt** (Settings → Secrets and
+        # variables → Actions), jamais de ce fichier : un secret écrit dans un
+        # workflow est publié avec lui. Tant qu'ils ne sont pas posés, le job
+        # ÉCHOUE — c'est voulu : un gate qui ne peut pas mesurer ne rend pas un
+        # feu vert, et c'est précisément cette vacuité qu'on veut voir signalée.
+        # Pour forcer la même exigence sur une machine, localement :
+        # `SECRETS_HOOK_STRICT=1` (voir docs/SECRETS.md).
+        #
+        # Aucune dépendance n'est installée : l'audit ne tient qu'à la
+        # bibliothèque standard, exprès, pour pouvoir tourner avant `pip install`
+        # — et pour rester vérifiable même si `requirements.txt` est cassé.
+        run: |
+          python scripts/verify_secrets.py \
+            --scan-repo \
+            --require-scan-targets \
+            --allow-missing-rotation \
+            --ledger "$RUNNER_TEMP/secret_rotation.json"
+        env:
+          # Les 5 secrets obligatoires : sans eux, l'audit refuse (présence) et
+          # le scan n'aurait aucune valeur de référence.
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          # Les facultatives : présentes, elles élargissent le scan ; absentes,
+          # elles ne bloquent rien (leur spec est `required=False`).
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+
   migrations-postgres:
     name: Migrations appliquées à un vrai Postgres (pgvector)
     runs-on: ubuntu-latest

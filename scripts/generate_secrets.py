@@ -87,6 +87,7 @@ from core.secrets_audit import (  # noqa: E402
     DEFAULT_KEY_VERSION,
     DEFAULT_LEDGER_PATH,
     DEFAULT_SPECS,
+    LEDGER_STATE_CORRUPT,
     RING_SECRET_NAME,
     ROTATION_IMPACT,
     SecretSpec,
@@ -94,7 +95,7 @@ from core.secrets_audit import (  # noqa: E402
     check_presence_and_strength,
     is_placeholder,
     is_valid_fernet_key,
-    load_ledger,
+    read_ledger,
     parse_env_file,
     parse_key_entry,
     resolve_ledger_path,
@@ -148,17 +149,10 @@ def _next_free_version(values: Mapping[str, str]) -> int:
     entrerait en collision de version avec elle. L'audit refuserait ce cas — mais
     autant ne pas le fabriquer : on prend la version au-dessus de l'anneau.
 
-    Une entrée d'anneau illisible est ignorée ici : `check_key_ring` a la charge
-    de la refuser, et deviner sa version serait pire que de l'ignorer.
+    Un anneau illisible n'est pas sauté ici (voir `_ring_versions`) : reprendre une
+    version occupée rend l'ouverture du chiffré historique indécidable.
     """
-    versions = []
-    for entry in ring_entries(values.get(RING_SECRET_NAME) or ""):
-        try:
-            version, _key = parse_key_entry(entry)
-        except ValueError:
-            continue
-        versions.append(version)
-    return max(versions, default=0) + 1
+    return max(_ring_versions(values), default=0) + 1
 
 
 def _generate_value(name: str, generator: Callable[..., str], values: Mapping[str, str]) -> str:
@@ -355,8 +349,7 @@ def _write_env(env_file: Path, lines: Sequence[str], newline: str) -> None:
             tmp.unlink()
     try:
         os.chmod(env_file, 0o600)
-    except OSError:
-        # Windows ne connaît pas ces permissions : leur absence n'est pas une erreur.
+    except OSError:  # sans signal : permissions absentes sous Windows, ce n'est pas une erreur
         pass
 
 
@@ -419,7 +412,12 @@ def build_plan(
                 continue
             to_generate.append(spec.name)
             if generate:
-                produced[spec.name] = _generate_value(spec.name, generator, values)
+                try:
+                    produced[spec.name] = _generate_value(spec.name, generator, values)
+                except ValueError as exc:
+                    # Seul `ENCRYPTION_KEY` peut lever ici (version d'anneau illisible) :
+                    # on ne fabrique pas un `.env` dont les versions se répètent.
+                    raise UsageError(str(exc)) from exc
             continue
         problem = _audit_problem(spec, value)
         if problem:
@@ -640,18 +638,29 @@ def _spec_by_name(name: str, specs: Sequence[SecretSpec] = DEFAULT_SPECS) -> Sec
 
 
 def _ring_versions(values: Mapping[str, str]) -> List[int]:
-    """Les versions déjà prises par l'anneau — une entrée illisible est ignorée ici.
+    """Les versions déjà prises par l'anneau.
 
-    C'est `check_key_ring` qui a la charge de la refuser ; deviner sa version serait
-    pire que de l'ignorer, et la mentionner comme prise empêcherait une rotation
-    légitime de choisir un numéro libre.
+    Une entrée illisible **arrête** la lecture au lieu d'être sautée. Le saut
+    s'autorisait de l'idée que `check_key_ring` refuserait l'entrée de toute façon :
+    c'est vrai de l'audit, faux de ce chemin-ci — `--rotate` écrit d'abord, et
+    l'audit ne repasse qu'au push suivant. L'anneau illisible produisait donc un
+    `.env` dont les versions pouvaient se répéter, refusé bien plus tard, loin du
+    geste fautif.
+
+    Lève `ValueError` en nommant l'entrée : à l'appelant de décider du verdict
+    (`UsageError` pour un plan, `RotationRefused` pour une rotation).
     """
     versions: List[int] = []
-    for entry in ring_entries(values.get(RING_SECRET_NAME) or ""):
+    for position, entry in enumerate(ring_entries(values.get(RING_SECRET_NAME) or ""), start=1):
         try:
             version, _key = parse_key_entry(entry)
-        except ValueError:
-            continue
+        except ValueError as exc:
+            raise ValueError(
+                f"entrée {position} de {RING_SECRET_NAME} illisible : sa version ne peut "
+                "pas être lue, donc aucune version libre ne peut être choisie sans "
+                "risque d'en reprendre une — deux clés pour une version rendent "
+                "l'ouverture du chiffré indécidable. Corrige l'anneau d'abord."
+            ) from exc
         versions.append(version)
     return versions
 
@@ -743,7 +752,10 @@ def build_rotation(
     initial_setup = not current
 
     if name == "ENCRYPTION_KEY":
-        ring_versions = _ring_versions(values)
+        try:
+            ring_versions = _ring_versions(values)
+        except ValueError as exc:
+            raise RotationRefused(name, f"rotation refusée : {exc}") from exc
         if not current:
             # Rien à préserver : c'est une mise en place, et l'anneau reste vide.
             version = DEFAULT_KEY_VERSION
@@ -853,7 +865,15 @@ def record_entries(ledger_path: Path, values: Mapping[str, str]) -> List[str]:
             "rien à horodater : aucune des valeurs visées n'est définie (ni .env, ni "
             "environnement)."
         )
-    ledger = load_ledger(ledger_path)
+    ledger, state, detail = read_ledger(ledger_path)
+    if state == LEDGER_STATE_CORRUPT:
+        # Écrire ici *remplace* le registre. Sur un fichier illisible, ce serait
+        # effacer l'historique qu'il contient encore : on refuse plutôt que de
+        # perdre des dates de rotation que personne ne pourrait reconstituer.
+        raise UsageError(
+            f"registre de rotation illisible ({detail}) : {ledger_path} — "
+            "l'enregistrement l'écraserait. Inspecte-le (JSON tronqué ? droits ?) puis relance."
+        )
     ledger["secrets"] = {**ledger.get("secrets", {}), **entries}
     save_ledger(ledger_path, ledger)
     return sorted(entries)
@@ -1285,7 +1305,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"{KO_MARK} {exc}", file=sys.stderr)
             return 2
 
-    plan = build_plan(values, env_file, generate=not args.check)
+    try:
+        plan = build_plan(values, env_file, generate=not args.check)
+    except UsageError as exc:
+        # Le plan lit l'anneau pour choisir une version : un anneau illisible s'arrête
+        # ici, avec le même code (2) que les autres `.env` à corriger.
+        print(f"{KO_MARK} {exc}", file=sys.stderr)
+        return 2
 
     if args.check:
         if args.json:

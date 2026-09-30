@@ -31,6 +31,7 @@ REAL_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 #: constante recopiée du fichier. Renommer un job sans le vouloir se voit ici.
 _JOB_IDS = (
     "python",
+    "secrets-audit",
     "migrations-postgres",
     "git-hooks-e2e",
     "kotlin-lint",

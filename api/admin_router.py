@@ -444,4 +444,25 @@ async def supabase_roundtrip(
     return await supabase_report(tables=payload.tables, roundtrip=True)
 
 
+@router.get("/risk/reference-unusable")
+def risk_reference_unusable() -> Dict[str, Any]:
+    """Les comptes bloqués par une référence de solde inutilisable, et depuis quand.
+
+    Un refus de garde-fou n'est lu que par l'utilisateur concerné : si personne ne
+    surveille les journaux, une ligne `user_risk_state` cassée bloque des comptes
+    **en silence**. Le garde tient donc un compteur dédié — total des refus, et
+    par utilisateur les champs fautifs — que cette route expose pour qu'un écran
+    d'administration, ou un simple appel, rende la panne visible.
+
+    Lecture **seule** : la réparation reste `scripts/repair_risk_state.py`, avec
+    ses garde-fous (elle n'écrit qu'une valeur positive, jamais par-dessus un solde
+    courant). Import **local**, comme les autres routes : la surface protégée
+    s'importe sans charger le graphe du garde-fou (base, préférences), inutile pour
+    répondre à `/health`.
+    """
+    from execution.risk_guard import reference_unusable_snapshot
+
+    return reference_unusable_snapshot()
+
+
 __all__ = ["router"]

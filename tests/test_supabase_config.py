@@ -89,11 +89,36 @@ class SupabaseKeyRoleTest(unittest.TestCase):
         self.assertEqual(config_runtime.supabase_key_role("sb_secret_abc123"), "service_role")
         self.assertEqual(config_runtime.supabase_key_role("sb_publishable_abc123"), "anon")
 
-    def test_an_unreadable_key_is_not_libelled(self):
-        """Un format inconnu n'est pas déclaré faux : on ne peut que ne rien dire."""
-        for key in ("", None, "nimportequoi", "a.b", "a.b.c.d", "eyJ.broken!!.sig"):
+    def test_no_key_at_all_is_distinct_from_an_unreadable_one(self):
+        """`""` et « illisible » étaient le même `""` : une clé collée de travers
+        passait donc pour une absence, et ni l'une ni l'autre n'était signalée.
+        """
+        for key in ("", None, "   "):
             with self.subTest(key=key):
-                self.assertEqual(config_runtime.supabase_key_role(key), "")
+                self.assertEqual(
+                    config_runtime.supabase_key_role(key), config_runtime.KEY_ROLE_NONE
+                )
+
+    def test_an_unreadable_key_says_so_without_declaring_it_false(self):
+        """Un format inconnu n'est pas déclaré faux (on ne peut que ne pas savoir),
+        mais il n'est pas déclaré bon non plus : il est nommé."""
+        for key in ("nimportequoi", "a.b", "a.b.c.d", "eyJ.broken!!.sig"):
+            with self.subTest(key=key):
+                self.assertEqual(
+                    config_runtime.supabase_key_role(key), config_runtime.KEY_ROLE_UNREADABLE
+                )
+
+    def test_an_unreadable_service_key_is_an_issue_that_names_the_fix(self):
+        """Le défaut : `supabase_issues()` acceptait une clé illisible en silence,
+        donc l'application se déclarait configurée et n'aurait rien pu lire."""
+        cfg = config_runtime.EnvConfig(
+            SUPABASE_URL="https://abcdefghijklmnopqrst.supabase.co",
+            SUPABASE_SERVICE_KEY="tronquee",
+        )
+        issues = cfg.supabase_issues()
+        self.assertEqual(len(issues), 1)
+        self.assertIn("illisible", issues[0])
+        self.assertIn("SUPABASE_SERVICE_KEY", issues[0])
 
 
 class SupabaseUrlIssueTest(unittest.TestCase):
@@ -178,6 +203,144 @@ class SupabaseConfigIssuesTest(unittest.TestCase):
         self.assertEqual(component["url_issue"], "")
         self.assertTrue(component["ready"], "l'URL et une clé sont renseignées")
         self.assertNotIn("eyJ", json.dumps(component), "la clé ne doit jamais être publiée")
+
+
+class SecretsAuditSettingsTest(unittest.TestCase):
+    """Les réglages effectifs de l'audit : ce que `/preflight` publie, et ce que
+    `/health` a le droit d'en dire (le plafond et l'état du registre, jamais le
+    chemin du fichier ni le rôle de la clé).
+
+    Le registre est **posé** dans un dossier temporaire : ces tests ne lisent pas
+    le vrai `security/secret_rotation.json`, dont l'état changerait sous eux.
+    """
+
+    KEYS = ("SUPABASE_SERVICE_KEY", "SECRET_MAX_AGE_DAYS", "SECRET_ROTATION_LEDGER")
+
+    def setUp(self) -> None:
+        self._saved = {key: os.environ.get(key) for key in self.KEYS}
+        for key in self.KEYS:
+            os.environ.pop(key, None)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.addCleanup(self._restore)
+        # Un registre **absent** par défaut : hermétique, et c'est l'état d'un poste
+        # qui n'a jamais tourné `--record`.
+        os.environ["SECRET_ROTATION_LEDGER"] = str(pathlib.Path(self._tmp.name) / "absent.json")
+
+    def _restore(self) -> None:
+        for key, value in self._saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        config_runtime.reset_env_config()
+
+    def _config(self):
+        config_runtime.reset_env_config()
+        return config_runtime.get_env_config()
+
+    def _settings(self) -> Dict[str, Any]:
+        return self._config().secrets_audit_settings()
+
+    def _write_ledger(self, payload: str) -> str:
+        path = pathlib.Path(self._tmp.name) / "registre.json"
+        path.write_text(payload, encoding="utf-8")
+        os.environ["SECRET_ROTATION_LEDGER"] = str(path)
+        return str(path)
+
+    # -- le plafond de rotation ------------------------------------------- #
+
+    def test_the_cap_and_its_source_are_published(self):
+        settings = self._settings()
+        self.assertEqual(settings["max_age_days"], 90)
+        self.assertEqual(settings["max_age_source"], "default")
+        self.assertIsNone(settings["max_age_problem"])
+
+        os.environ["SECRET_MAX_AGE_DAYS"] = "180"
+        settings = self._settings()
+        self.assertEqual(settings["max_age_days"], 180)
+        self.assertEqual(settings["max_age_source"], "env")
+        self.assertIsNone(settings["max_age_problem"])
+
+    def test_a_cap_that_was_not_applied_is_named(self):
+        """Un réglage illisible ne doit pas passer pour appliqué."""
+        os.environ["SECRET_MAX_AGE_DAYS"] = "quatre-vingt-dix"
+        settings = self._settings()
+        self.assertEqual(settings["max_age_days"], 90)
+        self.assertEqual(settings["max_age_source"], "env")
+        self.assertIn("illisible", settings["max_age_problem"])
+
+    def test_a_non_positive_cap_is_clamped_and_named(self):
+        os.environ["SECRET_MAX_AGE_DAYS"] = "0"
+        settings = self._settings()
+        self.assertEqual(settings["max_age_days"], 1)
+        self.assertIn("1 jour", settings["max_age_problem"])
+
+    # -- l'état du registre ----------------------------------------------- #
+
+    def test_an_absent_ledger_is_missing_not_corrupt(self):
+        settings = self._settings()
+        self.assertEqual(settings["ledger_state"], "missing")
+        self.assertEqual(settings["ledger_entries"], 0)
+        self.assertEqual(settings["ledger_detail"], "absent")
+
+    def test_a_readable_ledger_publishes_its_state_and_entry_count(self):
+        path = self._write_ledger(json.dumps({"version": 1, "secrets": {"A": {}, "B": {}}}))
+        settings = self._settings()
+        self.assertEqual(settings["ledger_path"], path)
+        self.assertEqual(settings["ledger_state"], "ok")
+        self.assertEqual(settings["ledger_entries"], 2)
+
+    def test_a_corrupt_ledger_is_reported_as_such(self):
+        self._write_ledger("pas du json")
+        settings = self._settings()
+        self.assertEqual(settings["ledger_state"], "corrupt")
+        self.assertIn("JSON", settings["ledger_detail"])
+
+    # -- rien de secret ---------------------------------------------------- #
+
+    def test_the_settings_publish_no_secret_material(self):
+        os.environ["SUPABASE_SERVICE_KEY"] = _jwt("service_role")
+        self._write_ledger(
+            json.dumps(
+                {
+                    "version": 1,
+                    "secrets": {"WEBHOOK_SECRET": {"fingerprint": "deadbeef", "rotated_at": "2026-01-01"}},
+                }
+            )
+        )
+        blob = json.dumps(self._settings())
+        self.assertNotIn("deadbeef", blob, "une empreinte n'est pas un réglage")
+        self.assertNotIn("eyJ", blob, "la clé ne doit jamais être publiée")
+
+    # -- ce que chaque surface publie -------------------------------------- #
+
+    def test_the_preflight_publishes_the_settings_and_the_key_role(self):
+        os.environ["SUPABASE_SERVICE_KEY"] = _jwt("anon")
+        published = self._config().preflight()["secrets_audit"]
+        self.assertEqual(published["supabase_key_role"], "anon")
+        self.assertEqual(published["max_age_days"], 90)
+        self.assertEqual(published["ledger_state"], "missing")
+        self.assertNotIn("eyJ", json.dumps(published))
+
+    def test_the_public_view_keeps_only_the_cap_and_the_ledger_state(self):
+        os.environ["SUPABASE_SERVICE_KEY"] = _jwt("service_role")
+        preflight = self._config().preflight()
+
+        public = config_runtime.public_secrets_audit(preflight)
+
+        self.assertEqual(set(public), set(config_runtime.PUBLIC_AUDIT_KEYS))
+        self.assertEqual(public["max_age_days"], 90)
+        self.assertEqual(public["ledger_state"], "missing")
+        self.assertNotIn("ledger_path", public, "un chemin révèle l'arborescence du serveur")
+        self.assertNotIn("supabase_key_role", public, "le rôle dit quelle puissance porte le service")
+
+    def test_the_public_view_reads_the_preflight_once_it_is_given(self):
+        """Passer le préflight déjà calculé évite de relire le registre pour deux champs."""
+        public = config_runtime.public_secrets_audit(
+            {"secrets_audit": {"max_age_days": 42, "ledger_state": "ok", "ledger_path": "/x"}}
+        )
+        self.assertEqual(public, {"max_age_days": 42, "ledger_state": "ok"})
 
 
 def _client(*, read_only: bool = False) -> supabase_double.SupabaseDouble:

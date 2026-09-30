@@ -793,6 +793,64 @@ class RecordOnlyTest(RotationCliTest):
         self.assertEqual(code, 2)
         self.assertIn("PAS_UN_SECRET", err)
 
+    def test_a_corrupt_ledger_is_refused_rather_than_overwritten(self):
+        """Horodater *réécrit* le registre : sur un fichier illisible, il efface.
+
+        Le fichier peut ne plus contenir que des dates de rotation qu'aucun autre
+        exemplaire ne porte. On refuse, et la trace dit quoi regarder — la même
+        règle que `verify_secrets.py --record`.
+        """
+        self._write()
+        self.ledger.write_text('{"secrets": {"WEBHOOK_SECRET": {"rot', encoding="utf-8")
+        before = self.ledger.read_bytes()
+
+        code, _out, err = self._run("--record-only", "SUPABASE_SERVICE_KEY")
+
+        self.assertEqual(code, 2)
+        self.assertIn("illisible", err)
+        self.assertEqual(self.ledger.read_bytes(), before, "le registre n'est pas écrasé")
+
+
+class IllisibleRingTest(RotationCliTest):
+    """Un anneau dont une version ne se lit pas : refuser, jamais deviner.
+
+    `_ring_versions` sautait l'entrée illisible en s'autorisant de l'idée que
+    `check_key_ring` la refuserait — c'est vrai de l'audit, faux de ce chemin-ci :
+    `--rotate` écrit d'abord, l'audit ne repasse qu'au push suivant. La version
+    choisie pouvait donc en reprendre une, et le refus n'arrivait que bien plus
+    tard, très loin du geste fautif.
+    """
+
+    #: Un préfixe de version illisible : `parse_key_entry` refuse, donc la version
+    #: occupée est inconnue et aucune version libre ne peut être choisie sans risque.
+    UNREADABLE = "v0:quelquechose"
+
+    def test_rotating_with_an_unreadable_ring_entry_is_refused(self):
+        values = _strong_values()
+        values["ENCRYPTION_KEYS_PREVIOUS"] = self.UNREADABLE
+        self._write(values)
+        before = self.env_file.read_bytes()
+
+        code, out, _err = self._run("--rotate", "ENCRYPTION_KEY", "--apply")
+
+        self.assertEqual(code, 1)
+        self.assertEqual(self.env_file.read_bytes(), before, "rien n'est écrit")
+        self.assertIn("rotation refusée", out)
+        self.assertIn("illisible", out)
+
+    def test_generating_a_missing_key_with_an_unreadable_ring_is_refused(self):
+        values = _strong_values()
+        values.pop("ENCRYPTION_KEY")
+        values["ENCRYPTION_KEYS_PREVIOUS"] = self.UNREADABLE
+        self._write(values)
+        before = self.env_file.read_bytes()
+
+        code, _out, err = self._run()
+
+        self.assertEqual(code, 2)
+        self.assertEqual(self.env_file.read_bytes(), before, "rien n'est écrit")
+        self.assertIn("illisible", err)
+
 
 class DeclarationTest(unittest.TestCase):
     """Chaque secret requis est soit générable ici, soit nommé avec sa source."""

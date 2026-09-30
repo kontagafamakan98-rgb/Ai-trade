@@ -34,6 +34,7 @@ from unittest import mock
 from database import broker_credentials as bc
 from database import preferences as prefs
 from execution import order_executor as oe
+from execution.risk_guard import CODE_ALLOWED, RiskDecision
 from tests.supabase_double import SupabaseDouble
 from utils import encryption as enc
 
@@ -294,7 +295,7 @@ class OrderRoutingTest(RingTestBase):
         with mock.patch.object(oe, "PAPER_TRADING", True), mock.patch.object(
             oe, "get_broker_credentials", side_effect=unreadable
         ), mock.patch.object(oe, "get_alpaca_client") as personal, mock.patch.object(
-            oe, "risk_can_trade"
+            oe, "risk_evaluate"
         ) as risk:
             result = asyncio.run(oe.execute_validated_order("u1", signal))
 
@@ -364,7 +365,9 @@ class EquityProbeTest(RingTestBase):
         self.seed("u1")
         factory, _client = self._sdk(equity="1234.5")
 
-        with mock.patch.object(oe, "risk_can_trade", return_value=(True, "")) as risk:
+        with mock.patch.object(
+            oe, "risk_evaluate", return_value=RiskDecision(allowed=True, code=CODE_ALLOWED, reason="")
+        ) as risk:
             result = self._execute()
 
         self.assertEqual(result["status"], "submitted_paper")
@@ -382,7 +385,7 @@ class EquityProbeTest(RingTestBase):
         self.seed("u1")
         self._sdk(account_error=RuntimeError("clé révoquée"))
 
-        with mock.patch.object(oe, "risk_can_trade") as risk:
+        with mock.patch.object(oe, "risk_evaluate") as risk:
             result = self._execute()
 
         self.assertEqual(result["status"], "blocked_equity_unknown")
@@ -397,7 +400,7 @@ class EquityProbeTest(RingTestBase):
 
         with mock.patch.object(oe, "ALPACA_OK", False), mock.patch.object(
             oe, "TradingClient", create=True
-        ) as trading_client, mock.patch.object(oe, "risk_can_trade") as risk:
+        ) as trading_client, mock.patch.object(oe, "risk_evaluate") as risk:
             result = self._execute()
 
         self.assertEqual(result["status"], "blocked_broker_sdk_missing")

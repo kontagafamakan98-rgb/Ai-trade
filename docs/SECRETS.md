@@ -78,6 +78,12 @@ L'audit échoue si :
 - la rotation date de plus de `SECRET_MAX_AGE_DAYS` jours (**rotation en
   retard**, 90 jours par défaut).
 
+Ce plafond est lu dans `SECRET_MAX_AGE_DAYS` (ou `--max-age-days`). Une valeur
+illisible (`90j`, l'unité recopiée par habitude), ou non positive (`0`), ne
+passe plus en silence : l'audit applique son repli **et le dit** (`[SECRET_MAX_AGE_DAYS]
+valeur illisible…`). Sans quoi il rendait exactement le même verdict qu'une
+machine sans réglage, alors que c'est ce plafond qui décide du refus.
+
 ### 4. Détection de fuite (scan du dépôt)
 
 Chaque valeur de secret configurée est recherchée **verbatim** dans les fichiers
@@ -236,6 +242,11 @@ explicitement (`aucune valeur de référence…`) plutôt que de laisser croire 
 contrôle effectif : sans `.env` ni variables d'environnement, il n'a aucune
 valeur à rechercher.
 
+Ce trou-là est **local par construction** — le refuser ici rendrait le hook
+inutilisable, donc contourné — et il se ferme en CI : le job `secrets-audit`
+relit l'arbre de la branche poussée avec les **vraies** valeurs, et refuse un
+scan qui n'aurait rien à chercher (voir « Le gate de CI » plus bas).
+
 ## Utilisation en pre-push (gate avant diffusion)
 
 Le pre-commit empêche d'**introduire** une fuite ; le pre-push exige que les
@@ -327,6 +338,47 @@ Deux limites à connaître :
 
 `SECRET_MAX_AGE_DAYS` et `SECRET_ROTATION_LEDGER` peuvent aussi être définis
 par variables d'environnement au lieu des options CLI.
+
+### Le gate de CI — `secrets-audit`
+
+Le job `secrets-audit` (`.github/workflows/ci.yml`) existe pour une seule chose :
+fermer le silence d'un poste **sans `.env`**. Le hook pre-commit ne cherche que
+ce qu'il **connaît** ; sans valeur de référence il l'annonce et laisse passer, et
+c'est volontaire. Le job, lui, dispose des valeurs et relit l'**arbre entier** de
+la branche poussée :
+
+* sur `push` **uniquement** — une PR venue d'un fork n'a pas accès aux secrets du
+dépôt, et un job qui exige des valeurs qu'il ne peut pas recevoir échouerait pour
+tout le monde (or un gate qu'on apprend à ignorer ne contrôle rien) ; les PR
+d'une branche du dépôt sont couvertes par le `push` de cette branche ;
+* `--require-scan-targets` transforme « le scan n'avait rien à chercher » en
+**refus** : un scan sans cible ne prouve rien, et ce silence-là ne doit jamais se
+lire comme « aucune fuite » ;
+* `--allow-missing-rotation` : le job juge l'arbre poussé, pas la fraîcheur des
+rotations — le registre est propre à la machine (et gitignoré). La rotation garde
+son contrôle local, au push.
+* le rapport **écrit son périmètre** : la ligne du scan donne les valeurs
+cherchées, les fichiers **lus** et ceux écartés **par politique** (`.env` locaux,
+répertoires exclus, suffixes non analysables, fichiers vides), et la ligne du
+registre en donne la synthèse (entrées, plus ancienne et son âge, dates
+illisibles). Un « rien trouvé » se lit donc avec son domaine de validité — sans
+ouvrir le JSON, que `--json` porte en entier.
+
+Les valeurs sont lues dans les **secrets du dépôt** (`Settings → Secrets and
+variables → Actions`) :
+
+| Secret du dépôt | Rôle dans ce job |
+|---|---|
+| `WEBHOOK_SECRET`, `INTERNAL_API_KEY`, `ENCRYPTION_KEY`, `SUPABASE_SERVICE_KEY`, `TELEGRAM_BOT_TOKEN` | les cinq **obligatoires** : sans eux l'audit refuse (présence) et le scan n'a aucune valeur de référence |
+| `GEMINI_API_KEY`, `FINNHUB_API_KEY`, `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` | facultatifs : présents, ils élargissent le scan ; absents, ils ne bloquent rien |
+
+Tant qu'ils ne sont pas posés, le job **échoue** : c'est voulu — un gate qui ne
+peut pas mesurer ne rend pas un feu vert. Un secret écrit dans le workflow, lui,
+serait publié avec le dépôt ; d'où les secrets de dépôt, et jamais un `.env`
+commité.
+
+Aucune dépendance n'est installée : l'audit ne tient qu'à la bibliothèque
+standard, exprès, pour tourner même si `requirements.txt` est cassé.
 
 ## Rotation — la procédure, secret par secret
 
@@ -427,7 +479,7 @@ secours si on préfère la main (ou si le `.env` vit sur une autre machine) :
 | `INTERNAL_API_KEY` | la même commande, un **second** tirage | ≥ 16 car., **≠** webhook |
 | `ENCRYPTION_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` | clé Fernet valide (44 car.), préfixe `vN:` facultatif |
 | `ENCRYPTION_KEYS_PREVIOUS` | les clés **retirées** de l'anneau (celles d'avant), recopiées à la main | liste de clés Fernet `vN:<clé>`, une par version |
-| `SUPABASE_SERVICE_KEY` | tableau de bord Supabase → *Settings → API* → clé `service_role` | ≥ 20 car., **jamais** l'`anon` |
+| `SUPABASE_SERVICE_KEY` | tableau de bord Supabase → *Settings → API Keys* : clé **`sb_secret_…`** (nouvelle génération), ou l'ancienne `service_role` | ≥ 20 car., **jamais** l'`anon` ni une `sb_publishable_` |
 | `TELEGRAM_BOT_TOKEN` | BotFather → `/mybots` → *API Token* (`/revoke` **seulement** pour tourner) | forme `<id>:<secret>` |
 
 Trois surfaces retiennent une valeur malgré vous : l'**historique du shell** (un
@@ -452,6 +504,39 @@ sans que sa conséquence soit écrite.
 | `TELEGRAM_BOT_TOKEN` | **coupure nette.** `/revoke` tue l'ancien jeton aussitôt : la boucle de `main.py` et l'envoi des alertes (`notifications/notify.py`) s'arrêtent. Le worker ne plante pas, il devient muet. Un webhook Telegram éventuel est à ré-enregistrer. |
 | `WEBHOOK_SECRET` | Comparé **une fois**, en temps constant, dans `api/webhook.py` : aucune liste « ancien secret encore accepté ». L'émetteur externe doit suivre dans la même fenêtre, sinon ses signaux partent en 401 et n'arrivent jamais. |
 | `INTERNAL_API_KEY` | La moins chère : protège les endpoints internes (`api/security.py`), en fail-closed (503 si absente, 401 si fausse). Son appelant n'est pas compilé — l'écran d'administration de l'app en fait un **champ de saisie** — donc **aucune publication d'application** n'est nécessaire : quelqu'un la ressaisit. |
+
+### `SUPABASE_SERVICE_KEY` — les deux générations de clés
+
+La clé `service_role` **legacy** n'est plus tournable : Supabase documente qu'il
+est « no longer possible to rotate the legacy anon, service and JWT secrets ».
+La rotation passe donc par une clé de la **nouvelle génération**, `sb_secret_…`,
+créée dans *Settings → API Keys*, posée partout, puis l'ancienne **désactivée**
+(désactivation réversible, contrairement à une révocation).
+
+L'ordre n'est pas indifférent : **le client doit accepter la clé neuve avant
+qu'elle soit posée**. C'est le cas depuis `database/supabase_client.py`
+(`build_supabase_client`) — sans quoi `supabase-py` refuse une clé qui n'a pas la
+forme d'un JWT (`Invalid API key`), et comme ce module avale l'exception, la base
+paraîtrait **vide** : un symptôme qui ressemble à « rien à lire ». Ce que la
+correction change sur le fil :
+
+| Génération | `apikey` | `Authorization` |
+|---|---|---|
+| `service_role` (JWT) | la clé | `Bearer <clé>` — sa place d'origine |
+| `sb_secret_…` (opaque) | la clé | **absente** : la passerelle y attend un JWT d'**utilisateur**, pas une clé opaque |
+
+`core/config_runtime.supabase_key_role` lit le préfixe, donc `/preflight` publie
+`service_role` pour une clé `sb_secret_…` — le rôle reste lisible à l'écran. La
+preuve que rien ne part avec un `Authorization` en trop est faite par
+`tests/test_supabase_opaque_keys.py`, sur la requête **préparée pour l'envoi**.
+
+Trois réponses, et il importe de ne pas les confondre : `""` (pas de clé) ;
+`service_role` / `anon` (rôle lu) ; **`unreadable`** (une clé est là, mais ni JWT
+`a.b.c`, ni `sb_secret_`/`sb_publishable_`). Cette troisième n'est pas un feu
+vert : le serveur la refusera. Elle était confondue avec `""` — donc une clé
+collée de travers passait pour une absence, et `supabase_issues()` ne la
+signalait pas. `scripts/check_supabase.py` la refuse désormais explicitement, au
+lieu de l'afficher comme « rôle service_role ».
 
 ### `ENCRYPTION_KEY` — l'anneau, et la fin de la rotation
 
@@ -594,6 +679,12 @@ Un identifiant broker que l'anneau ne rouvre plus ne retombe **jamais** sur le
 compte partagé : l'ordre est refusé, et `/broker_status` dit pourquoi (il affiche
 aussi la version de clé qui a chiffré la ligne, ce qui rend une rotation visible
 depuis le bot).
+
+Un SDK absent non plus. Deux clés bien renseignées ne font pas un compte
+utilisable : sans `alpaca-py`, aucun client ne se construit et aucun ordre ne
+part. Le préflight le dit maintenant par deux champs séparés —
+`alpaca_shared.keys_present` et `.sdk_installed` — et `ready` est leur ET, donc
+**faux** sur une machine sans le paquet, alors qu'il ne lisait que les clés.
 
 Un registre absent — le cas d'un dépôt fraîchement cloné — fait refuser tous les
 secrets requis : c'est le rôle de `--record`, ou de `--allow-missing-rotation`

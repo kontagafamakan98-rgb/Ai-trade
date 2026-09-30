@@ -818,12 +818,21 @@ def channel_report_targets(
     Les doublons sont écartés, et une valeur inexploitable aussi : un id vide ou
     non numérique produirait un envoi en échec, pas une revue.
     """
-    candidates = [(channel or {}).get("author_id"), admin_chat_id]
+    candidates = ((channel or {}).get("author_id"), admin_chat_id)
     targets: List[int] = []
-    for candidate in candidates:
+    for position, candidate in enumerate(candidates, start=1):
         try:
             chat_id = int(str(candidate).strip())
         except (TypeError, ValueError):
+            # Écarter un identifiant illisible est juste — mais le taire ne l'est
+            # pas : c'est une revue qui n'arrivera nulle part, et le seul signe
+            # serait un compte-rendu qu'on n'a jamais reçu. On nomme donc la
+            # valeur et sa place, sans jamais lever (une cible valide suffit).
+            if candidate is not None and str(candidate).strip():
+                print(
+                    f"   [medias] revue de canal : cible {position} inexploitable "
+                    f"({str(candidate)!r}) — ignorée"
+                )
             continue
         if chat_id not in targets:
             targets.append(chat_id)

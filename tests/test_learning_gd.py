@@ -653,6 +653,46 @@ class PureLearningTest(unittest.TestCase):
         self.assertEqual(row, (1.0, 0.0, 0.5))
 
 
+class TradeErrorDiagnosisTest(unittest.TestCase):
+    """Le post-mortem d'un trade perdu : ce qu'il n'a pas su lire, il le dit.
+
+    Le parsing du RSI était enveloppé d'un `except Exception: pass` : un contexte
+    technique illisible produisait exactement le diagnostic d'un RSI sage —
+    « bruit de marché » — sans que rien ne le signale. La leçon enregistrée était
+    donc fausse *en silence*, et personne ne pouvait le voir.
+    """
+
+    def _lost(self, ta_summary: str) -> dict:
+        return al.analyze_trade_error(
+            {
+                "asset": "BTC-USD",
+                "direction": "BUY",
+                "ta_summary": ta_summary,
+                "price": 100.0,
+            },
+            "lost",
+        )
+
+    def test_an_unreadable_rsi_is_named_instead_of_passing_for_market_noise(self):
+        diagnosis = self._lost("Contexte technique : RSI=abc sur 14 périodes.")
+        self.assertEqual(diagnosis["error_type"], "general_market_noise")
+        self.assertIn("illisible", diagnosis["lesson"])
+
+    def test_a_truncated_rsi_value_is_also_named(self):
+        self.assertIn("illisible", self._lost("RSI=")["lesson"])
+
+    def test_an_overbought_entry_is_still_diagnosed(self):
+        diagnosis = self._lost("RSI=72 sur 14 périodes.")
+        self.assertEqual(diagnosis["error_type"], "overbought_entry")
+        self.assertNotIn("illisible", diagnosis["lesson"])
+
+    def test_a_summary_without_rsi_stays_a_plain_market_noise(self):
+        """Pas de RSI annoncé n'est pas un RSI illisible : rien à signaler."""
+        diagnosis = self._lost("EMA20 au-dessus d'EMA50, aucune oscillation.")
+        self.assertEqual(diagnosis["error_type"], "general_market_noise")
+        self.assertNotIn("illisible", diagnosis["lesson"])
+
+
 # --------------------------------------------------------------------------- #
 # 5. Lecture du flag depuis l'environnement (défaut sûr + bornage)
 # --------------------------------------------------------------------------- #

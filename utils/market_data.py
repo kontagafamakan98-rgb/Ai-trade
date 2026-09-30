@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any
 
 try:
     import httpx
-except ImportError:
+except ImportError:  # sans signal : httpx optionnel, les sondes réseau l'annoncent
     httpx = None
 
 try:
@@ -210,23 +210,38 @@ def _yahoo_symbol(asset: str) -> str:
 
 
 def _yahoo_chart(asset: str, interval: str = "1d", range_: str = "6mo") -> Optional[Dict[str, Any]]:
+    """La réponse brute du *chart* Yahoo, ou `None` — en **nommant** ce qui a échoué.
+
+    « Yahoo n'a rien rendu » (symbole inconnu, marché fermé) et « Yahoo est
+    injoignable » (réseau coupé, `httpx` absent, réponse illisible) finissaient
+    dans le même silence : le second laissait la chaîne de repli passer à la
+    source suivante comme si Yahoo avait simplement répondu vide, et l'absence de
+    `httpx` ne se voyait nulle part. Le motif sort donc sur la console, comme le
+    font déjà `_yahoo_last_price`, `_closes_stooq` et `_coingecko`.
+    """
     sym = _yahoo_symbol(asset)
     urls = [
         f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={range_}",
         f"https://query2.finance.yahoo.com/v8/finance/chart/{sym}?interval={interval}&range={range_}",
     ]
+    failure: Optional[str] = None
     for url in urls:
         try:
             with httpx.Client(timeout=20, follow_redirects=True, headers=HEADERS) as client:
                 r = client.get(url)
                 if r.status_code != 200:
+                    # Un statut non-200 est un refus explicite de l'hôte, pas une
+                    # panne du client : on tente l'autre, puis on nomme le dernier.
+                    failure = f"HTTP {r.status_code}"
                     continue
                 data = r.json()
                 result = (data.get("chart") or {}).get("result") or []
                 if result:
                     return result[0]
-        except Exception:
-            pass
+        except Exception as exc:
+            failure = type(exc).__name__
+    if failure is not None:
+        print(f"   yahoo chart fail {asset}: {failure}")
     return None
 
 
@@ -324,6 +339,7 @@ def _closes_stooq(asset: str) -> List[float]:
                     try:
                         closes.append(float(c))
                     except Exception:
+                        # sans signal : ligne CSV illisible, les suivantes restent lues
                         pass
             return closes
     except Exception as e:

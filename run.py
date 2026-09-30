@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from main import main as run_bot
 from workers.auto_loop import run_forever
 from api.webhook import app as webhook_app
-from core.config_runtime import safe_preflight, enforce_secure_config
+from core.config_runtime import public_secrets_audit, safe_preflight, enforce_secure_config
 
 api = FastAPI()
 
@@ -35,6 +35,9 @@ def health():
     return {
         "status": "ok" if preflight.get("ok") else "degraded",
         "ready": bool(preflight.get("ok")),
+        # Réduit : le plafond de rotation appliqué et l'état du registre, jamais le
+        # chemin du fichier ni le rôle de la clé Supabase (voir `public_secrets_audit`).
+        "secrets_audit": public_secrets_audit(preflight),
     }
 
 

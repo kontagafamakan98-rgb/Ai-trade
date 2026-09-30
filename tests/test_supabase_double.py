@@ -163,6 +163,63 @@ class ReadTest(unittest.TestCase):
             self._read()
 
 
+class CountTest(unittest.TestCase):
+    """`count="exact"` : le total **filtré**, et rien quand on ne l'a pas demandé.
+
+    Trois endroits du dépôt vivent de ce chiffre — `prune_insights`, le garde-fou
+    de risque et `/status` — et la doublure ne le portait pas : `resultat.count`
+    levait `AttributeError`, ce qui, dans le garde-fou, était avalé par son
+    `except Exception` en « trade bloqué par précaution ». Une doublure muette sur
+    un champ fait donc passer un test pour un verdict de risque.
+    """
+
+    def setUp(self) -> None:
+        self.client = supabase_double.SupabaseDouble()
+        self.table = self.client.store("pending_signals")
+        self.table.rows = [
+            {"id": 1, "user_id": "u1", "status": "executed"},
+            {"id": 2, "user_id": "u1", "status": "executed"},
+            {"id": 3, "user_id": "u1", "status": "pending"},
+            {"id": 4, "user_id": "u2", "status": "executed"},
+        ]
+
+    def _count(self, **kwargs):
+        query = self.client.table("pending_signals").select("id", **kwargs)
+        return query.eq("user_id", "u1").execute()
+
+    def test_the_count_is_the_filtered_total(self):
+        result = self._count(count="exact")
+        self.assertEqual(result.count, 3, "deux `executed` chez u1, pas les autres")
+        self.assertEqual([row["id"] for row in result.data], [1, 2, 3])
+
+    def test_the_count_ignores_limit_and_range(self):
+        """Le chiffre de PostgREST décrit la requête, pas la page rapatriée."""
+        page = (
+            self.client.table("pending_signals")
+            .select("id", count="exact")
+            .eq("user_id", "u1")
+            .limit(1)
+            .execute()
+        )
+        self.assertEqual(len(page.data), 1)
+        self.assertEqual(page.count, 3)
+
+    def test_an_unrequested_count_is_none(self):
+        """`resultat.count or 0` doit se comporter comme en production."""
+        self.assertIsNone(self._count().count)
+
+    def test_a_write_has_no_count(self):
+        written = self.client.table("pending_signals").insert(
+            {"id": 5, "user_id": "u1", "status": "executed"}
+        ).execute()
+        self.assertIsNone(written.count)
+
+    def test_the_count_is_visible_in_the_journal(self):
+        """Ce qui a été **demandé** se relit : la projection et le mode de comptage."""
+        self._count(count="exact")
+        self.assertIn(("select", ("id",), {"count": "exact"}), self.table.calls)
+
+
 class WriteTest(unittest.TestCase):
     """Les écritures : elles **persistent**, et la réponse est la ligne écrite."""
 

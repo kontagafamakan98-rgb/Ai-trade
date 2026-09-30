@@ -58,6 +58,10 @@ moment de la construction de la requête, pas à l'exécution : une requête bâ
 puis abandonnée reste visible, ce qui est justement ce qu'un test doit pouvoir
 observer.
 
+`count="exact"` est honoré — le total **filtré**, avant `limit` et `range`,
+comme la pagination de PostgREST le publie — et `count` vaut `None` quand on ne
+l'a pas demandé, comme le vrai client.
+
 Les filtres interprétés sont `eq`, `in_` et `or_` (branches `champ.op.valeur`
 séparées par des virgules, avec `is.null`, `eq` et `neq`) ; un filtre qu'on ne
 sait pas lire **lève** plutôt que de rendre des lignes en trop — un doublure
@@ -153,12 +157,21 @@ def _refuse(operation: str, target: str, hint: str = "") -> NoReturn:
 
 
 class Result:
-    """Ce que rend `.execute()` : un porteur de `data`, comme le vrai client."""
+    """Ce que rend `.execute()` : un porteur de `data`, comme le vrai client.
 
-    __slots__ = ("data",)
+    `count` porte le total **filtré** quand la requête l'a demandé
+    (`select("id", count="exact")`) : c'est le seul chiffre que supabase-py rend
+    en dehors des lignes, et trois endroits du dépôt le lisent
+    (`prune_insights`, le garde-fou de risque, `/status`). `None` sinon — la
+    valeur que le vrai client rend quand on ne l'a pas demandé, et qui laisse
+    `resultat.count or 0` se comporter comme en production.
+    """
 
-    def __init__(self, data: List[Dict[str, Any]]):
+    __slots__ = ("data", "count")
+
+    def __init__(self, data: List[Dict[str, Any]], count: Optional[int] = None):
         self.data = data
+        self.count = count
 
 
 class Table:
@@ -243,6 +256,9 @@ class Query:
         self._limit: Optional[int] = None
         self._bounds: Optional[Tuple[int, int]] = None
         self._selection: Optional[str] = None
+        #: Le mode de comptage demandé (`count="exact"`), `None` si rien n'a été
+        #: demandé — c'est ce qui décide si le résultat porte un `count`.
+        self._count: Optional[str] = None
         self._write: Optional[Tuple[str, Any, Optional[str]]] = None
 
     # -- construction (journalisée) --------------------------------------- #
@@ -255,6 +271,7 @@ class Query:
     def select(self, *args: Any, **kwargs: Any) -> "Query":
         self._selection = str(args[0]) if args else str(kwargs.get("columns", "*"))
         self._table.selection = self._selection
+        self._count = kwargs.get("count")
         return self._logged(("select", args, kwargs))
 
     def insert(self, payload: Any) -> "Query":
@@ -322,7 +339,12 @@ class Query:
         failure = table.next_failure("read")
         if failure is not None:
             raise failure
-        return Result(self._project(self._slice(self._sort(self._matching()))))
+        matching = self._matching()
+        #: PostgREST compte les lignes **filtrées**, avant `limit` et `range` :
+        #: c'est l'intérêt du chiffre (`/status` compte des lignes qu'il ne
+        #: rapatrie pas). Le borner à la page rendrait un total faux sans le dire.
+        total = len(matching) if self._count is not None else None
+        return Result(self._project(self._slice(self._sort(matching))), count=total)
 
     def _write_rows(
         self, operation: str, payload: Any, on_conflict: Optional[str]

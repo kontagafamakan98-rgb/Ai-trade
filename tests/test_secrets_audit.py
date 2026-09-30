@@ -1,11 +1,14 @@
 import base64
 import importlib.util
+import io
 import json
 import os
 import tempfile
 import unittest
-from datetime import datetime, timedelta
+from contextlib import redirect_stdout
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
 from core import secrets_audit as sa
 
@@ -176,6 +179,231 @@ class TestFingerprintAndLedger(unittest.TestCase):
         self.assertEqual(loaded["secrets"], {})
 
 
+class TestLedgerReadState(unittest.TestCase):
+    """« absent » et « illisible » ne sont pas le même fait.
+
+    Les deux donnent un registre vide, donc le même « rotation non enregistrée »
+    pour chaque secret — et le même conseil trompeur de relancer `--record`, qui
+    écraserait l'historique d'un fichier seulement tronqué. Ces tests fixent la
+    distinction, et le refus d'écrire par-dessus un registre qu'on n'a pas su lire.
+    """
+
+    def _write(self, tmp: str, body: str) -> Path:
+        path = Path(tmp) / "ledger.json"
+        path.write_text(body, encoding="utf-8")
+        return path
+
+    def test_absent_ledger_is_missing_not_corrupt(self):
+        path = Path(tempfile.gettempdir()) / "does-not-exist-xyz.json"
+        ledger, state, detail = sa.read_ledger(path)
+        self.assertEqual(ledger["secrets"], {})
+        self.assertEqual(state, sa.LEDGER_STATE_MISSING)
+        self.assertEqual(sa.ledger_issues(path), [])
+        self.assertIn("absent", detail)
+
+    def test_readable_ledger_is_ok(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, json.dumps({"version": 1, "secrets": {"A": {}}}))
+            _ledger, state, _detail = sa.read_ledger(path)
+            issues = sa.ledger_issues(path)
+        self.assertEqual(state, sa.LEDGER_STATE_OK)
+        self.assertEqual(issues, [])
+
+    def test_truncated_json_is_corrupt_and_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, '{"version": 1, "secrets": {"WEBHOOK_SECRET": {"rot')
+            _ledger, state, detail = sa.read_ledger(path)
+            issues = sa.ledger_issues(path)
+        self.assertEqual(state, sa.LEDGER_STATE_CORRUPT)
+        self.assertIn("JSON", detail)
+        self.assertEqual(len(issues), 1)
+        self.assertTrue(issues[0].is_error)
+        self.assertEqual(issues[0].name, sa.LEDGER_ISSUE_NAME)
+        self.assertIn(str(path), issues[0].message)
+        self.assertIn("illisible", issues[0].message)
+
+    def test_a_non_object_root_is_corrupt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, "[1, 2, 3]")
+            _ledger, state, detail = sa.read_ledger(path)
+        self.assertEqual(state, sa.LEDGER_STATE_CORRUPT)
+        self.assertIn("objet JSON", detail)
+
+    def test_undecodable_bytes_are_corrupt_not_missing(self):
+        """Un registre en latin-1 ou tronqué au milieu d'un caractère reste un registre."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "ledger.json"
+            path.write_bytes(b'{"secrets": {"A": "\xff\xfe"}}')
+            _ledger, state, detail = sa.read_ledger(path)
+        self.assertEqual(state, sa.LEDGER_STATE_CORRUPT)
+        self.assertIn("lecture impossible", detail)
+
+    def test_load_ledger_still_yields_an_empty_ledger(self):
+        """La compatibilité de `load_ledger` : un dict vide, jamais une exception."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, "pas du json")
+            loaded = sa.load_ledger(path)
+        self.assertEqual(loaded, {"version": sa.LEDGER_VERSION, "secrets": {}})
+
+    def test_run_audit_carries_the_ledger_problem(self):
+        """Sans `ledger_problems`, un registre corrompu passerait pour un registre neuf."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, "pas du json")
+            result = sa.run_audit(
+                strong_values(),
+                ledger=sa.load_ledger(path),
+                now=NOW,
+                allow_missing_rotation=True,
+                environment_problems=sa.ledger_issues(path),
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(any(i.name == sa.LEDGER_ISSUE_NAME for i in result.errors))
+
+    def test_enforce_secret_rotation_refuses_a_corrupt_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = self._write(tmp, "pas du json")
+            with self.assertRaises(RuntimeError) as caught:
+                sa.enforce_secret_rotation(
+                    strong_values(), ledger_path=str(path), allow_missing=True
+                )
+        self.assertIn("illisible", str(caught.exception))
+
+
+class TestLedgerSummary(unittest.TestCase):
+    """La synthèse du registre de rotation : ce qu'on lit sans ouvrir le JSON."""
+
+    def test_empty_ledger_counters_are_zero_not_none(self):
+        summary = sa.ledger_summary({"version": 1, "secrets": {}}, now=NOW)
+        self.assertEqual(summary["entries"], 0)
+        self.assertEqual(summary["dated"], 0)
+        self.assertIsNone(summary["oldest"])
+        self.assertIsNone(summary["oldest_days"])
+
+    def test_oldest_newest_and_age_are_derived_from_the_dates(self):
+        ledger = {
+            "version": 1,
+            "secrets": {
+                "A": {"fingerprint": "x", "rotated_at": "2026-01-03"},
+                "B": {"fingerprint": "y", "rotated_at": "2026-09-01"},
+            },
+        }
+        summary = sa.ledger_summary(ledger, now=NOW)
+        self.assertEqual(summary["entries"], 2)
+        self.assertEqual(summary["dated"], 2)
+        self.assertEqual(summary["oldest"], "2026-01-03")
+        self.assertEqual(summary["newest"], "2026-09-01")
+        self.assertEqual(summary["oldest_days"], (NOW.date() - date(2026, 1, 3)).days)
+        self.assertEqual(summary["unreadable"], 0)
+
+    def test_an_illegible_date_is_counted_not_silently_dropped(self):
+        ledger = {"secrets": {"A": {"rotated_at": "pas-une-date"}}}
+        summary = sa.ledger_summary(ledger, now=NOW)
+        self.assertEqual(summary["entries"], 1)
+        self.assertEqual(summary["dated"], 0)
+        self.assertEqual(summary["unreadable"], 1)
+        self.assertIsNone(summary["oldest"])
+
+
+class EffectiveSettingsTest(unittest.TestCase):
+    """Les réglages effectifs de l'audit — publiés sans lire un seul secret."""
+
+    def test_the_default_cap_is_published_with_its_source(self):
+        settings = sa.effective_settings({})
+        self.assertEqual(settings["max_age_days"], sa.DEFAULT_MAX_AGE_DAYS)
+        self.assertEqual(settings["max_age_source"], sa.MAX_AGE_SOURCE_DEFAULT)
+        self.assertIsNone(settings["max_age_problem"])
+
+    def test_an_env_cap_is_the_effective_one(self):
+        settings = sa.effective_settings({sa.MAX_AGE_ENV: "180"})
+        self.assertEqual(settings["max_age_days"], 180)
+        self.assertEqual(settings["max_age_source"], sa.MAX_AGE_SOURCE_ENV)
+
+    def test_an_unapplied_cap_is_named_here_too(self):
+        """Un réglage écrit mais non appliqué ne doit pas passer pour appliqué."""
+        settings = sa.effective_settings({sa.MAX_AGE_ENV: "90j"})
+        self.assertEqual(settings["max_age_days"], sa.DEFAULT_MAX_AGE_DAYS)
+        self.assertEqual(settings["max_age_source"], sa.MAX_AGE_SOURCE_ENV)
+        self.assertIn("illisible", settings["max_age_problem"])
+
+    def test_the_ledger_state_comes_from_the_path_the_env_designates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registre.json"
+            path.write_text('{"version": 1, "secrets": {"A": {}}}', encoding="utf-8")
+            settings = sa.effective_settings({sa.LEDGER_PATH_ENV: str(path)})
+        self.assertEqual(settings["ledger_path"], str(path))
+        self.assertEqual(settings["ledger_state"], sa.LEDGER_STATE_OK)
+        self.assertEqual(settings["ledger_entries"], 1)
+
+    def test_the_published_keys_are_the_audit_policy_not_secret_material(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "registre.json"
+            path.write_text('{"secrets": {"A": {"fingerprint": "deadbeef"}}}', encoding="utf-8")
+            settings = sa.effective_settings({sa.LEDGER_PATH_ENV: str(path)})
+        self.assertEqual(
+            set(settings),
+            {
+                "max_age_days",
+                "max_age_source",
+                "max_age_problem",
+                "ledger_path",
+                "ledger_state",
+                "ledger_detail",
+                "ledger_entries",
+            },
+        )
+        self.assertNotIn("deadbeef", json.dumps(settings), "une empreinte n'est pas un réglage")
+
+
+class TestMaxAgeSetting(unittest.TestCase):
+    """Un plafond de rotation écrit de travers ne doit pas passer pour appliqué.
+
+    Il était avalé : `SECRET_MAX_AGE_DAYS=90j` (l'unité recopiée par habitude), ou
+    `=0`, ramenaient l'audit au défaut — ou à 1 jour — en rendant le même verdict
+    qu'une machine sans réglage. Or c'est ce plafond qui décide si une rotation est
+    « en retard » : un opérateur qui croit avoir réglé 180 jours reçoit un refus
+    qu'il ne s'explique pas.
+    """
+
+    def test_nothing_set_is_not_a_problem(self):
+        self.assertEqual(sa.max_age_issues({}), [])
+        self.assertEqual(sa.max_age_issues({sa.MAX_AGE_ENV: ""}), [])
+
+    def test_a_readable_value_is_not_a_problem(self):
+        self.assertEqual(sa.max_age_issues({sa.MAX_AGE_ENV: "7"}), [])
+        self.assertEqual(sa.resolve_max_age_days(environ={sa.MAX_AGE_ENV: "7"}), 7)
+
+    def test_an_unreadable_value_is_named_and_falls_back(self):
+        issues = sa.max_age_issues({sa.MAX_AGE_ENV: "90j"})
+        self.assertEqual(len(issues), 1)
+        self.assertTrue(issues[0].is_error)
+        self.assertEqual(issues[0].name, sa.MAX_AGE_ENV)
+        self.assertIn("illisible", issues[0].message)
+        self.assertIn(str(sa.DEFAULT_MAX_AGE_DAYS), issues[0].message)
+        # Le repli reste celui d'avant : on le signale, on ne change pas le verdict.
+        self.assertEqual(
+            sa.resolve_max_age_days(environ={sa.MAX_AGE_ENV: "90j"}),
+            sa.DEFAULT_MAX_AGE_DAYS,
+        )
+
+    def test_a_non_positive_value_is_named_and_clamped(self):
+        issues = sa.max_age_issues({sa.MAX_AGE_ENV: "0"})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("1 jour", issues[0].message)
+        self.assertEqual(sa.resolve_max_age_days(environ={sa.MAX_AGE_ENV: "0"}), 1)
+
+    def test_run_audit_carries_the_setting_problem(self):
+        values = strong_values()
+        result = sa.run_audit(
+            values,
+            ledger=_fresh_ledger(values),
+            now=NOW,
+            allow_missing_rotation=True,
+            environment_problems=sa.max_age_issues({sa.MAX_AGE_ENV: "90j"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertTrue(any(i.name == sa.MAX_AGE_ENV for i in result.errors))
+
+
 class TestRotationChecks(unittest.TestCase):
     def test_missing_rotation_entry_is_error(self):
         values = strong_values()
@@ -290,6 +518,100 @@ class TestCli(unittest.TestCase):
         finally:
             _restore_environment(saved)
 
+    def test_cli_record_refuses_to_overwrite_a_corrupt_ledger(self):
+        """Enregistrer sur un registre illisible effacerait l'historique qu'il porte."""
+        cli = self._load_cli()
+        saved = _fixture_environment(strong_values())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ledger = Path(tmp) / "ledger.json"
+                ledger.write_text(
+                    '{"version": 1, "secrets": {"WEBHOOK_SECRET": {"rot', encoding="utf-8"
+                )
+                before = ledger.read_bytes()
+                code = cli.main(["--no-env-file", "--ledger", str(ledger), "--record"])
+                after = ledger.read_bytes()
+        finally:
+            _restore_environment(saved)
+        self.assertEqual(code, 2)
+        self.assertEqual(after, before, "un registre illisible ne doit jamais être écrasé")
+
+    def test_cli_refuses_a_scan_without_any_target(self):
+        """Le gate de CI, éprouvé de bout en bout : sans valeur de référence, refus."""
+        cli = self._load_cli()
+        saved = _fixture_environment({})
+        captured = io.StringIO()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                with redirect_stdout(captured):
+                    code = cli.main(
+                        [
+                            "--no-env-file",
+                            "--ledger",
+                            str(Path(tmp) / "ledger.json"),
+                            "--json",
+                            "--require-scan-targets",
+                        ]
+                    )
+        finally:
+            _restore_environment(saved)
+        report = json.loads(captured.getvalue())
+        self.assertEqual(code, 1)
+        self.assertFalse(report["ok"])
+        self.assertTrue(
+            any(
+                issue["name"] == sa.SCAN_NAME and "aucune valeur de référence" in issue["message"]
+                for issue in report["issues"]
+            ),
+            report,
+        )
+
+    def test_cli_refuses_require_scan_targets_without_the_scan(self):
+        """Exiger des cibles quand le scan est éteint ne vérifie rien : refus d'appel."""
+        cli = self._load_cli()
+        self.assertEqual(cli.main(["--require-scan-targets", "--no-scan-repo"]), 2)
+
+    def test_cli_refuses_a_rotation_age_setting_it_cannot_apply(self):
+        """Le réglage est lu dans l'environnement : le CLI doit le porter à l'audit."""
+        cli = self._load_cli()
+        saved = _fixture_environment(strong_values())
+        captured = io.StringIO()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ledger = str(Path(tmp) / "ledger.json")
+                with mock.patch.dict(os.environ, {sa.MAX_AGE_ENV: "quatre-vingt-dix"}):
+                    with redirect_stdout(captured):
+                        code = cli.main(
+                            [
+                                "--no-env-file",
+                                "--ledger",
+                                ledger,
+                                "--json",
+                                "--no-scan-repo",
+                            ]
+                        )
+        finally:
+            _restore_environment(saved)
+        report = json.loads(captured.getvalue())
+        self.assertEqual(code, 1)
+        self.assertTrue(
+            any(issue["name"] == sa.MAX_AGE_ENV for issue in report["issues"]), report
+        )
+
+    def test_cli_reports_a_corrupt_ledger_as_a_named_error(self):
+        cli = self._load_cli()
+        saved = _fixture_environment(strong_values())
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ledger = Path(tmp) / "ledger.json"
+                ledger.write_text("pas du json", encoding="utf-8")
+                code = cli.main(
+                    ["--no-env-file", "--ledger", str(ledger), "--quiet", "--no-scan-repo"]
+                )
+        finally:
+            _restore_environment(saved)
+        self.assertEqual(code, 1)
+
     def test_a_rotated_machine_does_not_leak_its_ring_into_the_audit(self):
         """L'anneau du `.env` réel ne doit pas décider du verdict de ces tests.
 
@@ -364,6 +686,186 @@ class TestRepoLeakScan(unittest.TestCase):
                 self._values(), root=tmp, tracked_files=["main.py"]
             )
         self.assertEqual(issues, [])
+
+    def test_an_oversized_tracked_file_is_named(self):
+        """Écarté pour sa taille n'est pas « propre » : le scan ne l'a pas lu."""
+        with tempfile.TemporaryDirectory() as tmp:
+            body = ("x" * 100 + "\n") * 25_000
+            self.assertGreater(len(body), sa.DEFAULT_SCAN_MAX_BYTES)
+            Path(tmp, "big.log").write_text(body, encoding="utf-8")
+            issues = sa.scan_repo_for_secrets(
+                self._values(), root=tmp, tracked_files=["big.log"]
+            )
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].name, sa.SCAN_NAME)
+        self.assertFalse(issues[0].is_error, "hors périmètre : signalé, mais non bloquant")
+        self.assertIn("big.log", issues[0].message)
+
+    def test_a_non_regular_tracked_path_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "dir.txt").mkdir()
+            issues = sa.scan_repo_for_secrets(
+                self._values(), root=tmp, tracked_files=["dir.txt"]
+            )
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].name, sa.SCAN_NAME)
+        self.assertIn("dir.txt", issues[0].message)
+
+    def test_an_unreadable_file_is_an_error(self):
+        """Lisible pour `stat` mais pas pour `read` : le scan ne peut pas innocenter."""
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "locked.txt").write_text("rien\n", encoding="utf-8")
+            with mock.patch.object(Path, "read_bytes", side_effect=OSError("verrou")):
+                issues = sa.scan_repo_for_secrets(
+                    self._values(), root=tmp, tracked_files=["locked.txt"]
+                )
+        self.assertEqual(len(issues), 1)
+        self.assertTrue(issues[0].is_error)
+        self.assertEqual(issues[0].name, sa.SCAN_NAME)
+        self.assertIn("locked.txt", issues[0].message)
+
+    def test_a_scan_without_reference_values_is_refused_when_required(self):
+        """« Le scan n'avait rien à chercher » n'est pas « aucune fuite ».
+
+        C'est le silence exact d'un clone sans `.env` : le hook le dit et laisse
+        passer (sinon tout commit serait impossible sur une machine non
+        configurée). Un gate de CI, lui, doit refuser ce feu vert-là.
+        """
+        values = {"WEBHOOK_SECRET": "change-me-super-secret"}  # factice : aucun couple
+        self.assertEqual(sa.scannable_targets(values), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "a.txt").write_text("rien\n", encoding="utf-8")
+            result = sa.run_audit(
+                values,
+                ledger=_fresh_ledger(values),
+                now=NOW,
+                scan_repo=True,
+                repo_root=tmp,
+                tracked_files=["a.txt"],
+                allow_missing_rotation=True,
+                require_scan_targets=True,
+            )
+        self.assertFalse(result.ok)
+        self.assertTrue(
+            any(
+                i.name == sa.SCAN_NAME and "aucune valeur de référence" in i.message
+                for i in result.errors
+            ),
+            result.as_dict(),
+        )
+
+    def test_the_vacuity_gate_stays_quiet_when_there_is_a_target(self):
+        values = strong_values()
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "a.txt").write_text("rien\n", encoding="utf-8")
+            result = sa.run_audit(
+                values,
+                ledger=_fresh_ledger(values),
+                now=NOW,
+                scan_repo=True,
+                repo_root=tmp,
+                tracked_files=["a.txt"],
+                allow_missing_rotation=True,
+                require_scan_targets=True,
+            )
+        self.assertTrue(result.ok, result.as_dict())
+
+    def test_iter_scan_files_names_what_it_skips_without_noise_on_empty_files(self):
+        """Un fichier vide ne peut rien porter : l'écarter ne retire aucune preuve."""
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "big.txt").write_text("x" * 50, encoding="utf-8")
+            Path(tmp, "empty.txt").write_text("", encoding="utf-8")
+            skipped: list = []
+            kept = [
+                Path(p).name
+                for p in sa.iter_scan_files(
+                    tmp, max_bytes=10, on_skip=lambda p, reason: skipped.append((Path(p).name, reason))
+                )
+            ]
+        self.assertEqual(kept, [])
+        self.assertEqual([name for name, _ in skipped], ["big.txt"])
+        self.assertIn("limite du scan", skipped[0][1])
+
+    def test_scan_repo_reports_what_it_did_not_read(self):
+        """« Aucune fuite » vaut pour un **périmètre** : le scan doit le nommer."""
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "leak.txt").write_text(self.SECRET, encoding="utf-8")
+            Path(tmp, ".env").write_text(self.SECRET, encoding="utf-8")
+            Path(tmp, "logo.png").write_bytes(b"\x89PNG\x00")
+            Path(tmp, "empty.txt").write_text("", encoding="utf-8")
+            vendor = Path(tmp) / ".venv"
+            vendor.mkdir()
+            (vendor / "lib.py").write_text("rien\n", encoding="utf-8")
+
+            outcome = sa.scan_repo(self._values(), root=tmp)
+
+        self.assertEqual(outcome.targets, 1)
+        self.assertEqual(outcome.scanned, 1)
+        self.assertEqual(outcome.env, [".env"])
+        self.assertEqual(outcome.directories, [".venv"])
+        self.assertEqual([label for label, _ in outcome.suffixes], ["logo.png"])
+        self.assertEqual(outcome.empty, 1)
+        self.assertEqual(outcome.excluded_total, 4)
+        # Le seul fichier lu porte la fuite : un seul verdict, nommé.
+        self.assertEqual([i.name for i in outcome.issues], ["WEBHOOK_SECRET"])
+
+    def test_scan_repo_scope_is_serialisable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "clean.txt").write_text("rien\n", encoding="utf-8")
+            Path(tmp, ".env").write_text("SECRET=x\n", encoding="utf-8")
+            outcome = sa.scan_repo(self._values(), root=tmp, tracked_files=["clean.txt", ".env"])
+
+        report = outcome.as_dict()
+        self.assertEqual(report["targets"], 1)
+        self.assertEqual(report["scanned"], 1)
+        self.assertEqual(report["excluded"]["env"], [".env"])
+        self.assertEqual(report["unreadable"], [])
+
+    def test_iter_scan_files_keeps_skips_and_policy_exclusions_apart(self):
+        """Écarté par politique et illisible ne disent pas la même chose."""
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, ".env").write_text("x=1\n", encoding="utf-8")
+            Path(tmp, "b.png").write_bytes(b"\x00")
+            Path(tmp, "keep.txt").write_text("ok\n", encoding="utf-8")
+            excluded: list = []
+            skipped: list = []
+            kept = [
+                Path(p).name
+                for p in sa.iter_scan_files(
+                    tmp,
+                    on_skip=lambda p, reason: skipped.append(Path(p).name),
+                    on_excluded=lambda label, reason, kind: excluded.append((label, kind)),
+                )
+            ]
+
+        self.assertEqual(kept, ["keep.txt"])
+        self.assertEqual(skipped, [])
+        kinds = {label: kind for label, kind in excluded}
+        self.assertEqual(kinds[".env"], sa.EXCLUSION_ENV)
+        self.assertEqual(kinds["b.png"], sa.EXCLUSION_SUFFIX)
+
+    def test_run_audit_carries_the_scan_scope_in_its_report(self):
+        values = strong_values()
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "clean.txt").write_text("rien\n", encoding="utf-8")
+            Path(tmp, ".env").write_text("SECRET=x\n", encoding="utf-8")
+            result = sa.run_audit(
+                values,
+                ledger=_fresh_ledger(values),
+                now=NOW,
+                scan_repo=True,
+                repo_root=tmp,
+                tracked_files=["clean.txt", ".env"],
+            )
+        scan = result.as_dict()["scan"]
+        self.assertEqual(scan["targets"], len(sa.scannable_targets(values)))
+        self.assertEqual(scan["scanned"], 1)
+        self.assertEqual(scan["excluded"]["env"], [".env"])
+
+    def test_a_report_without_scan_does_not_pretend_to_have_one(self):
+        values = strong_values()
+        result = sa.run_audit(values, ledger=_fresh_ledger(values), now=NOW)
+        self.assertIsNone(result.as_dict()["scan"])
 
     def test_message_masks_the_secret(self):
         """Un rapport de fuite ne doit jamais ré-exposer le secret en clair."""
@@ -476,6 +978,47 @@ class TestRepoLeakScan(unittest.TestCase):
                 )
         finally:
             _restore_environment(saved)
+
+    def test_cli_report_names_the_scope_and_the_ledger_summary(self):
+        """Le rapport humain doit se lire : périmètre du scan et registre, sans JSON."""
+        cli = self._load_cli()
+        values = strong_values()
+        saved = _fixture_environment(values)
+        captured = io.StringIO()
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                Path(tmp, "clean.txt").write_text("rien\n", encoding="utf-8")
+                Path(tmp, ".env").write_text("X=1\n", encoding="utf-8")
+                vendor = Path(tmp) / "node_modules"
+                vendor.mkdir()
+                (vendor / "dep.js").write_text("rien\n", encoding="utf-8")
+                ledger = str(Path(tmp) / "ledger.json")
+                self.assertEqual(
+                    cli.main(["--no-env-file", "--ledger", ledger, "--record"]), 0
+                )
+                with redirect_stdout(captured):
+                    code = cli.main(
+                        [
+                            "--no-env-file",
+                            "--ledger",
+                            ledger,
+                            "--scan-root",
+                            tmp,
+                            "--scan-repo",
+                        ]
+                    )
+        finally:
+            _restore_environment(saved)
+
+        text = captured.getvalue()
+        self.assertEqual(code, 0, text)
+        # Synthèse du registre, lisible sans ouvrir le JSON.
+        self.assertIn("entrée(s)", text)
+        # Périmètre du scan : ce qui a été lu, et ce qui a été écarté par politique.
+        self.assertIn("fichier(s) lu(s)", text)
+        self.assertIn("écarté(s) par politique", text)
+        self.assertIn(".env", text)
+        self.assertIn("node_modules", text)
 
     def _load_cli(self):
         spec = importlib.util.spec_from_file_location(

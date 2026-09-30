@@ -157,6 +157,32 @@ class EmbedTextsTest(unittest.TestCase):
             self.assertIsNone(embeddings.embed_texts(["x"]))
 
 
+class DependencyProbeTest(unittest.TestCase):
+    """L'absence de `httpx` était le seul `None` que l'appelant ne pouvait pas expliquer.
+
+    Un `try/except ImportError` autour du seul appel d'embeddings rendait le repli
+    indistinguable d'un corpus vide : la question est maintenant posée par une
+    sonde nommée, et c'est elle qui décide — pas l'import qui suit.
+    """
+
+    def test_the_probe_is_what_decides_not_the_import(self):
+        fake, client = _fake_httpx(_embedding_body())
+        with mock.patch.object(embeddings, "GEMINI_API_KEY", "k"), mock.patch.dict(
+            sys.modules, {"httpx": fake}
+        ), mock.patch.object(embeddings, "httpx_available", lambda: False):
+            self.assertIsNone(embeddings.embed_texts(["x"]))
+        self.assertEqual(client.posts, [], "la sonde dit non : aucun appel ne doit partir")
+
+    def test_the_probe_sees_a_module_placed_in_sys_modules(self):
+        """Cohérence avec l'appel : la doublure posée dans `sys.modules` est vue par
+        la sonde **et** par l'import. Une sonde par `find_spec` répondrait non ici
+        (le module factice n'a pas de `__spec__`), et la sonde contredirait l'appel.
+        """
+        fake, _ = _fake_httpx(_embedding_body())
+        with mock.patch.dict(sys.modules, {"httpx": fake}):
+            self.assertTrue(embeddings.httpx_available())
+
+
 class EmbedTextTest(unittest.TestCase):
     def test_single_text_returns_one_vector(self):
         fake, _ = _fake_httpx(_embedding_body())

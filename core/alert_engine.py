@@ -222,8 +222,13 @@ def build_signal(
             _, geo_txt = engine._score_geo(insights)
             _, sent_txt = engine._score_sentiment(insights)
             geo_txt += " [fallback: clé LLM absente ou erreur]"
-    except Exception:
-        geo_txt, sent_txt = "Indisponible", "Indisponible"
+    except Exception as exc:
+        # Nommer la panne : « Indisponible » tout court ne distinguait pas une clé
+        # LLM absente d'une base injoignable ou d'un bug — et ce texte part dans le
+        # signal, donc dans le journal et dans la notification. Le repli reste le
+        # même (aucune exécution n'en dépend), mais il cesse d'être muet.
+        geo_txt = f"Indisponible ({type(exc).__name__})"
+        sent_txt = f"Indisponible ({type(exc).__name__})"
 
     raw_signal = {
         "asset": asset,

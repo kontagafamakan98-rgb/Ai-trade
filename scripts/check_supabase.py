@@ -355,7 +355,7 @@ def configuration_checks() -> List[Dict[str, Any]]:
     role = config_runtime.supabase_key_role(cfg.supabase_service_key)
     if not cfg.supabase_service_key:
         checks.append(result("SUPABASE_SERVICE_KEY", False, "clé absente"))
-    elif role == "anon":
+    elif role == config_runtime.KEY_ROLE_ANON:
         checks.append(
             result(
                 "SUPABASE_SERVICE_KEY",
@@ -363,14 +363,20 @@ def configuration_checks() -> List[Dict[str, Any]]:
                 "clé publique (anon / publishable) : la RLS en deny-by-default ne laisse rien passer",
             )
         )
-    else:
+    elif role == config_runtime.KEY_ROLE_UNREADABLE:
+        # Avant, ce cas tombait dans le `else` et s'affichait « rôle service_role » :
+        # une clé illisible était donc rapportée comme la bonne. Elle ne l'est pas —
+        # le serveur la refuse — et c'est exactement ce que cet outil doit dire.
         checks.append(
             result(
                 "SUPABASE_SERVICE_KEY",
-                True,
-                f"rôle service_role ({'JWT' if role else 'format inconnu — non vérifiable'})",
+                False,
+                "illisible : ni JWT (`a.b.c`), ni `sb_secret_…` / `sb_publishable_…` — "
+                "recopie la clé service_role depuis Settings → API Keys",
             )
         )
+    else:
+        checks.append(result("SUPABASE_SERVICE_KEY", True, "rôle service_role (JWT)"))
 
     try:
         import supabase as supabase_package  # noqa: F401

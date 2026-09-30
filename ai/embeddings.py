@@ -67,6 +67,29 @@ def task_type(kind: str) -> str:
     raise ValueError(f"kind inconnu : {kind!r} (attendu 'query' ou 'passage')")
 
 
+def httpx_available() -> bool:
+    """Vrai si l'appel HTTP est possible (`httpx` installé).
+
+    Sonde nommée, et non un `try/except ImportError` autour de la fonction : le
+    `None` de `embed_texts` est la valeur de repli *documentée*, et il valait pour
+    trois causes différentes — pas de clé, bibliothèque absente, appel qui échoue.
+    Seule la bibliothèque manquante était indiscernable par l'appelant (les deux
+    autres se voient : `GEMINI_API_KEY` est lisible, un appel raté lève). Publier
+    la question permet à `embeddings_available()` de la poser au lieu de recopier
+    une sonde — et à un rapport de distinguer « pas d'index » de « rien trouvé ».
+
+    L'import est **essayé** plutôt que sondé (`importlib.util.find_spec`) : la
+    question est « puis-je importer », et une doublure posée dans `sys.modules`
+    (tests) y répond différemment — la sonde et l'appel seraient alors en
+    désaccord, ce qui est pire que le silence qu'on corrige.
+    """
+    try:
+        import httpx  # noqa: F401  — on veut seulement savoir si l'import aboutit
+    except ImportError:
+        return False
+    return True
+
+
 def embed_texts(
     texts: Sequence[str],
     *,
@@ -87,10 +110,9 @@ def embed_texts(
     if not key:
         return None
 
-    try:
-        import httpx
-    except ImportError:
+    if not httpx_available():
         return None
+    import httpx
 
     model_name = model or MODEL
     vectors: List[List[float]] = []
@@ -195,5 +217,6 @@ __all__ = [
     "TASK_QUERY",
     "embed_text",
     "embed_texts",
+    "httpx_available",
     "task_type",
 ]

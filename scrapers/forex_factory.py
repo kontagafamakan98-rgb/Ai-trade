@@ -9,12 +9,12 @@ from datetime import datetime, timezone
 
 try:
     import httpx
-except ImportError:
+except ImportError:  # sans signal : httpx optionnel, l'appelant le voit à l'usage
     httpx = None
 
 try:
     import feedparser
-except ImportError:
+except ImportError:  # sans signal : feedparser optionnel, l'absence est annoncée
     feedparser = None
 
 logger = logging.getLogger(__name__)

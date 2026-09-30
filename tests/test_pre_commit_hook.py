@@ -116,19 +116,37 @@ class ScanStagedContentTest(unittest.TestCase):
         issues = _issues_for(["logo.png"], reader=lambda rel: PROBE_SECRET.encode())
         self.assertEqual(issues, [])
 
-    def test_oversized_content_is_skipped(self):
+    def test_oversized_content_is_named_not_silent(self):
+        """Trop gros pour être lu : écarté, mais **nommé** — et sans bloquer."""
         big = ("x" * 10 + "\n") * 200_000 + PROBE_SECRET
         self.assertGreater(len(big), sa.DEFAULT_SCAN_MAX_BYTES)
-        self.assertEqual(_issues_for(["huge.log"], reader=lambda rel: big.encode()), [])
+        issues = _issues_for(["huge.log"], reader=lambda rel: big.encode())
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].severity, sa.WARNING)
+        self.assertIn("huge.log", issues[0].message)
 
-    def test_reader_failure_is_tolerated(self):
+    def test_reader_failure_is_named_not_swallowed(self):
+        """Un blob indexé illisible échoue le commit au lieu de passer en silence.
+
+        Le hook ne peut pas prouver qu'un fichier qu'il n'a pas lu est propre :
+        rendre `[]` revenait à dire « aucune fuite » sur un fichier jamais
+        regardé — précisément le rapport que ce hook existe pour empêcher.
+        """
+
         def _boom(rel):
             raise OSError("permission refusee")
 
-        self.assertEqual(_issues_for(["locked.py"], reader=_boom), [])
+        issues = _issues_for(["locked.py"], reader=_boom)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].severity, sa.ERROR)
+        self.assertIn("locked.py", issues[0].message)
 
-    def test_missing_blob_is_skipped(self):
-        self.assertEqual(_issues_for(["gone.py"], reader=lambda rel: None), [])
+    def test_missing_blob_is_named_not_swallowed(self):
+        """`git cat-file` sans réponse : le fichier est indexé, donc il sera commité."""
+        issues = _issues_for(["gone.py"], reader=lambda rel: None)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].severity, sa.ERROR)
+        self.assertIn("gone.py", issues[0].message)
 
     def test_no_reference_values_means_no_scan(self):
         """Sans valeur de référence, le scan ne peut rien trouver."""

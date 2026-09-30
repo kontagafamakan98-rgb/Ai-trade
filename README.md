@@ -274,6 +274,17 @@ l'anneau, et `python scripts/rotate_encryption_key.py` dit ce qu'il reste à
 réécrire avant de pouvoir l'en retirer. Un identifiant que l'anneau ne rouvre pas
 fait **refuser** l'ordre, jamais exécuter sur le compte partagé.
 
+La présence du **SDK** fait partie de la réponse, et elle est publiée :
+`components.alpaca_shared` porte `ready`, `keys_present` et `sdk_installed`. Sans
+`alpaca-py`, `get_alpaca_client` refuse — aucun ordre ne part, ni du compte
+personnel ni du compte partagé — et `ready` est donc **faux même avec les deux
+clés renseignées**, ce qu'il ne disait pas auparavant : deux clés suffisaient à
+publier « prêt » sur une machine d'où rien ne pouvait sortir. La sonde
+(`execution/alpaca_sdk.py`) répond par `find_spec`, sans importer le paquet :
+`/health` ne se paie pas le graphe de l'exécuteur (base, chiffrement, garde-fou
+de risque) pour cette question. Elle est comparée à `ALPACA_OK` — la réponse qui
+fait foi à l'exécution — par `tests/test_alpaca_sdk_readiness.py`.
+
 Avant chaque déploiement, l'audit **fail-closed** vérifie la présence, la
 robustesse, la **rotation** de tous les secrets et l'absence de **fuite** de
 leurs valeurs dans les fichiers du dépôt :
@@ -295,6 +306,16 @@ n'a PAS été vérifiée »), et `--require-remote` en fait un refus :
 python scripts/verify_secrets.py --remote https://<service>.onrender.com --require-remote
 ```
 
+Le rapport dit **sur quoi** il porte, sans qu'on ait à ouvrir le JSON ni à relire
+la sortie complète. La ligne du **registre de rotation** en donne la synthèse
+(nombre d'entrées, date de la plus ancienne et son âge, dates illisibles) : on
+voit si le registre vit ou stagne. La ligne du **scan anti-fuite** donne son
+périmètre (valeurs cherchées, fichiers lus, écartés par politique) et le bloc qui
+suit **nomme ce qu'il n'a pas regardé** — `.env` locaux, répertoires exclus,
+suffixes non analysables, fichiers vides. « Aucune fuite détectée » ne se lit donc
+pas « tout le dépôt a été lu » : le périmètre est écrit, et `--json` en porte la
+liste intégrale.
+
 Détails : [`docs/SECRETS.md`](docs/SECRETS.md) et [`security/README.md`](security/README.md).
 
 ### Hook pre-commit (blocage avant le commit)
@@ -311,6 +332,13 @@ Sans secret configuré, le hook l'annonce explicitement : il n'a alors aucune
 valeur de référence et ne détecte rien. Le détail des différences avec le scan
 pre-deploy (index vs copie de travail, `.env` forcé, `--strict-rotation`) est
 dans [`docs/SECRETS.md`](docs/SECRETS.md).
+
+Ce silence-là ne survit pas au push : le job CI `secrets-audit` relit l'arbre
+de la branche poussée avec les **vraies** valeurs (secrets du dépôt) et refuse un
+scan qui n'aurait rien à chercher — un poste sans `.env` ne peut donc plus faire
+passer une fuite. Sur une machine, la même exigence se force avec
+`SECRETS_HOOK_STRICT=1`. Voir [`docs/SECRETS.md`](docs/SECRETS.md), « Le gate de
+CI ».
 
 ### Contrat de sortie des deux hooks
 
@@ -835,6 +863,37 @@ le fichier serait en violation chez tout le monde **au premier checkout** : le
 gate et `.gitattributes` doivent dire la même chose, et un test vérifie qu'ils le
 disent (`tests/test_line_endings.py`, `GitAttributesTest`).
 
+### Les `except` muets (`tests/test_silent_handlers.py`)
+
+Un `except` qui avale une panne sans rien en dire transforme une erreur en succès
+apparent : c'est le mode de panne le plus cher du projet, parce que rien, plus
+tard, ne le signale. Le corpus `tests/test_silent_handlers.py` lit **tout** le
+code versionné — application *et* tests — et refuse tout handler qui n'émet
+**aucun** signal. Est un signal, au sens de ce corpus, de quoi être vu par
+quelqu'un d'autre que la ligne fautive : un `raise`, un `return`, un `yield`, un
+`await`, un `assert`, ou un **appel** (imprimer, journaliser, avertir, noter un
+motif…).
+
+Deux échappatoires, et deux seulement :
+
+* **nommer la raison dans le corps** — un handler qui capture l'exception
+  (`as exc`) et **s'en sert** garde la cause, il n'est donc pas muet même s'il
+  n'imprime rien. Le capturer sans l'utiliser ne suffit pas : `except E as exc:
+  result = None` reste muet ;
+* **porter une justification déclarée** — un commentaire `# sans signal : <raison>`
+  sur la ligne du `except` ou dans son corps. La raison doit être **écrite** : un
+  marqueur vide, ou plus court que dix caractères, ne vaut pas mieux qu'un
+  silence. Les gardes d'import (`httpx`, `feedparser`, `dotenv`…) et les replis
+  d'affichage en portent un, chacun pour sa raison, au lieu d'être dispensés par
+  un oubli.
+
+Le corpus lit l'arbre **réel** (`.venv`, `.pgtest` et les caches exclus, comme le
+scan anti-fuite) et refuse d'être vide : un parcours cassé ferait passer le test
+sans rien lire, donc un plancher de lecture et la présence de `main.py` sont
+vérifiés à part. Le détecteur, lui, est éprouvé sur des sources **fabriquées** :
+`pass`, `continue`, sentinelle seule, `as exc` utilisé ou non, marqueur vide, trop
+court ou hors du handler, et `except*`.
+
 ### Vérifier le projet Supabase (`scripts/check_supabase.py`)
 
 Une erreur de configuration ici ne se voit pas. La RLS de ce projet est en
@@ -877,7 +936,14 @@ cette vérification, ou ne fait ni l'un ni l'autre.
 Trois niveaux, du moins cher au plus engageant :
 
 1. **la configuration** — `SUPABASE_URL` est bien l'URL de l'**API** du projet et
-   `SUPABASE_SERVICE_KEY` porte bien le rôle `service_role` ;
+   `SUPABASE_SERVICE_KEY` porte bien le rôle `service_role`. Les **deux
+   générations** de clés sont acceptées : l'ancienne (`service_role`, un JWT)
+   voyage en `apikey` **et** en `Authorization: Bearer` ; la nouvelle
+   (`sb_secret_…`, qui n'est pas un JWT) voyage en `apikey` seulement, la
+   passerelle refusant le `Bearer`. C'est `build_supabase_client`
+   (`database/supabase_client.py`) qui s'en charge, parce que `supabase-py`
+   refuse d'emblée une clé sans points — `docs/SECRETS.md` détaille la rotation
+   qui l'exige ;
 2. **la lecture** — chacune des tables que l'application utilise répond
    (`REQUIRED_TABLES`, dans `database/supabase_client.py`) ; une table absente
    signale une migration non appliquée. Une table **facultative** absente
@@ -1028,6 +1094,28 @@ démarrage**, et non un simple avertissement, et `/preflight` publie
 `component_health()["supabase"]` (`ready`, `key_role`, `url_issue` — jamais la
 clé). Ce contrat tourne partout : `tests/test_supabase_config.py`.
 
+### Les réglages effectifs de l'audit, publiés par `/health` et `/preflight`
+
+Le démarrage publie aussi ce que l'audit des secrets **appliquera**, pour qu'un
+opérateur n'ait pas à ouvrir un journal pour le savoir :
+
+* `GET /preflight` (protégé) porte `secrets_audit` : le plafond de rotation
+  appliqué (`max_age_days`) et sa provenance (`env` ou `default`), le reproche
+  éventuel quand la variable écrite n'a pas été appliquée telle quelle
+  (`max_age_problem`), l'état du registre (`ledger_state` : `ok`, `missing`,
+  `corrupt`, avec son détail et son nombre d'entrées), le chemin du registre, et
+  le rôle de la clé Supabase (`supabase_key_role`) — jamais la clé ;
+* `GET /health` (public, sans clé) n'en publie qu'un **résumé** : le plafond
+  appliqué et l'état du registre. Ni le chemin du fichier — il révèle
+  l'arborescence du serveur — ni le rôle de la clé, qui dit quelle puissance le
+  service porte (`service_role` ouvre tout) : ces deux faits restent derrière la
+  clé interne, sur `/preflight`.
+
+Un plafond de rotation et un registre se lisent donc au même endroit que l'URL
+Supabase, sans lancer l'audit ni lire un seul secret. Contrat :
+`tests/test_secrets_audit.py` (`EffectiveSettingsTest`) et
+`tests/test_supabase_config.py` (`SecretsAuditSettingsTest`).
+
 La vérification contre la **vraie** base vit dans `tests/test_supabase_live.py`.
 Elle est **dormante par défaut** et ne se réveille que sur demande explicite :
 
@@ -1043,6 +1131,60 @@ Supabase dans l'environnement en s'important (il ne la restaure pas, exprès :
 configuré à cause de ça écrirait dans une base au hasard. Le contrat est
 testé : `tests/test_supabase_config.py` recharge le fichier live avec un
 environnement pollué et vérifie qu'il reste endormi.
+
+### Réparer les états de risque inutilisables (`scripts/repair_risk_state.py`)
+
+Le garde-fou de risque persiste une référence de solde par utilisateur
+(`user_risk_state.starting_balance`, `.daily_start_balance`) et **refuse** de
+trader quand elle n'est pas exploitable — « 5 % de 0 » n'est pas un plafond. Ce
+refus est voulu ; ce script existe pour qu'il soit **réparable**.
+
+```bash
+python scripts/repair_risk_state.py                  # liste, sans rien écrire
+python scripts/repair_risk_state.py --apply          # écrit les reprises proposées
+python scripts/repair_risk_state.py --set 123:starting_balance=5000 --apply
+python scripts/repair_risk_state.py --json           # sortie machine
+```
+
+Deux formes du défaut, deux comportements du garde — et c'est la seconde qui est un
+piège :
+
+| Référence | Ce que fait le garde | Ce que le script répare |
+|---|---|---|
+| **présente mais ≤ 0** | refuse le trade en nommant le champ | écrit une valeur positive |
+| **absente (`NULL`)** | la **dérive du solde courant** — il ne refuse pas, et la perte relative à cette référence disparaît en silence | écrit une valeur positive |
+
+La reprise ne devine pas : elle repose sur le **capital configuré** de
+l'utilisateur (`user_preferences.paper_equity`), c'est-à-dire la valeur que
+l'initialisation aurait écrite — **jamais le solde courant**, qui remettrait le
+drawdown à zéro. Quand ce capital n'est pas connu, la ligne reste `needs-value` et
+le script dit quoi fournir (`--set`) : il n'invente rien. Une valeur ≤ 0 passée à
+`--set` est refusée — c'est le défaut à réparer. Une journée **close** est signalée
+sans écriture : le garde repart d'un compteur journalier frais au prochain solde lu.
+
+Deux invariants : **aucune ligne n'est supprimée** (la supprimer la ferait
+réinitialiser au prochain solde lu, donc effacerait la perte en silence) et **aucune
+valeur non positive n'est écrite**. Codes : `0` rien à réparer, `1` il reste des
+lignes, `2` usage ou base indisponible. Contrat :
+`tests/test_risk_state_repair.py`.
+
+Le refus ne reste pas muet pour l'exploitant : le garde tient un **compteur dédié**
+et journalise chaque refus de référence inutilisable sous un préfixe unique
+(`risk_guard.reference-unusable`), avec l'utilisateur et le champ fautif. Le
+premier refus d'un utilisateur, et tout changement de champ, sortent en
+**WARNING** ; les répétitions descendent en `INFO` — un compte bloqué qui retente
+ne remplit pas le journal à lui seul, mais le compteur continue de monter.
+
+```bash
+curl -H "X-API-Key: $INTERNAL_API_KEY" \
+  https://<service>/webhook/admin/risk/reference-unusable
+```
+
+La route rend `{"total": …, "users": {"<user_id>": {"count": …, "fields": [...],
+"since": …}}}` — de quoi voir **qui** est bloqué, par **quel** champ et depuis
+quand, au lieu de le découvrir dans un journal. Elle ne répare rien : la réparation
+reste `scripts/repair_risk_state.py`. Contrat : `tests/test_risk_guard.py`
+(`ReferenceUnusableVisibilityTest`) et `tests/test_admin_router.py`.
 
 ### Médias Telegram (`database/media_store.py`)
 
@@ -2738,6 +2880,14 @@ doit écrire : un `POST` qui écrit ne déduit pas son périmètre, et un `GET` 
 cache ou un préchargement rejouerait ne peut pas déclencher l'aller-retour. Un
 nettoyage qui échoue est annoncé dans le rapport, avec le détail à supprimer à la
 main.
+
+### Voir les comptes bloqués par une référence de solde inutilisable
+
+`GET /admin/risk/reference-unusable` publie le compteur que le garde-fou tient en
+mémoire : le total des refus pour référence inutilisable, et par utilisateur les
+champs fautifs avec l'horodatage de première observation. C'est la réponse « qui est
+bloqué, par quoi, depuis quand » sans relire les journaux — **lecture seule**, la
+réparation restant `scripts/repair_risk_state.py` (voir plus haut).
 
 ### L'écran d'administration de l'application (`ui/AdminSupabaseScreen.kt`)
 

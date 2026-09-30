@@ -62,10 +62,16 @@ from core.secrets_audit import (  # noqa: E402
     DEFAULT_SPECS,
     DEPLOYED_URL_ENV,
     ERROR,
+    LEDGER_STATE_CORRUPT,
+    LEDGER_STATE_MISSING,
+    LEDGER_STATE_OK,
     apply_deployed_check,
     build_ledger_entries,
+    ledger_issues,
+    ledger_summary,
     load_effective_env,
-    load_ledger,
+    max_age_issues,
+    read_ledger,
     resolve_max_age_days,
     run_audit,
     save_ledger,
@@ -135,6 +141,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--scan-root",
         default=None,
         help="Racine à scanner (défaut : racine du projet).",
+    )
+    parser.add_argument(
+        "--require-scan-targets",
+        action="store_true",
+        help="Refuser l'audit si le scan anti-fuite n'a AUCUNE valeur de référence : "
+        "un scan qui ne sait pas quoi chercher ne prouve rien, et ce silence ne doit "
+        "pas passer pour « aucune fuite ». Destiné au gate de CI, dont c'est "
+        "justement le cas d'un poste sans `.env`.",
     )
     parser.add_argument(
         "--remote",
@@ -217,6 +231,98 @@ def any_secret_configured(values: Mapping[str, str]) -> bool:
     return any((values.get(spec.name) or "").strip() for spec in DEFAULT_SPECS)
 
 
+def _describe_ledger(state: str, detail: str) -> str:
+    """Ce que la lecture du registre a réellement trouvé.
+
+    « absent » et « illisible » se ressemblaient trop dans le rapport : les deux
+    donnaient un registre vide, donc le même « rotation non enregistrée » pour
+    chaque secret. Les nommer séparément dit à l'opérateur s'il s'agit d'une
+    première mise en place ou d'un fichier à réparer.
+    """
+    if state == LEDGER_STATE_MISSING:
+        return "absent — première mise en place ?"
+    if state == LEDGER_STATE_CORRUPT:
+        return f"ILLISIBLE ({detail})"
+    if state != LEDGER_STATE_OK:
+        return state
+    return "lu"
+
+
+def _describe_ledger_summary(summary: Mapping[str, Any]) -> str:
+    """La synthèse du registre de rotation en **une ligne**, sans ouvrir le JSON.
+
+    Combien d'entrées, de quand date la plus ancienne (et son âge), et si des
+    dates sont illisibles : de quoi savoir si le registre vit ou s'il stagne, sans
+    quitter le rapport.
+    """
+    entries = int(summary.get("entries") or 0)
+    if not entries:
+        return "aucune entrée"
+    parts = [f"{entries} entrée(s)"]
+    if summary.get("oldest"):
+        age = summary.get("oldest_days")
+        suffix = f" ({age} j)" if age is not None else ""
+        parts.append(f"plus ancienne {summary['oldest']}{suffix}")
+    if summary.get("newest"):
+        parts.append(f"plus récente {summary['newest']}")
+    unreadable = int(summary.get("unreadable") or 0)
+    if unreadable:
+        parts.append(f"{unreadable} date(s) illisible(s)")
+    return ", ".join(parts)
+
+
+def _excluded_total(scan: Mapping[str, Any]) -> int:
+    """Le nombre d'écarts **par politique** que le scan a comptés (tous genres)."""
+    excluded = scan.get("excluded") or {}
+    return (
+        len(excluded.get("env") or [])
+        + len(excluded.get("directories") or [])
+        + len(excluded.get("suffixes") or [])
+        + int(excluded.get("empty") or 0)
+    )
+
+
+#: Au plus ce nombre de noms par catégorie dans la ligne de rapport ; le reste est
+#: résumé en « … (+N autres) » et reste intégral dans le `--json`. Une liste de
+#: quatre mille fichiers n'est pas un rapport, c'est un mur.
+SCOPE_NAME_LIMIT = 12
+
+
+def _join_capped(items: "list[str]", limit: int = SCOPE_NAME_LIMIT) -> str:
+    """Nomme les premiers `items`, et dit combien restent plutôt que de les taire."""
+    if len(items) <= limit:
+        return ", ".join(items)
+    shown = ", ".join(items[:limit])
+    return f"{shown}, … (+{len(items) - limit} autres)"
+
+
+def _print_scan_scope(scan: "Mapping[str, Any] | None") -> None:
+    """Nomme ce que le scan a écarté **par politique**.
+
+    « Aucune fuite détectée » ne se lit pas « tout le dépôt a été lu » : ces
+    lignes bornent ce que le scan prouve. Les fichiers illisibles, eux, sont déjà
+    des issues `[scan]` — des trous de couverture, pas des écarts de politique.
+    """
+    if not scan:
+        return
+    excluded = scan.get("excluded") or {}
+    env = list(excluded.get("env") or [])
+    directories = list(excluded.get("directories") or [])
+    suffixes = list(excluded.get("suffixes") or [])
+    empty = int(excluded.get("empty") or 0)
+    if env:
+        print(f"   • écartés (.env local) : {_join_capped(env)}")
+    if directories:
+        print(f"   • répertoires exclus (une fois chacun) : {_join_capped(directories)}")
+    if suffixes:
+        names = [str(item.get("file")) for item in suffixes]
+        print(
+            f"   • écartés (suffixe non analysable, {len(names)}) : {_join_capped(names)}"
+        )
+    if empty:
+        print(f"   • écartés (fichier vide) : {empty}")
+
+
 def _resolve_env_file(args: argparse.Namespace) -> "str | None":
     if args.no_env_file:
         return None
@@ -235,6 +341,11 @@ def main(argv: "list[str] | None" = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
         env_file = _resolve_env_file(args)
+        if args.require_scan_targets and not args.scan_repo:
+            raise UsageError(
+                "`--require-scan-targets` sans `--scan-repo` ne vérifie rien : le "
+                "scan anti-fuite est désactivé. Retire l'un des deux."
+            )
     except UsageError as exc:
         print(f"{KO_MARK} {exc}", file=sys.stderr)
         return 2
@@ -243,7 +354,11 @@ def main(argv: "list[str] | None" = None) -> int:
     max_age_days = resolve_max_age_days(args.max_age_days)
 
     values = load_effective_env(env_file)
-    ledger = load_ledger(ledger_path)
+    ledger, ledger_state, ledger_detail = read_ledger(ledger_path)
+    problems = ledger_issues(ledger_path)
+    # Distincts du registre : un plafond de rotation mal réglé n'a rien à voir avec
+    # l'intégrité du fichier, et ne doit donc pas empêcher un `--record` légitime.
+    age_problems = max_age_issues()
 
     if args.skip_if_unconfigured and not any_secret_configured(values):
         if args.json:
@@ -256,6 +371,20 @@ def main(argv: "list[str] | None" = None) -> int:
         return 0
 
     if args.record:
+        if problems:
+            # Enregistrer une rotation *remplace* le registre : sur un fichier
+            # illisible, ce serait effacer l'historique qu'il contient encore au
+            # lieu de le lire. On refuse, et on dit quoi regarder.
+            print(
+                f"{KO_MARK} registre de rotation illisible ({ledger_detail}) : {ledger_path}",
+                file=sys.stderr,
+            )
+            print(
+                "   `--record` écraserait cet historique : inspecte le fichier "
+                "(JSON tronqué ? droits ?) puis relance.",
+                file=sys.stderr,
+            )
+            return 2
         entries = build_ledger_entries(values)
         if not entries:
             print(
@@ -282,6 +411,8 @@ def main(argv: "list[str] | None" = None) -> int:
         allow_missing_rotation=args.allow_missing_rotation,
         scan_repo=args.scan_repo,
         repo_root=scan_root,
+        environment_problems=[*problems, *age_problems],
+        require_scan_targets=args.require_scan_targets,
     )
 
     # La production est mesurée **après** l'audit local, et jamais à sa place :
@@ -309,9 +440,20 @@ def main(argv: "list[str] | None" = None) -> int:
 
     source = env_file or "environnement du processus"
     print(f"Audit des secrets — source : {source}")
-    print(f"Registre de rotation : {ledger_path} (rotation max : {max_age_days} j)")
+    print(
+        f"Registre de rotation : {ledger_path} "
+        f"({_describe_ledger(ledger_state, ledger_detail)}, rotation max : {max_age_days} j) — "
+        f"{_describe_ledger_summary(ledger_summary(ledger))}"
+    )
     scan_label = f"activé (racine : {scan_root})" if args.scan_repo else "désactivé"
+    if result.scan is not None:
+        scan_label += (
+            f" — {result.scan.get('targets', 0)} valeur(s) recherchée(s), "
+            f"{result.scan.get('scanned', 0)} fichier(s) lu(s), "
+            f"{_excluded_total(result.scan)} écarté(s) par politique"
+        )
     print(f"Scan anti-fuite du dépôt : {scan_label}")
+    _print_scan_scope(result.scan)
     print(f"Production — {describe_deployed(result.deployed)}")
     print(f"Secrets contrôlés ({len(result.checked)}) : {', '.join(result.checked) or '—'}")
     print("")

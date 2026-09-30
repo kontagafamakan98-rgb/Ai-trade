@@ -25,6 +25,7 @@ plutôt que de faire échouer la collecte — même règle que
 """
 from __future__ import annotations
 
+import json
 import pathlib
 import unittest
 from unittest import mock
@@ -244,6 +245,7 @@ class OrphanEndpointTest(unittest.TestCase):
                 "/admin/media/orphans",
                 "/admin/media/missing",
                 "/admin/media/missing/repair",
+                "/admin/risk/reference-unusable",
                 "/admin/supabase/check",
                 "/admin/supabase/roundtrip",
             },
@@ -262,6 +264,7 @@ class OrphanEndpointTest(unittest.TestCase):
         self.assertEqual(by_path["/admin/media/missing/repair"], {"POST"})
         self.assertEqual(by_path["/admin/supabase/check"], {"GET"})
         self.assertEqual(by_path["/admin/supabase/roundtrip"], {"POST"})
+        self.assertEqual(by_path["/admin/risk/reference-unusable"], {"GET"})
 
 
 ROW = {
@@ -653,6 +656,36 @@ class SupabaseProbeEndpointTest(unittest.IsolatedAsyncioTestCase):
         head = source.split("def supabase_probe", 1)[0]
         self.assertNotIn("import scripts", head)
         self.assertNotIn("from scripts", head)
+
+
+@unittest.skipUnless(_FASTAPI_AVAILABLE, "FastAPI non installé")
+class RiskReferenceUnusableRouteTest(unittest.TestCase):
+    """La route publie le compteur du garde-fou — elle ne décide rien elle-même."""
+
+    def test_the_route_returns_the_guard_snapshot(self):
+        from execution import risk_guard
+
+        payload = {
+            "total": 3,
+            "users": {
+                "u1": {
+                    "count": 2,
+                    "fields": [risk_guard.STARTING_FIELD],
+                    "since": "2026-03-14T00:00:00+00:00",
+                }
+            },
+        }
+        with mock.patch.object(risk_guard, "reference_unusable_snapshot", return_value=payload):
+            body = admin_router.risk_reference_unusable()
+
+        self.assertEqual(body, payload)
+        json.dumps(body)  # lève si la réponse n'est pas sérialisable
+
+    def test_the_guard_is_imported_only_when_the_route_is_called(self):
+        """La surface protégée s'importe sans charger la base du garde-fou."""
+        source = pathlib.Path(admin_router.__file__).read_text(encoding="utf-8")
+        head = source.split("def risk_reference_unusable", 1)[0]
+        self.assertNotIn("from execution.risk_guard", head)
 
 
 if __name__ == "__main__":

@@ -57,8 +57,10 @@ from core.secrets_audit import (  # noqa: E402
     DEFAULT_LEDGER_PATH,
     ERROR,
     git_staged_files,
+    ledger_issues,
     load_effective_env,
     load_ledger,
+    max_age_issues,
     resolve_max_age_days,
     run_audit,
     scannable_targets,
@@ -196,11 +198,13 @@ def main(argv: "list[str] | None" = None) -> int:
 
     strict_issues = []
     if args.strict_rotation:
+        ledger_path = args.ledger or DEFAULT_LEDGER_PATH
         result = run_audit(
             values,
-            ledger=load_ledger(args.ledger or DEFAULT_LEDGER_PATH),
+            ledger=load_ledger(ledger_path),
             max_age_days=resolve_max_age_days(args.max_age_days),
             scan_repo=False,
+            environment_problems=[*ledger_issues(ledger_path), *max_age_issues()],
         )
         strict_issues = list(result.issues)
 

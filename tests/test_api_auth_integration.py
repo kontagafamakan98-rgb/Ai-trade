@@ -187,6 +187,7 @@ ENDPOINTS = (
     ("GET", "/admin/media/orphans", None),
     ("GET", "/admin/media/missing", None),
     ("POST", "/admin/media/missing/repair", {"media_ids": ["media-1"]}),
+    ("GET", "/admin/risk/reference-unusable", None),
     ("GET", "/admin/supabase/check", None),
     ("POST", "/admin/supabase/roundtrip", {"tables": ["core"]}),
 )
@@ -242,6 +243,23 @@ class ApiAuthIntegrationTest(unittest.TestCase):
                 any(p.startswith(prefix) for p in paths),
                 f"aucune route enregistrée pour le préfixe {prefix}",
             )
+
+    def test_health_is_public_and_publishes_a_reduced_audit_view(self):
+        """/health ne demande pas de clé : il ne doit donc publier aucun réglage sensible.
+
+        L'audit des secrets y apparaît réduit à son **plafond** et à l'état de son
+        registre — ni chemin de fichier, ni rôle de la clé Supabase (voir
+        `core.config_runtime.public_secrets_audit`).
+        """
+        from core import config_runtime
+
+        response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        audit = response.json()["secrets_audit"]
+        self.assertEqual(set(audit), set(config_runtime.PUBLIC_AUDIT_KEYS))
+        for forbidden in ("ledger_path", "ledger_detail", "supabase_key_role"):
+            self.assertNotIn(forbidden, audit)
 
     # -- 401 sans clé ----------------------------------------------------- #
 

@@ -34,6 +34,7 @@ try:  # pragma: no cover - dépend de l'environnement
 
     PTB_AVAILABLE = True
 except Exception:  # pragma: no cover - dépend de l'environnement
+    # sans signal : PTB absent de l'environnement, les tests se sautent d'eux-mêmes
     PTB_AVAILABLE = False
 
 MAIN = pathlib.Path(__file__).resolve().parents[1] / "main.py"

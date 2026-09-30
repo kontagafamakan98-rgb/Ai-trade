@@ -5452,6 +5452,27 @@ class ChannelReportTest(unittest.TestCase):
             with self.subTest(value=junk):
                 self.assertEqual(telegram_media.channel_report_targets({"author_id": None}, junk), [])
 
+    def test_an_unusable_chat_id_is_named_rather_than_silently_dropped(self):
+        """Écarter une cible illisible est juste ; le taire ne l'est pas.
+
+        Une revue qui ne part nulle part ne se voit qu'en ne la recevant pas :
+        l'opérateur ne peut pas distinguer « aucune publication » de
+        « TELEGRAM_ADMIN_CHAT_ID collé de travers ».
+        """
+        captured = io.StringIO()
+        with contextlib.redirect_stdout(captured):
+            targets = telegram_media.channel_report_targets({"author_id": None}, "@mauvais")
+        self.assertEqual(targets, [])
+        self.assertIn("@mauvais", captured.getvalue())
+        self.assertIn("inexploitable", captured.getvalue())
+
+    def test_an_empty_candidate_is_not_noise(self):
+        """Absent n'est pas illisible : il n'y a rien à signaler."""
+        captured = io.StringIO()
+        with contextlib.redirect_stdout(captured):
+            telegram_media.channel_report_targets({"author_id": None}, "")
+        self.assertEqual(captured.getvalue(), "")
+
 
 class ChannelPostWiringTest(unittest.TestCase):
     """`main.py` : la route canal telle qu'elle est câblée."""

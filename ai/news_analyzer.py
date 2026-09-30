@@ -32,7 +32,7 @@ from typing import Dict, Any, List, Optional
 
 try:
     import httpx
-except ImportError:
+except ImportError:  # sans signal : httpx optionnel, l'appelant le voit à l'usage
     httpx = None
 
 from config import (
@@ -48,6 +48,7 @@ try:
     from groq import Groq
     _client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 except Exception:
+    # sans signal : client Groq optionnel, l'absence est rapportée par l'appelant
     _client = None
 
 # IDs centralisés dans config.py (surchargeables par variables d'env).

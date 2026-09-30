@@ -1,7 +1,7 @@
 try:
     from dotenv import load_dotenv
     load_dotenv()
-except ImportError:
+except ImportError:  # sans signal : `dotenv` optionnel, l'environnement suffit
     pass
 
 from core.config_runtime import get_env_config

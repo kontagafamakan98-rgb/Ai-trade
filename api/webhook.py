@@ -7,7 +7,7 @@ from database.supabase_client import supabase, create_pending_signal
 from workers.signal_guard import recently_sent
 from config import WEBHOOK_SECRET
 from core.alert_engine import build_signal, EXTERNAL_SOURCE
-from core.config_runtime import safe_preflight
+from core.config_runtime import public_secrets_audit, safe_preflight
 from core.signal_quality import validate_signal
 from api.macro_router import router as macro_router
 from api.learning_router import router as learning_router
@@ -46,13 +46,17 @@ class Alert(BaseModel):
 @app.get("/health")
 def health():
     # Réponse volontairement minimale : ne pas exposer publiquement quelles
-    # clés d'API sont configurées (voir /preflight, protégé).
+    # clés d'API sont configurées (voir /preflight, protégé). L'audit des secrets
+    # n'y publie que son **plafond** et l'état de son registre — jamais le chemin
+    # du fichier ni le rôle de la clé Supabase, qui disent quelle puissance le
+    # service porte.
     preflight = safe_preflight()
     return {
         "status": "ok" if preflight.get("ok") else "degraded",
         "ready": bool(preflight.get("ok")),
         "mode": "paper",
         "service": "trading-ai",
+        "secrets_audit": public_secrets_audit(preflight),
     }
 
 

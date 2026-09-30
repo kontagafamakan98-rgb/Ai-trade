@@ -151,6 +151,7 @@ def repository_texts():
         try:
             yield path, path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
+            # sans signal : fichier non UTF-8 ou illisible, le suivant est analysé
             continue
 
 

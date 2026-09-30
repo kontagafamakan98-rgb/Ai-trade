@@ -25,6 +25,7 @@ from core import config_runtime
 try:
     from database.supabase_client import supabase
 except Exception:  # pragma: no cover - `supabase_client` est déjà tolérant
+    # sans signal : client optionnel, `supabase_client` a déjà nommé la cause
     supabase = None
 
 TABLE = "bot_settings"

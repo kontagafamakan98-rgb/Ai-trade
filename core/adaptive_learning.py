@@ -306,6 +306,23 @@ def _gradient_descent_weights(
     }
 
 
+def _rsi_from_ta_summary(ta_summary: str) -> Optional[float]:
+    """Le RSI lu dans un résumé technique, ou `None` s'il n'est pas lisible.
+
+    `None` dit « je ne sais pas », et c'est **différent** d'un RSI qui serait dans
+    la norme. La distinction manquait : le parsing était enveloppé d'un
+    `except Exception: pass`, donc un contexte technique illisible produisait
+    exactement le même diagnostic qu'un RSI sage — « bruit de marché » — sans que
+    personne ne puisse le voir, ni dans la leçon enregistrée, ni dans le journal.
+    """
+    if "RSI=" not in ta_summary:
+        return None
+    try:
+        return float(ta_summary.split("RSI=")[1].split()[0])
+    except (IndexError, ValueError):
+        return None
+
+
 def analyze_trade_error(signal: Dict[str, Any], outcome: str, exit_price: Optional[float] = None) -> Dict[str, Any]:
     """
     Perform an automated post-mortem diagnosis on a settled trade.
@@ -330,19 +347,21 @@ def analyze_trade_error(signal: Dict[str, Any], outcome: str, exit_price: Option
     lesson = f"⚠️ Trade perdu sur {asset} ({direction})."
     corrective_action = "stricter_threshold"
 
-    if "RSI=" in ta_summary:
-        try:
-            rsi_val = float(ta_summary.split("RSI=")[1].split()[0])
-            if direction == "BUY" and rsi_val > 68:
-                error_type = "overbought_entry"
-                lesson = f"🛑 Achats en surachat (RSI {rsi_val:.1f}) ont échoué sur {asset}. Eviter les entées BUY quand RSI > 65."
-                corrective_action = "require_lower_rsi"
-            elif direction == "SELL" and rsi_val < 32:
-                error_type = "oversold_entry"
-                lesson = f"🛑 Ventes en survente (RSI {rsi_val:.1f}) ont échoué sur {asset}. Eviter les entées SELL quand RSI < 35."
-                corrective_action = "require_higher_rsi"
-        except Exception:
-            pass
+    rsi_val = _rsi_from_ta_summary(ta_summary)
+    if rsi_val is not None:
+        if direction == "BUY" and rsi_val > 68:
+            error_type = "overbought_entry"
+            lesson = f"🛑 Achats en surachat (RSI {rsi_val:.1f}) ont échoué sur {asset}. Eviter les entées BUY quand RSI > 65."
+            corrective_action = "require_lower_rsi"
+        elif direction == "SELL" and rsi_val < 32:
+            error_type = "oversold_entry"
+            lesson = f"🛑 Ventes en survente (RSI {rsi_val:.1f}) ont échoué sur {asset}. Eviter les entées SELL quand RSI < 35."
+            corrective_action = "require_higher_rsi"
+    elif "RSI=" in ta_summary:
+        # Le contexte annonçait un RSI qu'on n'a pas su lire : le diagnostic ne
+        # peut rien en conclure, et le dire évite de lire « bruit de marché » comme
+        # s'il s'agissait d'une mesure.
+        lesson += " (RSI annoncé dans le contexte technique mais illisible : cause non établie.)"
 
     if "BEARISH" in geo_summary and direction == "BUY":
         error_type = "macro_divergence"

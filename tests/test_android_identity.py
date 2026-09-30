@@ -140,6 +140,7 @@ class NoTraceInTheRepositoryTest(unittest.TestCase):
             try:
                 yield path, path.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError):
+                # sans signal : fichier non UTF-8 ou illisible, le suivant est analysé
                 continue
 
     def test_no_source_file_mentions_the_generating_workshop(self) -> None:

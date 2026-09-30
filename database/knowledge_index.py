@@ -993,11 +993,9 @@ def embeddings_available() -> bool:
         return False
     if not embeddings.GEMINI_API_KEY:
         return False
-    try:
-        import httpx  # noqa: F401  — dépendance d'appel des embeddings
-    except ImportError:
-        return False
-    return True
+    # La sonde vit avec la fonction qu'elle décrit : recopier ici un `import httpx`
+    # sous `try` en ferait une seconde réponse à la même question, libre de diverger.
+    return embeddings.httpx_available()
 
 
 def _embed_query(query: str) -> Optional[List[float]]:

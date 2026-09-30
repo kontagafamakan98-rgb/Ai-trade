@@ -282,6 +282,11 @@ class AuditResult:
     #: Ce qui a été mesuré de la **production**, ou pourquoi rien n'a pu l'être
     #: (voir `apply_deployed_check`). `None` = la question n'a pas été posée.
     deployed: Optional[Dict[str, Any]] = None
+    #: Le **périmètre** du scan anti-fuite : combien de fichiers lus, ce qui était
+    #: illisible, et ce qui a été écarté par politique — voir `scan_repo` et
+    #: `ScanOutcome`. `None` = le scan n'a pas été demandé. Un rapport qui porte
+    #: « aucune fuite » sans ce champ ne dit pas *sur quoi* il porte.
+    scan: Optional[Dict[str, Any]] = None
 
     @property
     def errors(self) -> List[Issue]:
@@ -298,6 +303,7 @@ class AuditResult:
             "issues": [i.as_dict() for i in self.issues],
             "rotation": self.rotation,
             "deployed": self.deployed,
+            "scan": self.scan,
         }
 
 
@@ -385,21 +391,76 @@ def fingerprints_for_values(
     return fingerprints
 
 
-def load_ledger(path: str | os.PathLike[str]) -> Dict[str, Any]:
+def _empty_ledger() -> Dict[str, Any]:
+    return {"version": LEDGER_VERSION, "secrets": {}}
+
+
+def read_ledger(
+    path: str | os.PathLike[str],
+) -> Tuple[Dict[str, Any], str, str]:
+    """Le registre, son **état**, et le détail de cet état.
+
+    `load_ledger` ramène tout à un registre vide, ce qui est commode à lire mais
+    efface une différence qui compte : un fichier **absent** dit « première mise
+    en place », un fichier **illisible** dit « il y avait peut-être des dates de
+    rotation, je ne les ai pas lues ». Confondre les deux fait afficher « rotation
+    non enregistrée — lance `--record` » à quelqu'un dont le registre est en fait
+    corrompu : le geste proposé l'écrase et l'historique est perdu.
+
+    États : `LEDGER_STATE_MISSING` (rien à lire), `LEDGER_STATE_OK`, ou
+    `LEDGER_STATE_CORRUPT` (JSON invalide, fichier non lisible, ou racine qui
+    n'est pas un objet JSON).
+    """
     p = Path(path)
     if not p.is_file():
-        return {"version": LEDGER_VERSION, "secrets": {}}
+        return _empty_ledger(), LEDGER_STATE_MISSING, "absent"
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {"version": LEDGER_VERSION, "secrets": {}}
+        raw = p.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return _empty_ledger(), LEDGER_STATE_CORRUPT, f"lecture impossible ({exc.__class__.__name__})"
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return _empty_ledger(), LEDGER_STATE_CORRUPT, f"JSON invalide (ligne {exc.lineno})"
     if not isinstance(data, dict):
-        return {"version": LEDGER_VERSION, "secrets": {}}
+        return _empty_ledger(), LEDGER_STATE_CORRUPT, "la racine n'est pas un objet JSON"
     secrets = data.get("secrets")
     if not isinstance(secrets, dict):
         data["secrets"] = {}
     data.setdefault("version", LEDGER_VERSION)
-    return data
+    return data, LEDGER_STATE_OK, "lu"
+
+
+def load_ledger(path: str | os.PathLike[str]) -> Dict[str, Any]:
+    """Le registre, ramené à `{"version", "secrets"}` — vide s'il est absent ou illisible.
+
+    Sur la seule lecture, absent et corrompu se ressemblent ; c'est `read_ledger`
+    qui les distingue, et `ledger_issues` qui refuse le second. Ici on ne perd
+    pas l'information de l'appelant : on lui donne le registre vide qu'il attend.
+    """
+    return read_ledger(path)[0]
+
+
+def ledger_issues(path: str | os.PathLike[str]) -> List[Issue]:
+    """L'issue (une erreur) qui dit qu'un registre n'a **pas** pu être lu.
+
+    Vide quand le fichier est absent (première mise en place, rien à signaler) ou
+    lisible. Les points d'entrée qui prennent un verdict (`enforce_secret_rotation`,
+    `verify_secrets.py`, le hook pre-push) la passent à `run_audit` : un registre
+    corrompu y devient une erreur **nommée**, au lieu du « rotation non
+    enregistrée » trompeur qu'un registre vide fabrique pour chaque secret.
+    """
+    _ledger, state, detail = read_ledger(path)
+    if state != LEDGER_STATE_CORRUPT:
+        return []
+    return [
+        Issue(
+            LEDGER_ISSUE_NAME,
+            ERROR,
+            f"registre de rotation illisible ({detail}) : {path} — inspecte-le et "
+            "répare-le ; `--record` écraserait l'historique qu'il contient encore.",
+        )
+    ]
 
 
 def save_ledger(path: str | os.PathLike[str], ledger: Mapping[str, Any]) -> None:
@@ -829,6 +890,48 @@ def check_rotation(
     return issues, report
 
 
+def ledger_summary(
+    ledger: Mapping[str, Any],
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Synthèse du registre de rotation, **lisible sans ouvrir le JSON**.
+
+    `check_rotation` dit, secret par secret, si la rotation est enregistrée ; cette
+    fonction dit ce que le registre contient *en tant que fichier*, d'un seul coup
+    d'œil : combien d'entrées, de quand date la plus ancienne (et son âge), et si
+    des dates sont illisibles. C'est la ligne qu'une personne doit pouvoir lire sur
+    un poste ou dans un journal de CI sans ouvrir `security/secret_rotation.json`.
+
+    Un registre absent ou vide rend des compteurs à zéro plutôt que `None` :
+    « rien d'enregistré » est une réponse, et c'est à l'appelant de la relie
+    à l'état du fichier (`read_ledger`).
+    """
+    secrets = ledger.get("secrets", {}) if isinstance(ledger, dict) else {}
+    if not isinstance(secrets, dict):
+        secrets = {}
+
+    dates: List[date] = []
+    unreadable = 0
+    for entry in secrets.values():
+        rotated_at = _parse_date(entry.get("rotated_at")) if isinstance(entry, dict) else None
+        if rotated_at is None:
+            unreadable += 1
+        else:
+            dates.append(rotated_at)
+
+    oldest = min(dates) if dates else None
+    newest = max(dates) if dates else None
+    today = (now or datetime.now()).date()
+    return {
+        "entries": len(secrets),
+        "dated": len(dates),
+        "unreadable": unreadable,
+        "oldest": oldest.isoformat() if oldest else None,
+        "newest": newest.isoformat() if newest else None,
+        "oldest_days": (today - oldest).days if oldest else None,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # Détection de fuite : valeurs de secrets présentes dans les fichiers du dépôt
 # --------------------------------------------------------------------------- #
@@ -861,6 +964,32 @@ DEFAULT_SCAN_MAX_BYTES = 2_000_000
 
 #: Occurrences rapportées au maximum par couple (secret, fichier).
 MAX_HITS_PER_FILE = 5
+
+#: Nom d'issue des faits qui portent sur le **scan lui-même** et non sur un secret
+#: précis : un fichier trop gros pour être lu, un blob indexé illisible, un
+#: `stat` refusé. « Aucune fuite détectée » ne doit jamais valoir « aucun
+#: fichier n'a été laissé de côté » — un fichier non lu est un fait à nommer.
+SCAN_NAME = "scan"
+
+#: Pourquoi un fichier n'a pas été analysé **par politique** — et non parce qu'il
+#: était illisible. Ces écarts ne sont pas des trous de couverture, mais ils
+#: **bornent** ce que le scan prouve : « aucune fuite détectée » ne doit pas se lire
+#: « tout le dépôt a été lu ». Ils sont donc nommés dans le rapport.
+EXCLUSION_ENV = "env"
+EXCLUSION_DIRECTORY = "dir"
+EXCLUSION_SUFFIX = "suffix"
+EXCLUSION_EMPTY = "empty"
+
+#: États d'un registre de rotation, tels que `read_ledger` les distingue.
+#: Un fichier **absent** et un fichier **illisible** mènent au même registre vide,
+#: mais pas au même geste : le premier est une première mise en place, le second
+#: a peut-être porté des dates de rotation que `--record` écraserait.
+LEDGER_STATE_MISSING = "missing"
+LEDGER_STATE_OK = "ok"
+LEDGER_STATE_CORRUPT = "corrupt"
+
+#: Nom d'issue d'un registre de rotation inexploitable.
+LEDGER_ISSUE_NAME = "ledger"
 
 
 def mask_secret(value: str) -> str:
@@ -896,12 +1025,30 @@ def git_tracked_files(root: "str | os.PathLike[str]" = ".") -> Optional[List[str
     return files or None
 
 
+def _scan_label(root_path: Path, path: Path) -> str:
+    """Le libellé d'un fichier dans un rapport : relatif à la racine, sinon absolu."""
+    try:
+        return str(path.relative_to(root_path))
+    except ValueError:
+        return str(path)
+
+
+def _matching_suffix(name: str, suffixes: Sequence[str]) -> Optional[str]:
+    """Le suffixe exclu qui fait tomber ce nom, ou `None` — pour le nommer."""
+    for suffix in suffixes:
+        if name.endswith(suffix):
+            return suffix
+    return None
+
+
 def iter_scan_files(
     root: "str | os.PathLike[str]" = ".",
     tracked_files: Optional[Sequence[str]] = None,
     excluded_dirs: Iterable[str] = DEFAULT_SCAN_EXCLUDED_DIRS,
     excluded_suffixes: Sequence[str] = DEFAULT_SCAN_EXCLUDED_SUFFIXES,
     max_bytes: int = DEFAULT_SCAN_MAX_BYTES,
+    on_skip: Optional[Callable[[Path, str], None]] = None,
+    on_excluded: Optional[Callable[[str, str, str], None]] = None,
 ) -> Iterable[Path]:
     """Fichiers à analyser.
 
@@ -909,6 +1056,18 @@ def iter_scan_files(
     considérés : c'est la sémantique « fichiers suivis par le dépôt ». Sinon, on
     parcourt l'arborescence en excluant dépendances, caches et artefacts, et en
     ignorant les `.env` locaux (qui *contiennent* légitimement les secrets).
+
+    Deux appels sortent, et ils ne disent pas la même chose :
+
+    * `on_skip(chemin, raison)` — un fichier **écarté faute d'être lisible** (non
+      régulier, `stat` refusé, plus gros que `max_bytes`) : c'est un trou dans la
+      couverture du scan, donc un fait à signaler ;
+    * `on_excluded(libellé, raison, genre)` — un fichier **écarté par politique**
+      (`.env` local, suffixe binaire, répertoire exclu, fichier vide) : il n'y a
+      rien à chercher dedans, mais ces écarts **bornent** ce que le scan prouve, et
+      un rapport qui les tairait laisserait croire que tout le dépôt a été lu.
+      Un répertoire exclu est nommé **une fois** (son nom), jamais fichier par
+      fichier.
     """
     root_path = Path(root)
     if tracked_files is not None:
@@ -921,25 +1080,80 @@ def iter_scan_files(
     for path in candidates:
         name = path.name
         if _is_local_env_file(name):
+            _note_excluded(
+                on_excluded,
+                _scan_label(root_path, path),
+                "fichier d'environnement local (source, pas cible)",
+                EXCLUSION_ENV,
+            )
             continue
-        if name.endswith(excluded_suffixes):
+        suffix = _matching_suffix(name, excluded_suffixes)
+        if suffix is not None:
+            _note_excluded(
+                on_excluded,
+                _scan_label(root_path, path),
+                f"suffixe non analysable ({suffix})",
+                EXCLUSION_SUFFIX,
+            )
             continue
         # Exclusion sur le chemin RELATIF : sinon un projet cloné sous un
         # dossier nommé `build`/`env`/`target` serait intégralement ignoré.
         try:
             relative_parts = path.relative_to(root_path).parts
-        except ValueError:
+        except ValueError:  # sans signal : pas de chemin relatif, on nomme par l'absolu
             relative_parts = path.parts
-        if any(part in excluded_dirs for part in relative_parts):
+        excluded_dir = next((part for part in relative_parts if part in excluded_dirs), None)
+        if excluded_dir is not None:
+            _note_excluded(
+                on_excluded,
+                excluded_dir,
+                f"répertoire exclu : {excluded_dir}",
+                EXCLUSION_DIRECTORY,
+            )
             continue
         try:
-            if not path.is_file() or path.stat().st_size > max_bytes:
-                continue
-            if path.stat().st_size == 0:
-                continue
-        except OSError:
+            size = path.stat().st_size
+        except OSError as exc:
+            _note_skip(on_skip, path, f"stat impossible ({exc.__class__.__name__})")
+            continue
+        if not path.is_file():
+            _note_skip(on_skip, path, "n'est pas un fichier régulier")
+            continue
+        if size > max_bytes:
+            _note_skip(
+                on_skip, path, f"plus gros que la limite du scan ({size} > {max_bytes} octets)"
+            )
+            continue
+        if size == 0:
+            # Un fichier vide ne porte rien : l'écarter ne retire aucune preuve,
+            # mais on le compte quand même pour que la couverture soit lisible.
+            _note_excluded(
+                on_excluded,
+                _scan_label(root_path, path),
+                "fichier vide (aucun octet)",
+                EXCLUSION_EMPTY,
+            )
             continue
         yield path
+
+
+def _note_skip(
+    on_skip: Optional[Callable[[Path, str], None]],
+    path: Path,
+    reason: str,
+) -> None:
+    if on_skip is not None:
+        on_skip(path, reason)
+
+
+def _note_excluded(
+    on_excluded: Optional[Callable[[str, str, str], None]],
+    label: str,
+    reason: str,
+    kind: str,
+) -> None:
+    if on_excluded is not None:
+        on_excluded(label, reason, kind)
 
 
 def scannable_targets(
@@ -1038,6 +1252,145 @@ def scan_text_for_values(
     return issues
 
 
+@dataclass
+class ScanOutcome:
+    """Le scan d'un dépôt : ce qu'il a trouvé, **et ce qu'il n'a pas regardé**.
+
+    Un rapport de fuite ne dit jamais seulement « rien trouvé » : il dit aussi
+    combien de fichiers il a lus, ce qui était illisible (nommé, donc un trou de
+    couverture) et ce qui a été écarté **par politique** (`.env` local, suffixe
+    binaire, répertoire exclu, fichier vide). Les deux derniers sont ce qui rend le
+    verdict honnête : « aucune fuite » vaut pour le périmètre, et le périmètre se
+    lit ici.
+    """
+
+    issues: List[Issue] = field(default_factory=list)
+    #: Nombre de valeurs de référence réellement cherchées.
+    targets: int = 0
+    #: Nombre de fichiers lus (analysés ou reconnus binaires).
+    scanned: int = 0
+    #: `(libellé, raison)` des fichiers écartés faute d'être **lisibles** — un
+    #: trou de couverture, également porté par une issue `[scan]`.
+    unreadable: List[Tuple[str, str]] = field(default_factory=list)
+    #: Fichiers d'environnement local écartés (nommés).
+    env: List[str] = field(default_factory=list)
+    #: Répertoires exclus, nommés **une fois** chacun.
+    directories: List[str] = field(default_factory=list)
+    #: `(libellé, raison)` des fichiers écartés pour leur suffixe.
+    suffixes: List[Tuple[str, str]] = field(default_factory=list)
+    #: Nombre de fichiers vides écartés.
+    empty: int = 0
+
+    @property
+    def excluded_total(self) -> int:
+        return len(self.env) + len(self.directories) + len(self.suffixes) + self.empty
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "targets": self.targets,
+            "scanned": self.scanned,
+            "unreadable": [
+                {"file": label, "reason": reason} for label, reason in self.unreadable
+            ],
+            "excluded": {
+                "env": list(self.env),
+                "directories": list(self.directories),
+                "suffixes": [
+                    {"file": label, "reason": reason} for label, reason in self.suffixes
+                ],
+                "empty": self.empty,
+            },
+        }
+
+
+def scan_repo(
+    values: Mapping[str, str],
+    root: "str | os.PathLike[str]" = ".",
+    specs: Sequence[SecretSpec] = DEFAULT_SPECS,
+    min_length: int = DEFAULT_SCAN_MIN_LENGTH,
+    tracked_files: Optional[Sequence[str]] = None,
+) -> ScanOutcome:
+    """Scanne le dépôt : les fuites trouvées, et **le périmètre du scan**.
+
+    Même détection que `scan_repo_for_secrets` — tout secret de `values` retrouvé
+    verbatim, les valeurs factices ou trop courtes étant ignorées — mais le verdict
+    vient avec sa couverture : combien de fichiers lus, ce qui était illisible, et
+    ce qui a été écarté par politique. C'est ce que le rapport affiche pour que
+    « aucune fuite détectée » ne se confonde pas avec « tout a été lu ».
+    """
+    targets = _scanning_targets(values, specs, min_length)
+    outcome = ScanOutcome(targets=len(targets))
+    if not targets:
+        return outcome
+
+    files = tracked_files
+    if files is None:
+        files = git_tracked_files(root)
+
+    root_path = Path(root)
+
+    # Ce qui est écarté faute d'être lisible est **nommé** : un fichier trop gros
+    # pour être analysé n'est pas un fichier propre, et le rapport doit le dire.
+    skipped: List[Tuple[str, str]] = []
+    seen_env: set = set()
+    seen_dirs: set = set()
+
+    def _collect(label: str, reason: str, kind: str) -> None:
+        if kind == EXCLUSION_ENV:
+            if label not in seen_env:
+                seen_env.add(label)
+                outcome.env.append(label)
+        elif kind == EXCLUSION_DIRECTORY:
+            if label not in seen_dirs:
+                seen_dirs.add(label)
+                outcome.directories.append(label)
+        elif kind == EXCLUSION_SUFFIX:
+            outcome.suffixes.append((label, reason))
+        elif kind == EXCLUSION_EMPTY:
+            outcome.empty += 1
+
+    for path in iter_scan_files(
+        root,
+        tracked_files=files,
+        on_skip=lambda p, reason: skipped.append((_scan_label(root_path, p), reason)),
+        on_excluded=_collect,
+    ):
+        label = _scan_label(root_path, path)
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            # Lisible pour `stat` mais pas pour `read` : le scan ne peut pas
+            # répondre, et ce qu'il ne peut pas lire, il ne peut pas l'innocenter.
+            outcome.issues.append(
+                Issue(
+                    SCAN_NAME,
+                    ERROR,
+                    f"fichier illisible, non analysé : {label} "
+                    f"({exc.__class__.__name__})",
+                )
+            )
+            continue
+        outcome.scanned += 1
+        if b"\x00" in raw[:8192]:
+            continue  # binaire : hors périmètre par politique (suffixes exclus)
+        text = raw.decode("utf-8", errors="replace")
+        outcome.issues.extend(scan_text_for_values(text, targets, label))
+
+    for label, reason in skipped:
+        outcome.issues.append(
+            Issue(SCAN_NAME, WARNING, f"fichier non analysé : {label} ({reason})")
+        )
+    outcome.unreadable = skipped
+    outcome.directories.sort()
+    return outcome
+
+
+#: `run_audit` porte un paramètre **`scan_repo` (booléen)** qui masque la fonction
+#: du même nom dans son corps. Cet alias lui rend la fonction sous un autre nom,
+#: sans renommer le paramètre (l'API publique garde `scan_repo=True`).
+_scan_repo_outcome = scan_repo
+
+
 def scan_repo_for_secrets(
     values: Mapping[str, str],
     root: "str | os.PathLike[str]" = ".",
@@ -1047,33 +1400,12 @@ def scan_repo_for_secrets(
 ) -> List[Issue]:
     """Signale tout secret de `values` retrouvé verbatim dans les fichiers suivis.
 
-    Les valeurs manifestement factices (placeholders) et trop courtes pour être
-    discriminantes sont ignorées, afin d'éviter les faux positifs.
+    Enveloppe de `scan_repo` : la signature historique rend la seule liste d'issues,
+    pour les appelants qui n'ont pas besoin du périmètre du scan.
     """
-    targets = _scanning_targets(values, specs, min_length)
-    if not targets:
-        return []
-
-    files = tracked_files
-    if files is None:
-        files = git_tracked_files(root)
-
-    issues: List[Issue] = []
-    root_path = Path(root)
-    for path in iter_scan_files(root, tracked_files=files):
-        try:
-            raw = path.read_bytes()
-        except OSError:
-            continue
-        if b"\x00" in raw[:8192]:
-            continue  # binaire
-        text = raw.decode("utf-8", errors="replace")
-        try:
-            label = str(path.relative_to(root_path))
-        except ValueError:
-            label = str(path)
-        issues.extend(scan_text_for_values(text, targets, label))
-    return issues
+    return scan_repo(
+        values, root=root, specs=specs, min_length=min_length, tracked_files=tracked_files
+    ).issues
 
 
 def git_staged_files(
@@ -1152,10 +1484,13 @@ def scan_staged_for_secrets(
       indexé, il sera commité, donc il doit être analysé ;
     * un fichier `.env` indexé est analysé (c'est précisément le cas
       `git add -f .env` que le hook doit bloquer), alors que le scan du dépôt
-      l'ignore comme source de secrets.
+      l'ignore comme source de secrets.    `content_reader` permet d'injecter une lecture alternative (tests) ; par
+defaut le contenu vient de l'index via `git_staged_content`.
 
-    `content_reader` permet d'injecter une lecture alternative (tests) ; par
-    défaut le contenu vient de l'index via `git_staged_content`.
+    Un fichier indexé dont le contenu ne peut pas être lu est une **erreur**, pas
+    une case sautée : le hook pre-commit ne peut pas prouver qu'un blob illisible
+    est propre, et « aucune fuite détectée » sur un fichier qu'on n'a pas lu serait
+    précisément le rapport que le hook existe pour empêcher.
     """
     targets = _scanning_targets(values, specs, min_length)
     if not targets:
@@ -1172,13 +1507,38 @@ def scan_staged_for_secrets(
             continue
         try:
             raw = reader(relative)
-        except Exception:  # pragma: no cover - lecture défensive
+        except Exception as exc:  # lecture défensive : le refus est nommé, jamais avalé
+            issues.append(
+                Issue(
+                    SCAN_NAME,
+                    ERROR,
+                    f"contenu indexé illisible, non analysé : {relative} "
+                    f"({exc.__class__.__name__})",
+                )
+            )
             continue
         if raw is None:
+            issues.append(
+                Issue(
+                    SCAN_NAME,
+                    ERROR,
+                    f"contenu indexé introuvable, non analysé : {relative}",
+                )
+            )
             continue
         if isinstance(raw, bytes):
-            if len(raw) > DEFAULT_SCAN_MAX_BYTES or b"\x00" in raw[:8192]:
+            if len(raw) > DEFAULT_SCAN_MAX_BYTES:
+                issues.append(
+                    Issue(
+                        SCAN_NAME,
+                        WARNING,
+                        f"fichier indexé non analysé : {relative} "
+                        f"(plus gros que la limite du scan)",
+                    )
+                )
                 continue
+            if b"\x00" in raw[:8192]:
+                continue  # binaire : hors périmètre par politique
             text = raw.decode("utf-8", errors="replace")
         else:
             text = raw
@@ -1197,12 +1557,29 @@ def run_audit(
     repo_root: "str | os.PathLike[str]" = ".",
     scan_min_length: int = DEFAULT_SCAN_MIN_LENGTH,
     tracked_files: Optional[Sequence[str]] = None,
+    environment_problems: Sequence[Issue] = (),
+    require_scan_targets: bool = False,
 ) -> AuditResult:
-    """Exécute les contrôles (présence, robustesse, rotation, anti-fuite)."""
+    """Exécute les contrôles (présence, robustesse, rotation, anti-fuite).
+
+    `environment_problems` porte ce que l'appelant a mesuré de **son propre
+    environnement** avant de bâtir l'audit — registre de rotation illisible
+    (`ledger_issues`), plafond de rotation inappliqué (`max_age_issues`).
+    `run_audit` ne lit ni fichier ni variable : il reçoit un `ledger` déjà chargé et
+    ne peut donc pas voir qu'on lui a passé un registre vide *parce qu'il était
+    corrompu*, ni qu'un `max_age_days` calculé n'est pas celui demandé. Ces issues
+    viennent de celui qui tenait le chemin ou la variable.
+
+    `require_scan_targets` refuse un scan anti-fuite **sans valeur de référence** :
+    un scan qui ne sait pas quoi chercher ne trouve rien par construction, et rien
+    ne doit se lire comme « aucune fuite ». C'est le cas d'une machine sans `.env`,
+    et c'est cette vacuité-là qu'un gate de CI doit refuser (voir la CI).
+    """
     if ledger is None:
         ledger = {"version": LEDGER_VERSION, "secrets": {}}
 
     issues: List[Issue] = []
+    issues.extend(environment_problems)
     issues.extend(check_presence_and_strength(values, specs))
     issues.extend(check_distinctness(values, specs))
     issues.extend(check_key_ring(values, specs))
@@ -1216,16 +1593,29 @@ def run_audit(
     )
     issues.extend(rotation_issues)
 
+    #: Le périmètre du scan : c'est ce qui permet de lire « aucune fuite » comme
+    #: « rien trouvé **dans ce qui a été lu** », et non « tout a été lu ».
+    scan_report: Optional[Dict[str, Any]] = None
     if scan_repo:
-        issues.extend(
-            scan_repo_for_secrets(
-                values,
-                root=repo_root,
-                specs=specs,
-                min_length=scan_min_length,
-                tracked_files=tracked_files,
+        if require_scan_targets and not scannable_targets(values, specs, scan_min_length):
+            issues.append(
+                Issue(
+                    SCAN_NAME,
+                    ERROR,
+                    "le scan anti-fuite n'a aucune valeur de référence : il ne peut "
+                    "rien trouver, donc il ne prouve rien. Fournis les valeurs "
+                    "(`--env-file`, environnement) ou retire `--require-scan-targets`.",
+                )
             )
+        outcome = _scan_repo_outcome(
+            values,
+            root=repo_root,
+            specs=specs,
+            min_length=scan_min_length,
+            tracked_files=tracked_files,
         )
+        issues.extend(outcome.issues)
+        scan_report = outcome.as_dict()
 
     checked = [s.name for s in specs if (values.get(s.name) or "").strip()]
     return AuditResult(
@@ -1233,6 +1623,7 @@ def run_audit(
         issues=issues,
         checked=checked,
         rotation=rotation_report,
+        scan=scan_report,
     )
 
 
@@ -1717,6 +2108,14 @@ def resolve_max_age_days(
     explicit: Optional[int] = None,
     environ: Optional[Mapping[str, str]] = None,
 ) -> int:
+    """Le plafond de rotation effectif, en jours.
+
+    Une valeur illisible retombe sur `DEFAULT_MAX_AGE_DAYS`, et une valeur non
+    positive est ramenée à 1 jour. Ces replis ne sont pas muets pour autant :
+    `max_age_issues` les nomme, parce que ce plafond décide si une rotation est
+    « en retard » — et un opérateur qui croit avoir réglé 180 jours alors que
+    l'audit en applique 90 reçoit un refus qu'il ne comprendra pas.
+    """
     if explicit is not None:
         return explicit
     env = environ if environ is not None else os.environ
@@ -1724,9 +2123,49 @@ def resolve_max_age_days(
     if raw:
         try:
             return max(1, int(raw))
-        except ValueError:
+        except ValueError:  # sans signal : plafond illisible, le défaut s'applique
             pass
     return DEFAULT_MAX_AGE_DAYS
+
+
+def max_age_issues(
+    environ: Optional[Mapping[str, str]] = None,
+) -> List[Issue]:
+    """L'issue qui dit que `$SECRET_MAX_AGE_DAYS` n'a **pas** été appliqué tel quel.
+
+    Sans elle, `SECRET_MAX_AGE_DAYS=90j` (unité recopiée par habitude) ou `=0`
+    produisait le même verdict qu'une machine sans réglage : l'audit repartait à
+    90 jours et ne le disait nulle part. Le plafond de rotation n'est pas un
+    détail — c'est lui qui décide du refus —, donc ce qui n'a pas été appliqué
+    doit se lire dans le rapport.
+    """
+    env = environ if environ is not None else os.environ
+    raw = (env.get(MAX_AGE_ENV) or "").strip()
+    if not raw:
+        return []
+    try:
+        value = int(raw)
+    except ValueError:
+        return [
+            Issue(
+                MAX_AGE_ENV,
+                ERROR,
+                f"valeur illisible ({raw!r}) : un entier de jours positifs est attendu "
+                f"(sans unité). L'audit a appliqué {DEFAULT_MAX_AGE_DAYS} jours par "
+                "défaut — la durée de vie que tu as voulue ne s'applique pas.",
+            )
+        ]
+    if value < 1:
+        return [
+            Issue(
+                MAX_AGE_ENV,
+                ERROR,
+                f"valeur hors bornes ({raw!r}) : l'audit a appliqué 1 jour, pas ce qui "
+                "est écrit. Une durée de vie de 0 jour n'a pas de sens (elle rendrait "
+                "toute rotation immédiatement en retard).",
+            )
+        ]
+    return []
 
 
 def enforce_secret_rotation(
@@ -1743,6 +2182,7 @@ def enforce_secret_rotation(
         ledger=load_ledger(path),
         max_age_days=resolve_max_age_days(max_age_days),
         allow_missing_rotation=allow_missing,
+        environment_problems=[*ledger_issues(path), *max_age_issues()],
     )
     if not result.ok:
         raise RuntimeError(
@@ -1750,6 +2190,53 @@ def enforce_secret_rotation(
             + "\n- ".join(f"{i.name}: {i.message}" for i in result.errors)
         )
     return result
+
+
+#: D'où vient le plafond de rotation **appliqué** : de la variable
+#: d'environnement, ou du défaut du projet. Un opérateur qui croit avoir réglé
+#: 180 jours doit pouvoir lire ici que l'audit en applique 90.
+MAX_AGE_SOURCE_ENV = "env"
+MAX_AGE_SOURCE_DEFAULT = "default"
+
+
+def effective_settings(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Dict[str, Any]:
+    """Les réglages **effectifs** de l'audit, tels qu'ils seront appliqués.
+
+    Répond, sans lancer l'audit ni lire un seul secret, à trois questions qu'un
+    opérateur ne devrait pas avoir à chercher dans un journal :
+
+    * **quel plafond de rotation s'applique vraiment** — la valeur retenue, sa
+      provenance, et le reproche éventuel (`max_age_issues`) quand la variable
+      écrite n'a pas été appliquée telle quelle ;
+    * **dans quel état est le registre** — `ok`, `missing` ou `corrupt`, avec le
+      détail de `read_ledger` et le nombre d'entrées qu'il porte ;
+    * le **chemin** du registre, pour retrouver le fichier sans le deviner.
+
+    Le **rôle de la clé Supabase** n'est pas ici : il appartient à
+    `core.config_runtime`, qui le compose à côté de ces faits — ce module ne lit pas
+    la configuration applicative. Aucun secret n'est publié : ni empreinte, ni
+    valeur, seulement la politique et l'état du fichier.
+    """
+    env = environ if environ is not None else os.environ
+    problems = max_age_issues(env)
+    ledger_path = resolve_ledger_path(environ=env)
+    ledger, state, detail = read_ledger(ledger_path)
+    secrets = ledger.get("secrets", {}) if isinstance(ledger, dict) else {}
+    if not isinstance(secrets, dict):
+        secrets = {}
+    return {
+        "max_age_days": resolve_max_age_days(environ=env),
+        "max_age_source": (
+            MAX_AGE_SOURCE_ENV if (env.get(MAX_AGE_ENV) or "").strip() else MAX_AGE_SOURCE_DEFAULT
+        ),
+        "max_age_problem": problems[0].message if problems else None,
+        "ledger_path": ledger_path,
+        "ledger_state": state,
+        "ledger_detail": detail,
+        "ledger_entries": len(secrets),
+    }
 
 
 def iter_ledger_secret_names(ledger: Mapping[str, Any]) -> Iterable[str]:
@@ -1773,10 +2260,15 @@ __all__ = [
     "DeployedUnreachable",
     "ERROR",
     "KeyRingInfo",
+    "LEDGER_ISSUE_NAME",
     "LEDGER_PATH_ENV",
+    "LEDGER_STATE_CORRUPT",
+    "LEDGER_STATE_MISSING",
+    "LEDGER_STATE_OK",
     "MAX_AGE_ENV",
     "MAX_DEPLOYED_BODY_BYTES",
     "PLACEHOLDER_PATTERNS",
+    "SCAN_NAME",
     "SecretSpec",
     "Issue",
     "WARNING",
@@ -1792,6 +2284,16 @@ __all__ = [
     "DEFAULT_SCAN_EXCLUDED_DIRS",
     "DEFAULT_SCAN_EXCLUDED_SUFFIXES",
     "DEFAULT_SCAN_MIN_LENGTH",
+    "MAX_AGE_SOURCE_DEFAULT",
+    "MAX_AGE_SOURCE_ENV",
+    "effective_settings",
+    "EXCLUSION_DIRECTORY",
+    "EXCLUSION_EMPTY",
+    "EXCLUSION_ENV",
+    "EXCLUSION_SUFFIX",
+    "ScanOutcome",
+    "scan_repo",
+    "ledger_summary",
     "build_ledger_entries",
     "DEFAULT_KEY_VERSION",
     "RING_SECRET_NAME",
@@ -1813,7 +2315,10 @@ __all__ = [
     "scannable_targets",
     "scan_staged_for_secrets",
     "load_ledger",
+    "read_ledger",
+    "ledger_issues",
     "mask_secret",
+    "max_age_issues",
     "parse_env_file",
     "scan_repo_for_secrets",
     "scan_text_for_values",

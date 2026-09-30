@@ -180,6 +180,7 @@ class KeyRing:
             try:
                 return item.version, self._by_version[item.version].decrypt(text.encode()).decode()
             except InvalidToken:
+                # sans signal : cette clé ne rouvre pas le jeton, la suivante est essayée
                 continue
         raise EncryptionError(
             "aucune clé de l'anneau ne rouvre ce chiffré (jeton sans version "

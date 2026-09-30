@@ -129,7 +129,7 @@ def _excerpt(hit: Dict[str, Any], rank: int) -> str:
     score = hit.get("similarity")
     try:
         score_txt = f"{float(score):.3f}"
-    except (TypeError, ValueError):
+    except (TypeError, ValueError):  # sans signal : score illisible ramené à « n/a »
         score_txt = "n/a"
     return f"{rank}. {hit_label(hit)} — similarité {score_txt}\n{content}"
 

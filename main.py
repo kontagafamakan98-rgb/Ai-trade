@@ -43,14 +43,14 @@ from database.knowledge_base import (
     format_rag_selection,
 )
 from core import rag_loop, search_history
-from notifications import telegram_channels, telegram_filters, telegram_media
+from notifications import risk_card, telegram_channels, telegram_filters, telegram_media
 from database.broker_credentials import (
     BrokerCredentialsUnreadable,
     set_broker_credentials,
     get_broker_credentials,
     delete_broker_credentials,
 )
-from execution.risk_guard import can_trade as risk_can_trade, _get_or_init_state as risk_get_state
+from execution.risk_guard import evaluate as risk_evaluate
 from config import TELEGRAM_ADMIN_CHAT_ID, TELEGRAM_BOT_TOKEN
 from reports.performance_report import build_performance_summary, export_run_card
 from core.config_runtime import enforce_secure_config
@@ -180,8 +180,12 @@ async def run_analysis(
                 _, geo_txt = engine._score_geo(insights)
                 _, sent_txt = engine._score_sentiment(insights)
                 geo_txt += " [fallback: clé LLM absente ou erreur]"
-        except Exception:
-            geo_txt, sent_txt = "Indisponible", "Indisponible"
+        except Exception as exc:
+            # Même règle que dans `core/alert_engine.py` : un contexte informatif
+            # qu'on n'a pas pu lire doit dire **pourquoi**, sinon « Indisponible »
+            # se confond avec « rien à dire ».
+            geo_txt = f"Indisponible ({type(exc).__name__})"
+            sent_txt = f"Indisponible ({type(exc).__name__})"
 
         price_txt = f"{price:.5f}" if price else "N/A"
         await message.reply_text(
@@ -628,7 +632,6 @@ async def search_more_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     try:
-        prefs = get_preferences(user_id)
         equity = get_user_equity(user_id)
 
         try:
@@ -637,39 +640,34 @@ async def risk_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             balance = float(acct.equity)
             balance_note = "(solde réel Alpaca)"
         except BrokerCredentialsUnreadable:
-            # Le compte existe : « pas de compte réel » serait faux, et le solde
+            # Le compte existe : annoncer « aucun compte » serait faux, et le solde
             # papier ferait croire à une absence de compte.
+            # sans signal : le repli est **affiché** par la note ci-dessous
             balance = equity
             balance_note = "(⚠️ identifiants broker illisibles — anneau de clés incomplet)"
         except AlpacaSDKUnavailable:
             # Ici le repli est légitime (on **affiche** un solde, on ne décide pas
             # d'un ordre) — mais la note doit dire la vraie cause : « pas de compte
             # réel » enverrait chercher un compte là où il manque un paquet.
+            # sans signal : le repli est **affiché** par la note ci-dessous
             balance = equity
             balance_note = "(⚠️ SDK Alpaca absent — solde paper configuré, aucun compte interrogé)"
-        except Exception:
+        except Exception as exc:
+            # Cause inconnue : la **dire**, au lieu d'affirmer « pas de compte réel »
+            # — ce message envoyait chercher un compte là où le défaut est ailleurs
+            # (réseau, réponse illisible). C'est un **affichage** de solde, pas une
+            # décision d'ordre : le repli reste légitime, seule la note doit rester
+            # vraie.
             balance = equity
-            balance_note = "(equity paper configurée, pas de compte réel)"
+            balance_note = (
+                f"(⚠️ compte non interrogé — {type(exc).__name__} ; equity paper configurée)"
+            )
 
-        state = risk_get_state(user_id, balance)
-        starting = float(state.get("starting_balance") or balance)
-        daily_start = float(state.get("daily_start_balance") or balance)
-
-        daily_loss_pct = (daily_start - balance) / daily_start * 100 if daily_start > 0 else 0
-        total_dd_pct = (starting - balance) / starting * 100 if starting > 0 else 0
-
-        allowed, reason = risk_can_trade(user_id, balance)
-        status_txt = "✅ Trading autorisé" if allowed else f"🛑 Trading bloqué : {reason}"
-
-        await update.message.reply_text(
-            f"📊 État du risque {balance_note}\n\n"
-            f"Solde actuel : {balance:.2f}\n"
-            f"Solde début de journée : {daily_start:.2f}\n"
-            f"Solde initial : {starting:.2f}\n\n"
-            f"Perte du jour : {daily_loss_pct:.2f}% (limite {prefs.get('max_daily_loss_pct', 5.0)}%)\n"
-            f"Drawdown total : {total_dd_pct:.2f}% (limite {prefs.get('max_total_drawdown_pct', 10.0)}%)\n\n"
-            f"{status_txt}"
-        )
+        # Le verdict **et** ses chiffres viennent du même calcul : l'affichage ne
+        # recompose rien, il lit `measured` et `limits` — donc ce que l'utilisateur
+        # lit est exactement ce sur quoi le garde a décidé.
+        decision = risk_evaluate(user_id, balance)
+        await update.message.reply_text(risk_card.render(decision, balance_note))
     except Exception as e:
         await update.message.reply_text(f"❌ Erreur : {e}")
 

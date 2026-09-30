@@ -7,13 +7,14 @@ import re
 import threading
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from core.secrets_audit import (
     DEPLOYED_REPORT_KIND,
     DEPLOYED_REPORT_VERSION,
     FINGERPRINT_SALT,
     KeyRingInfo,
+    effective_settings,
     fingerprints_for_values,
     key_ring_info,
 )
@@ -175,38 +176,54 @@ def supabase_url_issue(url: str) -> str:
     return ""
 
 
+#: Ce que `supabase_key_role` peut répondre. `KEY_ROLE_NONE` et `KEY_ROLE_UNREADABLE`
+#: étaient confondus (tous deux `""`), et cette confusion se lisait comme une
+#: configuration correcte : une clé collée de travers n'est pas une clé absente,
+#: mais ni l'une ni l'autre ne peut parler à la base — et seule l'absence était
+#: signalée.
+KEY_ROLE_NONE = ""
+KEY_ROLE_SERVICE = "service_role"
+KEY_ROLE_ANON = "anon"
+KEY_ROLE_UNREADABLE = "unreadable"
+
+
 def supabase_key_role(key: str) -> str:
-    """Rôle porté par une clé Supabase : `service_role`, `anon`, sinon `""`.
+    """Rôle porté par une clé Supabase : `service_role`, `anon`, `""` ou `unreadable`.
 
     La signature n'est **pas** vérifiée : on lit ce que la clé prétend être, pour
     attraper la confusion anon/service_role. Un jeton forgé serait de toute façon
     refusé par le serveur, et un rôle vérifié ici ne remplace pas l'authentification.
 
     Les deux formats coexistent : les jetons JWT (l'ancien `service_role`) et les
-    clés `sb_secret_…` / `sb_publishable_…` des projets récents. Ce qui ne se lit
-    pas rend `""` — une clé d'un format inconnu n'est pas signalée comme fausse.
+    clés `sb_secret_…` / `sb_publishable_…` des projets récents.
+
+    Trois réponses, et il importe de ne pas les confondre : `""` dit « pas de clé »,
+    `KEY_ROLE_UNREADABLE` dit « une clé est là, je ne sais pas la lire », et la
+    seconde n'est pas un feu vert — le serveur la refusera. Un format inconnu n'est
+    pas *déclaré faux* pour autant (on ne peut que ne pas savoir), mais il n'est pas
+    déclaré bon non plus.
     """
     text = str(key or "").strip()
     if not text:
-        return ""
+        return KEY_ROLE_NONE
     if text.startswith("sb_secret_"):
-        return "service_role"
+        return KEY_ROLE_SERVICE
     if text.startswith("sb_publishable_"):
-        return "anon"
+        return KEY_ROLE_ANON
     parts = text.split(".")
     if len(parts) != 3:
-        return ""
+        return KEY_ROLE_UNREADABLE
     try:
         payload = parts[1] + "=" * (-len(parts[1]) % 4)
         claims = json.loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
     except Exception:
-        return ""
+        return KEY_ROLE_UNREADABLE
     role = str((claims or {}).get("role") or "")
-    if role == "service_role":
-        return "service_role"
-    if role in ("anon", "authenticated"):
-        return "anon"
-    return ""
+    if role == KEY_ROLE_SERVICE:
+        return KEY_ROLE_SERVICE
+    if role in (KEY_ROLE_ANON, "authenticated"):
+        return KEY_ROLE_ANON
+    return KEY_ROLE_UNREADABLE
 
 
 #: Un pseudo de canal : 5 à 32 caractères, minuscules/chiffres/`_`. C'est aussi la
@@ -441,6 +458,26 @@ def local_transcription_ready() -> bool:
     return local_transcription_available()
 
 
+def alpaca_sdk_ready() -> bool:
+    """Le SDK Alpaca est-il **installé** sur cette machine ?
+
+    Sans lui, aucun client ne peut être construit : le compte partagé peut être
+    parfaitement configuré, `get_alpaca_client` refuse quand même — donc aucun
+    ordre ne part. `alpaca_shared.ready` ne lisait que les clés, et répondait
+    précisément « prêt » dans ce cas-là.
+
+    Import **local**, comme `local_transcription_ready()` : le module interrogé
+    ne charge que `importlib.util`, parce que `/health` et `/preflight` posent la
+    question sans se payer le graphe d'`execution.order_executor` (base de
+    données, chiffrement, garde-fou de risque). Le nom du paquet n'est pas
+    recopié ici : c'est `execution.alpaca_sdk` qui sait ce dont l'exécuteur a
+    besoin.
+    """
+    from execution.alpaca_sdk import alpaca_sdk_available
+
+    return alpaca_sdk_available()
+
+
 class EnvConfig(BaseModel):
     supabase_url: str = Field(default="", alias="SUPABASE_URL")
     supabase_service_key: str = Field(default="", alias="SUPABASE_SERVICE_KEY")
@@ -614,13 +651,20 @@ class EnvConfig(BaseModel):
         url_problem = supabase_url_issue(self.supabase_url)
         if url_problem:
             issues.append(url_problem)
+        key_role = supabase_key_role(self.supabase_service_key)
         if not self.supabase_service_key:
             issues.append("SUPABASE_SERVICE_KEY manquante")
-        elif supabase_key_role(self.supabase_service_key) == "anon":
+        elif key_role == KEY_ROLE_ANON:
             issues.append(
                 "SUPABASE_SERVICE_KEY porte une clé publique (anon / publishable) : "
                 "la RLS est en deny-by-default, donc l'application ne lira et n'écrira "
                 "rien. Prends la clé service_role dans Settings → API."
+            )
+        elif key_role == KEY_ROLE_UNREADABLE:
+            issues.append(
+                "SUPABASE_SERVICE_KEY est illisible (ni JWT `a.b.c`, ni "
+                "`sb_secret_…` / `sb_publishable_…`) : le serveur la refusera. "
+                "Recopie la clé service_role entière depuis Settings → API Keys."
             )
         return issues
 
@@ -656,6 +700,11 @@ class EnvConfig(BaseModel):
         return issues
 
     def component_health(self) -> Dict[str, Dict[str, Any]]:
+        # Deux questions distinctes pour le compte partagé, lues une fois : les
+        # clés se réparent dans un `.env`, le SDK par un `pip install`, et il n'y
+        # a pas de raison que l'une taise l'autre.
+        keys_present = bool(self.alpaca_api_key and self.alpaca_secret_key)
+        sdk_installed = alpaca_sdk_ready()
         return {
             "telegram": {
                 "ready": bool(self.telegram_bot_token),
@@ -669,7 +718,12 @@ class EnvConfig(BaseModel):
                 "url_issue": supabase_url_issue(self.supabase_url),
             },
             "alpaca_shared": {
-                "ready": bool(self.alpaca_api_key and self.alpaca_secret_key),
+                # `ready` est le ET des deux, et il ne lisait que les clés : sur
+                # une machine sans `alpaca-py`, le préflight déclarait le compte
+                # partagé prêt alors qu'aucun ordre ne pouvait en partir.
+                "ready": keys_present and sdk_installed,
+                "keys_present": keys_present,
+                "sdk_installed": sdk_installed,
                 "paper_only": True,
             },
             "news_llm": {
@@ -703,6 +757,19 @@ class EnvConfig(BaseModel):
             },
         }
 
+    def secrets_audit_settings(self) -> Dict[str, Any]:
+        """Les réglages effectifs de l'audit des secrets, plus le rôle de la clé Supabase.
+
+        `core.secrets_audit.effective_settings()` dit ce que l'audit **appliquera**
+        (plafond de rotation retenu et sa provenance, état du registre) ; le rôle de
+        la clé Supabase est ajouté ici, parce que c'est la configuration applicative
+        qui la détient. Jamais la clé elle-même : seulement son **rôle**, c'est-à-dire
+        ce qu'elle a le droit de faire.
+        """
+        settings = effective_settings()
+        settings["supabase_key_role"] = supabase_key_role(self.supabase_service_key)
+        return settings
+
     def preflight(self) -> Dict[str, Any]:
         issues = self.required_issues()
         return {
@@ -728,6 +795,10 @@ class EnvConfig(BaseModel):
             # lire quelque part, sinon une veille éteinte se découvre en
             # cherchant pourquoi aucune alerte n'arrive.
             "supabase_watch": {"every_minutes": self.supabase_watch_minutes},
+            # L'audit des secrets n'est pas un secret non plus : le plafond de
+            # rotation **appliqué**, l'état du registre et le rôle de la clé
+            # Supabase se lisent ici, au lieu de se découvrir dans un journal.
+            "secrets_audit": self.secrets_audit_settings(),
             "limits": {
                 "min_confidence": self.min_confidence,
                 "default_risk_pct": self.default_risk_pct,
@@ -784,7 +855,28 @@ def safe_preflight() -> Dict[str, Any]:
             "issues": [f"Validation config: {exc.errors()}"],
             "components": {},
             "limits": {},
+            "secrets_audit": {},
         }
+
+
+#: Ce qu'une route **publique** peut dire de l'audit des secrets : le plafond
+#: appliqué et l'état du registre. Ni le **chemin** du fichier — il révèle
+#: l'arborescence du serveur — ni le **rôle de la clé Supabase**, qui dit quelle
+#: puissance le service porte (`service_role` ouvre tout) : ces deux faits restent
+#: sur `/preflight`, derrière la clé interne.
+PUBLIC_AUDIT_KEYS = ("max_age_days", "ledger_state")
+
+
+def public_secrets_audit(preflight: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    """L'audit des secrets, réduit à ce qu'une route publique peut publier.
+
+    Le préflight déjà calculé est accepté en entrée : `/health` l'a en main, et
+    relire le registre une seconde fois pour en retirer deux champs serait payer
+    deux fois la même question.
+    """
+    source = preflight if preflight is not None else safe_preflight()
+    settings = source.get("secrets_audit") or {}
+    return {key: settings[key] for key in PUBLIC_AUDIT_KEYS if key in settings}
 
 
 # --------------------------------------------------------------------------- #

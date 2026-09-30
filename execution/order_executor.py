@@ -15,14 +15,20 @@ from database.broker_credentials import (
     BrokerCredentialsUnreadable,
     get_broker_credentials,
 )
-from execution.risk_guard import can_trade as risk_can_trade
+from execution.risk_guard import evaluate as risk_evaluate
 
+#: Le SDK est-il utilisable ? C'est la même question que celle d'
+#: `execution.alpaca_sdk.alpaca_sdk_available()` — posée sans rien importer, pour
+#: le préflight — mais ici la réponse fait foi à l'exécution : ce sont ces quatre
+#: noms-là qui construisent un client, donc les importer vraiment est la seule
+#: preuve qui compte pour passer un ordre.
 try:
     from alpaca.trading.client import TradingClient
     from alpaca.trading.requests import MarketOrderRequest
     from alpaca.trading.enums import OrderSide, TimeInForce
     ALPACA_OK = True
 except Exception:
+    # sans signal : SDK absent ; `ALPACA_OK` le publie, `AlpacaSDKUnavailable` le nomme
     ALPACA_OK = False
 
 
@@ -267,13 +273,16 @@ async def execute_validated_order(
             "error": f"{type(exc).__name__}: {exc}",
         }
 
-    allowed, reason = risk_can_trade(str(user_id), real_balance)
-    if not allowed:
+    decision = risk_evaluate(str(user_id), real_balance)
+    if not decision.allowed:
         return {
             **base,
             "status": "blocked_risk_guard",
             "method": "blocked",
-            "note": f"🛑 Trade bloqué par le garde-fou de risque : {reason}",
+            "note": f"🛑 Trade bloqué par le garde-fou de risque : {decision.reason}",
+            # Le verdict structuré voyage avec le refus : l'appelant affiche où en
+            # est le compte et quel seuil a mordu, sans relire la phrase.
+            "risk": decision.as_dict(),
         }
 
     try:

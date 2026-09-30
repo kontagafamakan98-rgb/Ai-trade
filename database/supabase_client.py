@@ -2,9 +2,75 @@ from config import SUPABASE_URL, SUPABASE_KEY
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
+#: Les **clés opaques** de la nouvelle génération (2025) : `sb_secret_…` côté
+#: serveur, `sb_publishable_…` côté navigateur. Ce ne sont pas des JWT — c'est
+#: tout leur intérêt — et c'est aussi ce qui les faisait refuser ici.
+OPAQUE_KEY_PREFIXES = ("sb_secret_", "sb_publishable_")
+
+#: Ce que le contrôle de forme de `create_client` exige : `a.b` (ou `a.b.c`). Une
+#: clé opaque lui est présentée suivie de ce suffixe, puis remise en place : la
+#: bibliothèque ne la voit sous cette forme que le temps de **son** contrôle.
+JWT_SHAPED_SUFFIX = "sig"
+
+#: L'en-tête où supabase-py dépose la clé (l'orthographe de la bibliothèque ;
+#: HTTP ne distingue pas la casse, la passerelle lit bien `apikey`).
+API_KEY_HEADER = "apiKey"
+
+
+def is_opaque_key(key: Optional[str]) -> bool:
+    """La clé est-elle de la nouvelle génération (donc pas un JWT) ?
+
+    La question est posée au **préfixe**, comme `supabase_key_role`
+    (`core/config_runtime.py`) : une clé opaque est faite pour être lisible, pas
+    décodable, et sa forme est tout ce qu'on en sache sans le réseau.
+    """
+    return bool(key) and str(key).startswith(OPAQUE_KEY_PREFIXES)
+
+
+def build_supabase_client(url: str, key: str) -> Any:
+    """Le client Supabase, y compris pour une clé **opaque** (`sb_secret_…`).
+
+    `create_client` refuse toute clé qui n'a pas la forme d'un JWT
+    (`SupabaseException: Invalid API key`, dans `supabase/_sync/client.py`) : les
+    clés de la nouvelle génération ne sont pas des JWT, donc le client ne se
+    construisait **pas du tout** — et comme ce module avale l'exception, la base
+    paraissait vide. Deux corrections, dans cet ordre :
+
+    1. **la construction** : la clé est présentée sous une forme que le contrôle
+       accepte, puis remplacée par la vraie valeur juste après ;
+    2. **l'en-tête** : supabase-py dépose la clé **deux fois**, en `apiKey` et en
+       `Authorization: Bearer <clé>`. C'est ce second en-tête que la passerelle
+       refuse pour une clé opaque — elle y attend un JWT d'**utilisateur** —, donc
+       il est retiré : une clé opaque voyage en `apikey`, et rien d'autre. Le
+       remettre ferait échouer chaque requête avec « Invalid API key », ce que la
+       base vide rendrait invisible.
+
+    `options.headers` est le **même dictionnaire** que celui des sous-clients
+    (`postgrest`, `storage`, `functions` le lisent à leur construction paresseuse,
+    `auth` y lit ses en-têtes à chaque appel) : le corriger ici les corrige tous,
+    et aucun n'est construit avant ce retour.
+
+    Une clé **JWT** (l'ancienne génération) garde le chemin et les en-têtes
+    d'origine : sa place dans `Authorization` est justement ce qui la fait
+    fonctionner aujourd'hui.
+    """
+    if not is_opaque_key(key):
+        return create_client(url, key)
+
+    client = create_client(url, f"{key}.{JWT_SHAPED_SUFFIX}")
+    client.supabase_key = key
+    headers = client.options.headers
+    for name in [name for name in headers if name.lower() == API_KEY_HEADER.lower()]:
+        headers[name] = key
+    headers.setdefault(API_KEY_HEADER, key)
+    for name in [name for name in headers if name.lower() == "authorization"]:
+        headers.pop(name)
+    return client
+
+
 try:
     from supabase import create_client, Client
-    supabase: Optional[Any] = create_client(SUPABASE_URL, SUPABASE_KEY)
+    supabase: Optional[Any] = build_supabase_client(SUPABASE_URL, SUPABASE_KEY)
     #: Pourquoi le client n'a pas pu être construit (`None` s'il l'a été).
     #: Sans ce motif, une dépendance absente ou une URL malformée se traduisent
     #: par le **même** symptôme que « la base est vide » : toutes les fonctions de
